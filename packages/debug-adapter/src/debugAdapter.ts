@@ -1,14 +1,16 @@
-import { DebugSession } from "vscode-debugadapter";
+import { DebugSession, StoppedEvent } from "vscode-debugadapter";
 import { DebugProtocol } from "vscode-debugprotocol";
 
 export class TonX86DebugSession extends DebugSession {
   public constructor() {
     super();
+    console.error("[TonX86] Debug adapter constructor called");
   }
 
   protected initializeRequest(
     response: DebugProtocol.InitializeResponse,
   ): void {
+    console.error("[TonX86] Initialize request received");
     response.body = {
       supportsConfigurationDoneRequest: true,
       supportsSetVariable: true,
@@ -23,16 +25,18 @@ export class TonX86DebugSession extends DebugSession {
     response: DebugProtocol.LaunchResponse,
     args: DebugProtocol.LaunchRequestArguments,
   ): void {
-    console.log("Launch request:", args);
+    console.error("[TonX86] Launch request received with args:", args);
     this.sendResponse(response);
+    // Send stopped event at entry
+    this.sendEvent(new StoppedEvent("entry", 1));
   }
 
   protected setBreakPointsRequest(
     response: DebugProtocol.SetBreakpointsResponse,
     args: DebugProtocol.SetBreakpointsArguments,
   ): void {
-    console.log("Set breakpoints:", args);
-    response.body = { 
+    console.error("[TonX86] Set breakpoints request:", args);
+    response.body = {
       breakpoints: (args.breakpoints || []).map((bp, idx) => ({
         verified: true,
         line: bp.line,
@@ -43,6 +47,7 @@ export class TonX86DebugSession extends DebugSession {
   }
 
   protected threadsRequest(response: DebugProtocol.ThreadsResponse): void {
+    console.error("[TonX86] Threads request");
     response.body = {
       threads: [{ id: 1, name: "Main Thread" }],
     };
@@ -54,14 +59,16 @@ export class TonX86DebugSession extends DebugSession {
     args: DebugProtocol.StackTraceArguments,
   ): void {
     console.log("Stack trace request for thread:", args.threadId);
-    response.body = { 
-      stackFrames: [{
-        id: 0,
-        name: "Main",
-        source: { path: "" },
-        line: 1,
-        column: 0,
-      }],
+    response.body = {
+      stackFrames: [
+        {
+          id: 0,
+          name: "Main",
+          source: { path: "" },
+          line: 1,
+          column: 0,
+        },
+      ],
     };
     this.sendResponse(response);
   }
@@ -70,13 +77,15 @@ export class TonX86DebugSession extends DebugSession {
     response: DebugProtocol.ScopesResponse,
     args: DebugProtocol.ScopesArguments,
   ): void {
-    console.log("Scopes request for frame:", args.frameId);
+    console.error("[TonX86] Scopes request for frame:", args.frameId);
     response.body = {
-      scopes: [{
-        name: "Registers",
-        variablesReference: 1,
-        expensive: false,
-      }],
+      scopes: [
+        {
+          name: "Registers",
+          variablesReference: 1,
+          expensive: false,
+        },
+      ],
     };
     this.sendResponse(response);
   }
@@ -85,7 +94,10 @@ export class TonX86DebugSession extends DebugSession {
     response: DebugProtocol.VariablesResponse,
     args: DebugProtocol.VariablesArguments,
   ): void {
-    console.log("Variables request for ref:", args.variablesReference);
+    console.error(
+      "[TonX86] Variables request for ref:",
+      args.variablesReference,
+    );
     response.body = {
       variables: [
         { name: "EAX", value: "0x00000000", variablesReference: 0 },
@@ -105,7 +117,7 @@ export class TonX86DebugSession extends DebugSession {
     response: DebugProtocol.ContinueResponse,
     args: DebugProtocol.ContinueArguments,
   ): void {
-    console.log("Continue request for thread:", args.threadId);
+    console.error("[TonX86] Continue request for thread:", args.threadId);
     this.sendResponse(response);
   }
 
@@ -113,7 +125,7 @@ export class TonX86DebugSession extends DebugSession {
     response: DebugProtocol.NextResponse,
     args: DebugProtocol.NextArguments,
   ): void {
-    console.log("Next request for thread:", args.threadId);
+    console.error("[TonX86] Next request for thread:", args.threadId);
     this.sendResponse(response);
   }
 
@@ -121,7 +133,7 @@ export class TonX86DebugSession extends DebugSession {
     response: DebugProtocol.StepInResponse,
     args: DebugProtocol.StepInArguments,
   ): void {
-    console.log("Step in request for thread:", args.threadId);
+    console.error("[TonX86] Step in request for thread:", args.threadId);
     this.sendResponse(response);
   }
 
@@ -129,7 +141,7 @@ export class TonX86DebugSession extends DebugSession {
     response: DebugProtocol.StepOutResponse,
     args: DebugProtocol.StepOutArguments,
   ): void {
-    console.log("Step out request for thread:", args.threadId);
+    console.error("[TonX86] Step out request for thread:", args.threadId);
     this.sendResponse(response);
   }
 
@@ -137,17 +149,19 @@ export class TonX86DebugSession extends DebugSession {
     response: DebugProtocol.PauseResponse,
     args: DebugProtocol.PauseArguments,
   ): void {
-    console.log("Pause request for thread:", args.threadId);
+    console.error("[TonX86] Pause request for thread:", args.threadId);
     this.sendResponse(response);
   }
 
   protected configurationDoneRequest(
     response: DebugProtocol.ConfigurationDoneResponse,
   ): void {
-    console.log("Configuration done");
+    console.error("[TonX86] Configuration done");
     this.sendResponse(response);
   }
 }
 
 // Start the debug session
+console.error("[TonX86] Debug adapter starting...");
 DebugSession.run(TonX86DebugSession);
+console.error("[TonX86] Debug adapter started");
