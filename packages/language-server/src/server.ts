@@ -22,15 +22,15 @@ export class LanguageServer {
 		const diagnostics: string[] = [];
 		const lines = content.split(/\r?\n/);
 
-		lines.forEach((line: string, index: number) => {
+		lines.forEach((_: string, index: number) => {
 			// Check for line length
-			if (line.length > 80) {
-				diagnostics.push(`Line ${index + 1}: Line too long (${line.length} > 80 characters)`);
+			if (_.length > 80) {
+				diagnostics.push(`Line ${index + 1}: Line too long (${_.length} > 80 characters)`);
 			}
 
 			// Check for invalid instructions (placeholder)
 			const validInstructions = ['MOV', 'ADD', 'SUB', 'AND', 'OR', 'JMP', 'JZ', 'HLT'];
-			const tokens = line.trim().split(/\s+/);
+			const tokens = _.trim().split(/\s+/);
 			if (tokens.length > 0) {
 				const instruction = tokens[0].toUpperCase();
 				if (instruction && !validInstructions.includes(instruction) && instruction !== '' && !instruction.startsWith(';')) {
@@ -45,7 +45,7 @@ export class LanguageServer {
 		return diagnostics;
 	}
 
-	getCompletions(line: string): string[] {
+	getCompletions(): string[] {
 		const validInstructions = ['MOV', 'ADD', 'SUB', 'AND', 'OR', 'JMP', 'JZ', 'HLT'];
 		const registers = ['EAX', 'ECX', 'EDX', 'EBX', 'ESP', 'EBP', 'ESI', 'EDI'];
 

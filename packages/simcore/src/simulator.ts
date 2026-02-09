@@ -5,7 +5,7 @@ export class Memory {
 	private bankA: Uint8Array;
 	private bankB: Uint8Array;
 
-	constructor(size: number = 65536) {
+	constructor(size = 65536) {
 		this.bankA = new Uint8Array(size);
 		this.bankB = new Uint8Array(size);
 	}

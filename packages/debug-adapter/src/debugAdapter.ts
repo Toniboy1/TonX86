@@ -6,7 +6,7 @@ export class TonX86DebugSession extends DebugSession {
 		super();
 	}
 
-	protected initializeRequest(response: DebugProtocol.InitializeResponse, args: DebugProtocol.InitializeRequestArguments): void {
+	protected initializeRequest(response: DebugProtocol.InitializeResponse): void {
 		response.body = {
 			supportsConfigurationDoneRequest: true,
 			supportsSetVariable: true,
@@ -14,11 +14,11 @@ export class TonX86DebugSession extends DebugSession {
 		this.sendResponse(response);
 	}
 
-	protected launchRequest(response: DebugProtocol.LaunchResponse, args: DebugProtocol.LaunchRequestArguments, request?: DebugProtocol.Request): void {
+	protected launchRequest(response: DebugProtocol.LaunchResponse): void {
 		this.sendResponse(response);
 	}
 
-	protected setBreakPointsRequest(response: DebugProtocol.SetBreakpointsResponse, args: DebugProtocol.SetBreakpointsArguments): void {
+	protected setBreakPointsRequest(response: DebugProtocol.SetBreakpointsResponse): void {
 		response.body = { breakpoints: [] };
 		this.sendResponse(response);
 	}
@@ -32,7 +32,7 @@ export class TonX86DebugSession extends DebugSession {
 		this.sendResponse(response);
 	}
 
-	protected stackTraceRequest(response: DebugProtocol.StackTraceResponse, args: DebugProtocol.StackTraceArguments): void {
+	protected stackTraceRequest(response: DebugProtocol.StackTraceResponse): void {
 		response.body = { stackFrames: [] };
 		this.sendResponse(response);
 	}
