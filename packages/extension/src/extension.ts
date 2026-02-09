@@ -156,6 +156,7 @@ class LCDViewProvider implements vscode.WebviewViewProvider {
   resolveWebviewView(webviewView: vscode.WebviewView): void {
     webviewView.webview.options = {
       enableScripts: true,
+      localResourceRoots: [],
     };
 
     webviewView.webview.html = this.getHtmlForWebview();
@@ -174,6 +175,7 @@ class LCDViewProvider implements vscode.WebviewViewProvider {
 			<head>
 				<meta charset="UTF-8">
 				<meta name="viewport" content="width=device-width, initial-scale=1.0">
+				<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'">
 				<title>TonX86 LCD Display</title>
 				<style>
 					body { font-family: monospace; padding: 10px; }
@@ -223,7 +225,7 @@ class LCDViewProvider implements vscode.WebviewViewProvider {
       LCDViewProvider.panelViewType,
       "TonX86 LCD Display",
       vscode.ViewColumn.Beside,
-      { enableScripts: true },
+      { enableScripts: true, localResourceRoots: [] },
     );
 
     this.lcdPanel.webview.html = this.getHtmlForWebview();
@@ -257,6 +259,7 @@ class DocsViewProvider implements vscode.WebviewViewProvider {
   resolveWebviewView(webviewView: vscode.WebviewView): void {
     webviewView.webview.options = {
       enableScripts: true,
+      localResourceRoots: [],
     };
 
     webviewView.webview.html = this.getHtmlForWebview();
@@ -269,6 +272,7 @@ class DocsViewProvider implements vscode.WebviewViewProvider {
 			<head>
 				<meta charset="UTF-8">
 				<meta name="viewport" content="width=device-width, initial-scale=1.0">
+				<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'">
 				<title>TonX86 ISA Docs</title>
 				<style>
 					body { font-family: sans-serif; padding: 10px; }
