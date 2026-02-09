@@ -21,11 +21,17 @@ interface Instruction {
   raw: string;
 }
 
+interface ParseResult {
+  instructions: Instruction[];
+  labels: Map<string, number>; // label name -> instruction index
+}
+
 /**
- * Parse assembly file into instructions
+ * Parse assembly file into instructions and labels
  */
-function parseAssembly(lines: string[]): Instruction[] {
+function parseAssembly(lines: string[]): ParseResult {
   const instructions: Instruction[] = [];
+  const labels = new Map<string, number>();
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
@@ -36,8 +42,11 @@ function parseAssembly(lines: string[]): Instruction[] {
       continue;
     }
 
-    // Skip labels (lines ending with :)
+    // Handle labels (lines ending with :)
     if (trimmed.endsWith(":")) {
+      const labelName = trimmed.slice(0, -1).trim(); // Remove the colon
+      // Label points to the next instruction index
+      labels.set(labelName, instructions.length);
       continue;
     }
 
@@ -60,13 +69,14 @@ function parseAssembly(lines: string[]): Instruction[] {
     });
   }
 
-  return instructions;
+  return { instructions, labels };
 }
 export class TonX86DebugSession extends DebugSession {
   private sourceInfo: SourceInfo | undefined;
   private currentLine = 1;
   private programPath = "";
   private instructions: Instruction[] = [];
+  private labels: Map<string, number> = new Map(); // label name -> instruction index
   private instructionPointer: number = 0; // Index into instructions array
   private breakpoints: Set<number> = new Set(); // Set of line numbers with breakpoints
   private configurationDone = false; // Track if configuration is done
@@ -137,7 +147,9 @@ export class TonX86DebugSession extends DebugSession {
         );
 
         // Parse assembly instructions
-        this.instructions = parseAssembly(lines);
+        const parseResult = parseAssembly(lines);
+        this.instructions = parseResult.instructions;
+        this.labels = parseResult.labels;
         console.error(
           "[TonX86] Parsed",
           this.instructions.length,
@@ -183,7 +195,9 @@ export class TonX86DebugSession extends DebugSession {
         this.sendEvent(new StoppedEvent("entry", 1));
       }, 100);
     } else {
-      console.error("[TonX86] No instructions to debug, program will terminate");
+      console.error(
+        "[TonX86] No instructions to debug, program will terminate",
+      );
       this.sendEvent(new TerminatedEvent());
     }
     console.error("[TonX86] launchRequest complete");
@@ -250,12 +264,60 @@ export class TonX86DebugSession extends DebugSession {
         return;
       }
 
-      this.instructionPointer++;
+      // Handle jump instructions
+      if (
+        currentInstr.mnemonic === "JMP" ||
+        currentInstr.mnemonic === "JE" ||
+        currentInstr.mnemonic === "JZ" ||
+        currentInstr.mnemonic === "JNE" ||
+        currentInstr.mnemonic === "JNZ"
+      ) {
+        const targetLabel = currentInstr.operands[0];
+        const targetIndex = this.labels.get(targetLabel);
+
+        if (targetIndex !== undefined) {
+          // For conditional jumps, check the Zero flag
+          const shouldJump =
+            currentInstr.mnemonic === "JMP" ||
+            (["JE", "JZ"].includes(currentInstr.mnemonic) &&
+              this.isZeroFlagSet()) ||
+            (["JNE", "JNZ"].includes(currentInstr.mnemonic) &&
+              !this.isZeroFlagSet());
+
+          if (shouldJump) {
+            console.error(
+              `[TonX86] Jumping to label "${targetLabel}" at instruction index ${targetIndex}`,
+            );
+            this.instructionPointer = targetIndex;
+          } else {
+            console.error(
+              `[TonX86] Conditional jump not taken (label: ${targetLabel})`,
+            );
+            this.instructionPointer++;
+          }
+        } else {
+          console.error(
+            `[TonX86] Jump target "${targetLabel}" not found in labels`,
+          );
+          this.instructionPointer++;
+        }
+      } else {
+        this.instructionPointer++;
+      }
     }
 
     // If we reach here, no HLT was found - program ended
     console.error("[TonX86] Reached end of program");
     this.sendEvent(new TerminatedEvent());
+  }
+
+  /**
+   * Check if the Zero flag is set in the CPU
+   */
+  private isZeroFlagSet(): boolean {
+    const state = this.simulator.getState();
+    // Zero flag is bit 6
+    return (state.flags & (1 << 6)) !== 0;
   }
 
   protected sourceRequest(
