@@ -21,7 +21,7 @@ updates:
         update-types:
           - "minor"
           - "patch"
-  
+
   # Debug adapter package
   - package-ecosystem: "npm"
     directory: "/packages/debug-adapter"
@@ -32,7 +32,7 @@ updates:
     labels:
       - "dependencies"
       - "debug-adapter"
-  
+
   # Extension package
   - package-ecosystem: "npm"
     directory: "/packages/extension"
@@ -43,7 +43,7 @@ updates:
     labels:
       - "dependencies"
       - "extension"
-  
+
   # Language server package
   - package-ecosystem: "npm"
     directory: "/packages/language-server"
@@ -54,7 +54,7 @@ updates:
     labels:
       - "dependencies"
       - "language-server"
-  
+
   # Simcore package
   - package-ecosystem: "npm"
     directory: "/packages/simcore"
@@ -65,7 +65,7 @@ updates:
     labels:
       - "dependencies"
       - "simcore"
-  
+
   # Docs package
   - package-ecosystem: "npm"
     directory: "/packages/docs"
@@ -76,7 +76,7 @@ updates:
     labels:
       - "dependencies"
       - "docs"
-  
+
   # GitHub Actions
   - package-ecosystem: "github-actions"
     directory: "/"
