@@ -91,6 +91,12 @@ jobs:
     - name: Publish to VS Code Marketplace
       run: |
         cd packages/extension
+        npx @vscode/vsce publish -p ${{ secrets.VSCE_PAT }}
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Publish to VS Code Marketplace
+      run: |
+        cd packages/extension
         npx vsce publish -p ${{ secrets.VSCE_PAT }}
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
