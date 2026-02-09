@@ -10,9 +10,18 @@ updates:
     labels:
       - "dependencies"
       - "automated"
+    auto-merge: true
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
     groups:
       development-dependencies:
         dependency-type: "development"
+        update-types:
+          - "minor"
+          - "patch"
+      production-dependencies:
+        dependency-type: "production"
         update-types:
           - "minor"
           - "patch"
@@ -27,6 +36,10 @@ updates:
     labels:
       - "dependencies"
       - "debug-adapter"
+    auto-merge: true
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
   
   # Extension package
   - package-ecosystem: "npm"
@@ -38,6 +51,10 @@ updates:
     labels:
       - "dependencies"
       - "extension"
+    auto-merge: true
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
   
   # Language server package
   - package-ecosystem: "npm"
@@ -49,6 +66,10 @@ updates:
     labels:
       - "dependencies"
       - "language-server"
+    auto-merge: true
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
   
   # Simcore package
   - package-ecosystem: "npm"
@@ -60,6 +81,10 @@ updates:
     labels:
       - "dependencies"
       - "simcore"
+    auto-merge: true
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
   
   # Docs package
   - package-ecosystem: "npm"
@@ -71,6 +96,10 @@ updates:
     labels:
       - "dependencies"
       - "docs"
+    auto-merge: true
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
   
   # GitHub Actions
   - package-ecosystem: "github-actions"
@@ -80,3 +109,7 @@ updates:
     labels:
       - "dependencies"
       - "github-actions"
+    auto-merge: true
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
