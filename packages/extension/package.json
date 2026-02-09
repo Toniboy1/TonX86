@@ -13,8 +13,6 @@
     "Education"
   ],
   "activationEvents": [
-    "*",
-    "onLanguage:tonx86",
     "onDebug"
   ],
   "main": "out/extension.js",
@@ -87,26 +85,31 @@
     "views": {
       "tonx86-explorer": [
         {
+          "icon": "",
           "id": "tonx86.registers",
           "name": "Registers",
           "type": "tree"
         },
         {
+          "icon": "",
           "id": "tonx86.memoryA",
           "name": "Memory A",
           "type": "tree"
         },
         {
+          "icon": "",
           "id": "tonx86.memoryB",
           "name": "Memory B",
           "type": "tree"
         },
         {
+          "icon": "",
           "id": "tonx86.lcd",
           "name": "LCD Display",
           "type": "webview"
         },
         {
+          "icon": "",
           "id": "tonx86.docs",
           "name": "ISA Docs",
           "type": "webview"

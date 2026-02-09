@@ -244,10 +244,40 @@ export class TonX86DebugSession extends DebugSession {
       console.error(
         `[TonX86] Executing: ${currentInstr.mnemonic} ${currentInstr.operands.join(", ")}`,
       );
-      this.simulator.executeInstruction(
-        currentInstr.mnemonic,
-        currentInstr.operands,
-      );
+      try {
+        this.simulator.executeInstruction(
+          currentInstr.mnemonic,
+          currentInstr.operands,
+        );
+      } catch (err) {
+        console.error(
+          `[TonX86] ERROR during instruction execution at IP=${this.instructionPointer}, line=${currentInstr.line}:`,
+          err,
+        );
+        this.sendEvent(new TerminatedEvent());
+        return;
+      }
+
+      // Log LCD state after every instruction
+      try {
+        const lcdData = this.simulator.getLCDDisplay();
+        // Compact string: 8x8 grid, 0/1 per pixel
+        const width = 8; // TODO: get actual width if configurable
+        let lcdString = "\n";
+        for (let y = 0; y < 8; y++) {
+          let row = "";
+          for (let x = 0; x < 8; x++) {
+            row += lcdData[y * width + x] ? "#" : ".";
+          }
+          lcdString += row + "\n";
+        }
+        console.error(
+          `[TonX86] LCD State after IP=${this.instructionPointer}, line=${currentInstr.line}:`,
+        );
+        console.error(lcdString);
+      } catch (e) {
+        console.error("[TonX86] LCD logging error:", e);
+      }
 
       this.currentLine = currentInstr.line;
 
@@ -730,6 +760,25 @@ export class TonX86DebugSession extends DebugSession {
     console.error("[TonX86] Configuration done");
     this.configurationDone = true;
     this.sendResponse(response);
+  }
+
+  /**
+   * Custom request to get LCD display state
+   */
+  protected customRequest(
+    command: string,
+    response: DebugProtocol.Response,
+    args: any,
+  ): void {
+    if (command === "getLCDState") {
+      const lcdData = this.simulator.getLCDDisplay();
+      response.body = {
+        pixels: Array.from(lcdData),
+      };
+      this.sendResponse(response);
+    } else {
+      super.customRequest(command, response, args);
+    }
   }
 }
 

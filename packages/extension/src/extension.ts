@@ -148,18 +148,37 @@ class LCDViewProvider implements vscode.WebviewViewProvider {
   public static readonly panelViewType = "tonx86.lcd.panel";
   private lcdConfig: LCDConfig;
   private lcdPanel: vscode.WebviewPanel | undefined;
+  private webviewView: vscode.WebviewView | undefined;
 
   constructor() {
     this.lcdConfig = getLCDConfig();
   }
 
   resolveWebviewView(webviewView: vscode.WebviewView): void {
+    this.webviewView = webviewView;
     webviewView.webview.options = {
       enableScripts: true,
       localResourceRoots: [],
     };
 
     webviewView.webview.html = this.getHtmlForWebview();
+  }
+
+  /**
+   * Update LCD pixels in the webview
+   */
+  updatePixels(pixels: number[]): void {
+    const message = { type: "updatePixels", pixels };
+
+    // Update main view
+    if (this.webviewView) {
+      this.webviewView.webview.postMessage(message);
+    }
+
+    // Update popped out panel
+    if (this.lcdPanel) {
+      this.lcdPanel.webview.postMessage(message);
+    }
   }
 
   private getHtmlForWebview(): string {
@@ -192,15 +211,34 @@ class LCDViewProvider implements vscode.WebviewViewProvider {
 				<script>
 					const lcd = document.getElementById('lcd');
 					const width = ${width}, height = ${height};
+					const pixels = [];
+					
+					// Create pixel grid
 					for (let y = 0; y < height; y++) {
 						for (let x = 0; x < width; x++) {
 							const pixel = document.createElement('div');
 							pixel.className = 'pixel';
 							pixel.id = \`pixel-\${x}-\${y}\`;
 							lcd.appendChild(pixel);
+							pixels.push(pixel);
 						}
 						lcd.appendChild(document.createElement('br'));
 					}
+					
+					// Listen for pixel updates from extension
+					window.addEventListener('message', event => {
+						const message = event.data;
+						if (message.type === 'updatePixels') {
+							const pixelData = message.pixels;
+							for (let i = 0; i < pixelData.length && i < pixels.length; i++) {
+								if (pixelData[i]) {
+									pixels[i].classList.add('on');
+								} else {
+									pixels[i].classList.remove('on');
+								}
+							}
+						}
+					});
 				</script>
 			</body>
 			</html>
@@ -353,6 +391,45 @@ export function activate(context: vscode.ExtensionContext): void {
       new DocsViewProvider(),
     ),
   );
+
+  // Listen for debug events to update LCD display
+  let lcdUpdateInterval: NodeJS.Timeout | undefined;
+
+  context.subscriptions.push(
+    vscode.debug.onDidStartDebugSession((session) => {
+      if (session.type === "tonx86") {
+        console.log("TonX86 debug session started, polling LCD state");
+        // Poll LCD state every 100ms while debugging
+        lcdUpdateInterval = setInterval(async () => {
+          await updateLCDDisplay(session);
+        }, 100);
+      }
+    }),
+  );
+
+  context.subscriptions.push(
+    vscode.debug.onDidTerminateDebugSession((session) => {
+      if (session.type === "tonx86") {
+        console.log("TonX86 debug session terminated, stopping LCD polling");
+        if (lcdUpdateInterval) {
+          clearInterval(lcdUpdateInterval);
+          lcdUpdateInterval = undefined;
+        }
+      }
+    }),
+  );
+
+  // Helper function to fetch and update LCD display
+  async function updateLCDDisplay(session: vscode.DebugSession) {
+    try {
+      const response = await session.customRequest("getLCDState");
+      if (response && response.pixels) {
+        lcdProvider.updatePixels(response.pixels);
+      }
+    } catch (error) {
+      // Silently fail - session might not be ready yet
+    }
+  }
 
   // Monitor configuration changes
   context.subscriptions.push(

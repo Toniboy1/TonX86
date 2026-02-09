@@ -27,4 +27,5 @@ loop:
 ; Exit point
 exit:
     ; EAX now contains 10
+it
     HLT

@@ -132,6 +132,33 @@ export class Simulator {
   }
 
   /**
+   * Write to memory-mapped I/O addresses
+   * 0xF000 onwards: LCD display
+   */
+  private writeIO(address: number, value: number): void {
+    const IO_LCD_BASE = 0xf000;
+    const lcdSize = this.lcd["width"] * this.lcd["height"];
+
+    if (address >= IO_LCD_BASE && address < IO_LCD_BASE + lcdSize) {
+      // LCD pixel write
+      const pixelIndex = address - IO_LCD_BASE;
+      const width = this.lcd["width"];
+      const x = pixelIndex % width;
+      const y = Math.floor(pixelIndex / width);
+
+      if (x >= width || y >= this.lcd["height"]) {
+        throw new Error(
+          `LCD write overflow: address 0x${address.toString(16)} out of bounds (${width}x${this.lcd["height"]})`,
+        );
+      }
+
+      this.lcd.setPixel(x, y, value);
+    } else {
+      throw new Error(`Unknown I/O address: 0x${address.toString(16)}`);
+    }
+  }
+
+  /**
    * Parse a register name or immediate value
    */
   private parseOperand(operand: string): {
@@ -177,10 +204,16 @@ export class Simulator {
         const dest = this.parseOperand(operands[0]);
         const src = this.parseOperand(operands[1]);
 
-        if (dest.type === "register" && src.type === "immediate") {
-          this.cpu.registers[dest.value] = src.value;
-        } else if (dest.type === "register" && src.type === "register") {
-          this.cpu.registers[dest.value] = this.cpu.registers[src.value];
+        // Get source value
+        const srcValue =
+          src.type === "register" ? this.cpu.registers[src.value] : src.value;
+
+        // Handle destination
+        if (dest.type === "register") {
+          this.cpu.registers[dest.value] = srcValue;
+        } else if (dest.type === "immediate") {
+          // destination is an I/O address
+          this.writeIO(dest.value, srcValue);
         }
         break;
       }
