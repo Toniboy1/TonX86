@@ -103,6 +103,32 @@
       {
         "language": "asm"
       }
+    ],
+    "configuration": [
+      {
+        "title": "TonX86 LCD Display",
+        "properties": {
+          "tonx86.lcd.enabled": {
+            "type": "boolean",
+            "default": true,
+            "description": "Enable LCD display view in the debug explorer"
+          },
+          "tonx86.lcd.width": {
+            "type": "integer",
+            "default": 16,
+            "minimum": 2,
+            "maximum": 256,
+            "description": "LCD display width in pixels (2-256)"
+          },
+          "tonx86.lcd.height": {
+            "type": "integer",
+            "default": 16,
+            "minimum": 2,
+            "maximum": 256,
+            "description": "LCD display height in pixels (2-256)"
+          }
+        }
+      }
     ]
   },
   "scripts": {

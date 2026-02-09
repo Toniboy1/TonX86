@@ -1,6 +1,40 @@
 import * as vscode from 'vscode';
 
 /**
+ * LCD Configuration interface
+ */
+interface LCDConfig {
+	enabled: boolean;
+	width: number;
+	height: number;
+}
+
+/**
+ * Validate and normalize LCD configuration
+ */
+function getLCDConfig(): LCDConfig {
+	const config = vscode.workspace.getConfiguration('tonx86.lcd');
+	
+	const enabled = config.get<boolean>('enabled', true);
+	let width = config.get<number>('width', 16);
+	let height = config.get<number>('height', 16);
+
+	// Validate width
+	if (width < 2 || width > 256 || !Number.isInteger(width)) {
+		width = 16;
+		console.warn('Invalid LCD width, resetting to default (16)');
+	}
+
+	// Validate height
+	if (height < 2 || height > 256 || !Number.isInteger(height)) {
+		height = 16;
+		console.warn('Invalid LCD height, resetting to default (16)');
+	}
+
+	return { enabled, width, height };
+}
+
+/**
  * Register data for tree view
  */
 interface RegisterItem {
@@ -102,8 +136,11 @@ class MemoryProvider implements vscode.TreeDataProvider<MemoryRange> {
  */
 class LCDViewProvider implements vscode.WebviewViewProvider {
 	public static readonly viewType = 'tonx86.lcd';
+	private lcdConfig: LCDConfig;
 
-	constructor() {}
+	constructor() {
+		this.lcdConfig = getLCDConfig();
+	}
 
 	resolveWebviewView(webviewView: vscode.WebviewView): void {
 		webviewView.webview.options = {
@@ -114,6 +151,9 @@ class LCDViewProvider implements vscode.WebviewViewProvider {
 	}
 
 	private getHtmlForWebview(): string {
+		const { width, height } = this.lcdConfig;
+		const pixelSize = Math.max(10, Math.min(30, Math.floor(600 / Math.max(width, height))));
+
 		return `
 			<!DOCTYPE html>
 			<html lang="en">
@@ -124,16 +164,18 @@ class LCDViewProvider implements vscode.WebviewViewProvider {
 				<style>
 					body { font-family: monospace; padding: 10px; }
 					#lcd { display: inline-block; border: 2px solid #333; padding: 10px; background: #f0f0f0; }
-					.pixel { display: inline-block; width: 20px; height: 20px; margin: 1px; background: #ddd; cursor: pointer; }
+					.pixel { display: inline-block; width: ${pixelSize}px; height: ${pixelSize}px; margin: 1px; background: #ddd; cursor: pointer; }
 					.pixel.on { background: #333; }
+					.info { font-size: 0.9em; color: #666; margin-top: 10px; }
 				</style>
 			</head>
 			<body>
-				<h3>LCD Display (8x8)</h3>
+				<h3>LCD Display (${width}x${height})</h3>
 				<div id="lcd"></div>
+				<div class="info">Pixel Size: ${pixelSize}px</div>
 				<script>
 					const lcd = document.getElementById('lcd');
-					const width = 8, height = 8;
+					const width = ${width}, height = ${height};
 					for (let y = 0; y < height; y++) {
 						for (let x = 0; x < width; x++) {
 							const pixel = document.createElement('div');
@@ -149,8 +191,12 @@ class LCDViewProvider implements vscode.WebviewViewProvider {
 		`;
 	}
 
-	updateDisplay(): void {
-		// Update implementation placeholder
+	updateLCDConfig(): void {
+		this.lcdConfig = getLCDConfig();
+	}
+
+	getLCDConfig(): LCDConfig {
+		return this.lcdConfig;
 	}
 }
 
@@ -232,6 +278,7 @@ class DocsViewProvider implements vscode.WebviewViewProvider {
 const registersProvider = new RegistersProvider();
 const memoryProviderA = new MemoryProvider(0x0000, 16);
 const memoryProviderB = new MemoryProvider(0x0000, 16);
+let lcdProvider: LCDViewProvider;
 
 export function activate(context: vscode.ExtensionContext): void {
 	console.log('TonX86 extension is now active');
@@ -242,10 +289,11 @@ export function activate(context: vscode.ExtensionContext): void {
 	vscode.window.registerTreeDataProvider('tonx86.memoryB', memoryProviderB);
 
 	// Register webview providers
+	lcdProvider = new LCDViewProvider();
 	context.subscriptions.push(
 		vscode.window.registerWebviewViewProvider(
 			LCDViewProvider.viewType,
-			new LCDViewProvider(),
+			lcdProvider,
 		),
 	);
 
@@ -254,6 +302,18 @@ export function activate(context: vscode.ExtensionContext): void {
 			DocsViewProvider.viewType,
 			new DocsViewProvider(),
 		),
+	);
+
+	// Monitor configuration changes
+	context.subscriptions.push(
+		vscode.workspace.onDidChangeConfiguration((event) => {
+			if (event.affectsConfiguration('tonx86.lcd')) {
+				console.log('LCD configuration changed');
+				lcdProvider.updateLCDConfig();
+				// Reload the webview
+				vscode.window.showInformationMessage('LCD configuration updated. Reload the LCD view to apply changes.');
+			}
+		}),
 	);
 
 	// Register commands
