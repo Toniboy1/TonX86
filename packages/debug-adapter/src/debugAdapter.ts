@@ -611,10 +611,10 @@ export class TonX86DebugSession extends DebugSession {
       // Log LCD state after instruction
       try {
         const lcdData = this.simulator.getLCDDisplay();
-        const pixelCount = lcdData.filter((p) => p !== 0).length;
+        const pixelCount = lcdData.filter((p: number) => p !== 0).length;
         const pixelIndices = lcdData
-          .map((v, i) => (v ? i : -1))
-          .filter((i) => i !== -1);
+          .map((v: number, i: number) => (v ? i : -1))
+          .filter((i: number) => i !== -1);
         logToFile(
           JSON.stringify({
             action: "NEXT",
