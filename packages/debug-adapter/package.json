@@ -1,0 +1,23 @@
+{
+  "name": "@tonx86/debug-adapter",
+  "version": "0.0.1",
+  "description": "TonX86 Debug Adapter Protocol implementation",
+  "main": "out/debugAdapter.js",
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc -w",
+    "lint": "eslint src",
+    "test": "echo no tests"
+  },
+  "dependencies": {
+    "vscode-debugadapter": "^1.51.0",
+    "vscode-debugprotocol": "^1.51.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "eslint": "^8.0.0",
+    "typescript": "^5.0.0"
+  }
+}

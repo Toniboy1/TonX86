@@ -1,0 +1,19 @@
+{
+  "name": "@tonx86/simcore",
+  "version": "0.0.1",
+  "description": "TonX86 Simulator Core - x86-like execution engine",
+  "main": "out/simulator.js",
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc -w",
+    "lint": "eslint src",
+    "test": "node out/test/test.js"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "eslint": "^8.0.0",
+    "typescript": "^5.0.0"
+  }
+}

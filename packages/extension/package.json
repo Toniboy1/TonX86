@@ -1,0 +1,53 @@
+{
+  "name": "@tonx86/extension",
+  "version": "0.0.1",
+  "description": "TonX86 VS Code Extension UI",
+  "main": "out/extension.js",
+  "activationEvents": ["onLanguage:asm"],
+  "contributes": {
+    "commands": [
+      {
+        "command": "tonx86.run",
+        "title": "TonX86: Run"
+      },
+      {
+        "command": "tonx86.pause",
+        "title": "TonX86: Pause"
+      },
+      {
+        "command": "tonx86.stepOver",
+        "title": "TonX86: Step Over"
+      },
+      {
+        "command": "tonx86.stepIn",
+        "title": "TonX86: Step In"
+      },
+      {
+        "command": "tonx86.stepOut",
+        "title": "TonX86: Step Out"
+      }
+    ],
+    "breakpoints": [
+      {
+        "language": "asm"
+      }
+    ]
+  },
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc -w",
+    "lint": "eslint src",
+    "test": "echo no tests"
+  },
+  "dependencies": {
+    "vscode": "^1.84.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.84.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "eslint": "^8.0.0",
+    "typescript": "^5.0.0"
+  }
+}
