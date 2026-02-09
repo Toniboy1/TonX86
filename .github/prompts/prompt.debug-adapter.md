@@ -1,16 +1,48 @@
 # TonX86 — DEBUG ADAPTER PROMPT
 
-Implement DAP server.
+DAP server for TonX86 assembly debugging.
 
-MVP:
-- initialize, launch
-- setBreakpoints
-- continue, pause
-- stepIn, next, stepOut
-- single thread
-- stopped events: breakpoint, step, pause, halt, fault
+## DAP Protocol Implementation
+- `initialize` - Capability negotiation
+- `launch` - Load .asm file, parse instructions/labels, create simulator
+- `configurationDone` - Ready for execution
+- `setBreakpoints` - Validate against instruction lines only
+- `continue` - Execute until breakpoint/HLT (max 100k iterations)
+- `pause` - Stop execution
+- `next` - Execute one instruction, advance IP
+- `stepIn` - Same as next (no subroutines in MVP)
+- `stepOut` - Same as next
+- `threads` - Single thread (ID=1)
+- `stackTrace` - Single frame with current line
+- `scopes` - Registers scope
+- `variables` - Return EAX-EDI in hex format
 
-Stepping:
-- stepIn: 1 instruction
-- stepOver: CALL as single step
-- stepOut: run until RET
+## Custom Requests
+- `getLCDState` - Return pixel array from simulator
+- `keyboardEvent` - Forward {keyCode, pressed} to simulator
+
+## Execution Model
+- Parse assembly into Instruction[] with labels Map<string, index>
+- Instruction pointer (IP) tracks current instruction index
+- Execute via `simulator.executeInstruction(mnemonic, operands)`
+- Jump instructions: Set IP to label index, loop continues
+- Breakpoint check: After IP moves, check if new line has breakpoint
+- HLT: Terminate session immediately
+
+## CPU Speed Control
+- Read `cpuSpeed` (1-200%) from launch args
+- Formula: `delayMs = (100 - speed) / 2` for speeds < 100%
+- Apply async delay in continueExecution() loop
+- 50% speed = ~1ms delay, 1% speed = ~50ms delay
+
+## Optional Logging
+- Read `enableLogging` from launch args (default: false)
+- When true: Create `tonx86-debug.log` in program directory
+- When false: No file I/O (performance optimized)
+
+## Stopped Events
+- `entry` - Initial stop at first instruction
+- `step` - After next/stepIn/stepOut
+- `breakpoint` - Hit breakpoint
+- `pause` - Iteration limit reached (100k)
+- Terminate - HLT instruction or error

@@ -1,6 +1,21 @@
 {
   "name": "tonx86",
+  "version": "0.0.1",
+  "description": "Educational x86-like assembly environment for VS Code",
   "private": true,
+  "author": {
+    "name": "Anthony (Toniboy1)",
+    "url": "https://github.com/Toniboy1"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Toniboy1/TonX86.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Toniboy1/TonX86/issues"
+  },
+  "homepage": "https://github.com/Toniboy1/TonX86#readme",
   "workspaces": [
     "packages/*"
   ],
@@ -9,6 +24,8 @@
     "watch": "npm -ws run watch",
     "dev": "npm run watch",
     "test": "npm -ws run test",
-    "lint": "npm -ws run lint"
+    "lint": "npm -ws run lint",
+    "check": "npm run lint && npm run build && npm test",
+    "precommit": "npm run check"
   }
 }

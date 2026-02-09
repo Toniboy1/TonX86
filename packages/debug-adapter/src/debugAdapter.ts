@@ -94,8 +94,8 @@ export class TonX86DebugSession extends DebugSession {
   private breakpoints: Set<number> = new Set(); // Set of line numbers with breakpoints
   private configurationDone = false; // Track if configuration is done
   private shouldAutoStart = false; // Track if we should auto-start after config
-  private isFirstContinue = true; // Track if this is the first continue call
   private simulator: Simulator; // CPU simulator instance
+  private cpuSpeed: number = 100; // CPU speed percentage (1-200)
 
   public constructor() {
     super();
@@ -140,12 +140,16 @@ export class TonX86DebugSession extends DebugSession {
     // Extract program path from args
     const launchArgs = args as any;
     this.programPath = launchArgs.program || "";
+    this.cpuSpeed = launchArgs.cpuSpeed || 100;
+    const enableLogging = launchArgs.enableLogging || false;
     console.error("[TonX86] stopOnEntry value:", launchArgs.stopOnEntry);
+    console.error(`[TonX86] CPU speed set to ${this.cpuSpeed}%`);
+    console.error(`[TonX86] Logging enabled: ${enableLogging}`);
 
     console.error("[TonX86] Program path:", this.programPath);
 
-    // Initialize log file in same directory as the program being debugged
-    if (this.programPath) {
+    // Initialize log file in same directory as the program being debugged (if enabled)
+    if (enableLogging && this.programPath) {
       const programDir = path.dirname(this.programPath);
       LOG_FILE = path.join(programDir, "tonx86-debug.log");
       try {
@@ -155,6 +159,8 @@ export class TonX86DebugSession extends DebugSession {
       } catch (e) {
         console.error(`[TonX86] Failed to create log file: ${e}`);
       }
+    } else {
+      LOG_FILE = ""; // Disable logging
     }
 
     // Load source file
@@ -230,40 +236,40 @@ export class TonX86DebugSession extends DebugSession {
   }
 
   /**
+   * Sleep for a specified number of milliseconds
+   */
+  private sleep(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  /**
    * Execute the program until a breakpoint or program end
    */
-  private continueExecution(): void {
+  private async continueExecution(): Promise<void> {
     console.error("[TonX86] continueExecution called");
     console.error("[TonX86]   instructionPointer=", this.instructionPointer);
     console.error("[TonX86]   total instructions=", this.instructions.length);
     console.error("[TonX86]   breakpoints set=", Array.from(this.breakpoints));
-    console.error("[TonX86]   isFirstContinue=", this.isFirstContinue);
-
-    // Only advance past current instruction if NOT the first continue
-    if (!this.isFirstContinue) {
-      console.error(
-        "[TonX86] Not first continue, advancing instruction pointer",
-      );
-      this.instructionPointer++;
-    } else {
-      console.error(
-        "[TonX86] First continue, starting from current instruction",
-      );
-      this.isFirstContinue = false;
-    }
 
     // Run to end of program, stepping through each instruction until HLT or breakpoint
-    while (this.instructionPointer < this.instructions.length) {
+    // Add a max iterations limit to prevent infinite loops from hanging the debugger
+    const maxIterations = 100000;
+    let iterationCount = 0;
+
+    while (
+      this.instructionPointer < this.instructions.length &&
+      iterationCount < maxIterations
+    ) {
+      iterationCount++;
+
       const currentInstr = this.instructions[this.instructionPointer];
 
-      // Check if we hit a breakpoint BEFORE executing
-      if (this.breakpoints.has(currentInstr.line)) {
-        console.error("[TonX86] Hit breakpoint at line", currentInstr.line);
-        this.currentLine = currentInstr.line;
-
-        // Send stopped event at breakpoint
-        this.sendEvent(new StoppedEvent("breakpoint", 1));
-        return;
+      // Add delay based on CPU speed (lower speed = longer delay)
+      // At 100%, delay is 0ms. At 50%, delay is ~1ms. At 1%, delay is ~50ms.
+      // At 200%, delay is 0ms (max speed).
+      if (this.cpuSpeed < 100) {
+        const delayMs = (100 - this.cpuSpeed) / 2; // Scale delay inversely
+        await this.sleep(delayMs);
       }
 
       // Execute the instruction through simulator
@@ -275,37 +281,8 @@ export class TonX86DebugSession extends DebugSession {
           currentInstr.mnemonic,
           currentInstr.operands,
         );
-
-        // Log execution to file
-        const lcdData = this.simulator.getLCDDisplay();
-        const pixelCount = lcdData.filter((p) => p !== 0).length;
-        const pixelIndices = lcdData
-          .map((v, i) => (v ? i : -1))
-          .filter((i) => i !== -1);
-        logToFile(
-          JSON.stringify({
-            action: "CONTINUE",
-            ip: this.instructionPointer,
-            line: currentInstr.line,
-            instruction: `${currentInstr.mnemonic} ${currentInstr.operands.join(", ")}`,
-            lcdPixels: pixelCount,
-            lcdLit: Array.from(pixelIndices),
-            lcdRaw: Array.from(lcdData), // Show actual pixel values
-          }),
-        );
       } catch (err) {
-        logToFile(
-          JSON.stringify({
-            action: "ERROR",
-            ip: this.instructionPointer,
-            line: currentInstr.line,
-            error: String(err),
-          }),
-        );
-        console.error(
-          `[TonX86] ERROR during instruction execution at IP=${this.instructionPointer}, line=${currentInstr.line}:`,
-          err,
-        );
+        console.error(`[TonX86] ERROR at line ${currentInstr.line}:`, err);
         this.sendEvent(new TerminatedEvent());
         return;
       }
@@ -339,14 +316,8 @@ export class TonX86DebugSession extends DebugSession {
               !this.isZeroFlagSet());
 
           if (shouldJump) {
-            console.error(
-              `[TonX86] Jumping to label "${targetLabel}" at instruction index ${targetIndex}`,
-            );
             this.instructionPointer = targetIndex;
           } else {
-            console.error(
-              `[TonX86] Conditional jump not taken (label: ${targetLabel})`,
-            );
             this.instructionPointer++;
           }
         } else {
@@ -358,6 +329,27 @@ export class TonX86DebugSession extends DebugSession {
       } else {
         this.instructionPointer++;
       }
+
+      // Check if we hit a breakpoint at the new position (after moving)
+      if (
+        this.instructionPointer < this.instructions.length &&
+        this.breakpoints.has(this.instructions[this.instructionPointer].line)
+      ) {
+        this.currentLine = this.instructions[this.instructionPointer].line;
+        console.error("[TonX86] Hit breakpoint at line", this.currentLine);
+        // Send stopped event at breakpoint
+        this.sendEvent(new StoppedEvent("breakpoint", 1));
+        return;
+      }
+    }
+
+    // Check if we hit the iteration limit
+    if (iterationCount >= maxIterations) {
+      console.error(
+        "[TonX86] Reached maximum iteration limit (possible infinite loop)",
+      );
+      this.sendEvent(new StoppedEvent("pause", 1));
+      return;
     }
 
     // If we reach here, no HLT was found - program ended
@@ -570,7 +562,9 @@ export class TonX86DebugSession extends DebugSession {
       this.currentLine,
     );
     this.sendResponse(response);
-    this.continueExecution();
+    this.continueExecution().catch((err) => {
+      console.error("[TonX86] Error during continue execution:", err);
+    });
   }
 
   protected nextRequest(
@@ -830,7 +824,7 @@ export class TonX86DebugSession extends DebugSession {
   }
 
   /**
-   * Custom request to get LCD display state
+   * Custom request handlers
    */
   protected customRequest(
     command: string,
@@ -842,6 +836,14 @@ export class TonX86DebugSession extends DebugSession {
       response.body = {
         pixels: Array.from(lcdData),
       };
+      this.sendResponse(response);
+    } else if (command === "keyboardEvent") {
+      // Forward keyboard event to simulator
+      const { keyCode, pressed } = args;
+      this.simulator.pushKeyboardEvent(keyCode, pressed);
+      console.error(
+        `[TonX86] Keyboard event: keyCode=${keyCode}, pressed=${pressed}`,
+      );
       this.sendResponse(response);
     } else {
       super.customRequest(command, response, args);

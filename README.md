@@ -1,168 +1,217 @@
-# TonX86 - Educational x86-like Assembly Environment
+# TonX86
 
-TonX86 is a VS Code extension that provides an educational x86-like assembly environment with integrated debugging, memory visualization, and an LCD display.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![CI](https://github.com/Toniboy1/TonX86/workflows/CI/badge.svg)](https://github.com/Toniboy1/TonX86/actions)
+[![CodeQL](https://github.com/Toniboy1/TonX86/workflows/CodeQL/badge.svg)](https://github.com/Toniboy1/TonX86/security/code-scanning)
+
+Educational x86-like assembly environment for VS Code with integrated debugging, memory visualization, LCD display, and keyboard input.
 
 ## Features
 
-- **Assembly Editor** - Syntax highlighting and code intelligence for x86-like assembly
-- **Debugger** - Run, pause, step, and breakpoint support
-- **Single-threaded Execution** - Execute programs step by step
-- **Dual Memory Banks** - Separate Memory A and Memory B (64KB each)
-- **LCD Display** - Configurable 2x4 to 16x16 pixel grid for visual feedback
-- **Register Viewer** - Real-time display of CPU register values
-- **Memory Inspector** - Browse and modify memory contents
-- **Embedded Documentation** - Hover over instructions for quick reference
+- **Assembly Debugging** - Full DAP support with breakpoints, stepping, pause/continue
+- **CPU Simulator** - 8 general-purpose 32-bit registers with flags (Z, C, O, S)
+- **Memory-Mapped I/O** - LCD display (0xF000-0xF0FF) and keyboard input (0xF100-0xF102)
+- **LCD Display** - Configurable 2x2 to 256x256 pixel grid with pop-out support
+- **Keyboard Input** - Real-time key press/release capture with event queue
+- **Register/Memory Views** - Live inspection of CPU state
+- **CPU Speed Control** - 1-200% execution speed for debugging/visualization
+- **Language Server** - Syntax highlighting, diagnostics, code completion
 
 ## Architecture
 
-TonX86 is built as a monorepo with the following components:
-
 ```
-/packages
-  ├── extension/        - VS Code extension UI and commands
-  ├── debug-adapter/    - Debug Adapter Protocol (DAP) server
-  ├── language-server/  - Language Server Protocol (LSP) support
-  ├── simcore/          - Simulator core with CPU emulation
-  └── docs/             - ISA documentation and definitions
+Extension (UI/LCD/Keyboard) ←→ Debug Adapter (DAP) ←→ Simulator Core
+                                       ↓
+                               Language Server (LSP)
 ```
 
-## Getting Started
+**Packages:**
+- `extension/` - VS Code UI, LCD webview, keyboard capture
+- `debug-adapter/` - DAP server, execution control, breakpoints
+- `language-server/` - LSP for syntax support
+- `simcore/` - CPU emulation, memory, I/O
+- `docs/` - ISA reference
 
-### Prerequisites
-
-- Node.js 18+ and npm
-- VS Code 1.84.0 or later
-
-### Installation
+## Quick Start
 
 ```bash
-# Clone the repository
-git clone https://github.com/Toniboy1/TonX86.git
-cd TonX86
-
-# Install dependencies
 npm install
-
-# Build all packages
 npm run build
+# Press F5 in VS Code to launch Extension Development Host
 ```
 
-### Development
+## Configuration
 
-```bash
-# Watch mode - rebuild on file changes
-npm run watch
+### Settings
 
-# Run linter
-npm run lint
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `tonx86.lcd.enabled` | `true` | Enable LCD display |
+| `tonx86.lcd.width` | `16` | LCD width (2-256 pixels) |
+| `tonx86.lcd.height` | `16` | LCD height (2-256 pixels) |
+| `tonx86.lcd.pixelSize` | `"auto"` | Pixel size: "auto" or 2-500 |
+| `tonx86.keyboard.enabled` | `true` | Enable keyboard input capture |
+| `tonx86.cpu.speed` | `100` | CPU speed 1-200% (100=normal) |
 
-# Run tests
-npm run test
+### Launch Configuration
+
+```json
+{
+  "type": "tonx86",
+  "request": "launch",
+  "name": "Debug Assembly",
+  "program": "${workspaceFolder}/program.asm",
+  "stopOnEntry": true,
+  "cpuSpeed": 100,
+  "enableLogging": false
+}
 ```
 
-## Instruction Set Architecture (ISA)
-
-TonX86 supports a minimal but complete instruction set:
+## Instruction Set
 
 ### Registers
-
-8 general-purpose 32-bit registers:
-- **EAX** - Accumulator
-- **ECX** - Counter
-- **EDX** - Data
-- **EBX** - Base
-- **ESP** - Stack Pointer
-- **EBP** - Base Pointer
-- **ESI** - Source Index
-- **EDI** - Destination Index
+`EAX` `ECX` `EDX` `EBX` `ESP` `EBP` `ESI` `EDI`
 
 ### Instructions
 
-| Instruction | Operands | Description | Cycles |
-|-------------|----------|-------------|--------|
-| `MOV` | reg, reg | Move data between registers | 1 |
-| `ADD` | reg, reg | Add two registers | 1 |
-| `SUB` | reg, reg | Subtract two registers | 1 |
-| `AND` | reg, reg | Bitwise AND | 1 |
-| `OR` | reg, reg | Bitwise OR | 1 |
-| `JMP` | addr | Unconditional jump | 1 |
-| `JZ` | addr | Jump if zero flag set | 1 |
-| `HLT` | - | Halt execution | 1 |
+| Mnemonic | Operands | Flags | Description |
+|----------|----------|-------|-------------|
+| `MOV` | reg/mem, reg/imm | - | Move data |
+| `ADD` | reg, reg | ZCOS | Add |
+| `SUB` | reg, reg | ZCOS | Subtract |
+| `AND` | reg, reg | ZS | Bitwise AND |
+| `OR` | reg, reg | ZS | Bitwise OR |
+| `CMP` | reg, reg | ZCOS | Compare (SUB without storing) |
+| `JMP` | label | - | Unconditional jump |
+| `JE/JZ` | label | - | Jump if zero |
+| `JNE/JNZ` | label | - | Jump if not zero |
+| `HLT` | - | - | Halt execution |
 
 ### Flags
+**Z** (Zero) | **C** (Carry) | **O** (Overflow) | **S** (Sign)
 
-- **Z** (Zero) - Set when result is zero
-- **C** (Carry) - Set on overflow
-- **O** (Overflow) - Set on signed overflow
-- **S** (Sign) - Set when result is negative
+## Memory-Mapped I/O
+
+### LCD Display (0xF000-0xF0FF)
+- Write pixel: `MOV 0xF000 + (y*width + x), value`
+- Example: `MOV 0xF000, 1` turns on pixel (0,0)
+
+### Keyboard (0xF100-0xF102)
+- `0xF100` - Status (1=key available, 0=empty)
+- `0xF101` - Key code (read pops from queue)
+- `0xF102` - Key state (1=pressed, 0=released)
+
+**Key Codes:**
+- Letters: A-Z=65-90, a-z=97-122
+- Numbers: 0-9=48-57
+- Arrows: Up=128, Down=129, Left=130, Right=131
+- Special: Space=32, Enter=13, Esc=27, Tab=9, Backspace=8
 
 ## Example Program
 
-Create a file named `program.asm`:
-
 ```asm
-; Simple addition program
-MOV EAX, 5      ; Load 5 into EAX
-MOV ECX, 3      ; Load 3 into ECX
-ADD EAX, ECX    ; Add: EAX = 8
-HLT             ; Stop execution
+; Keyboard-controlled pixel
+main_loop:
+    MOV EAX, 0xF100        ; Read keyboard status
+    CMP EAX, 1             ; Key available?
+    JNE main_loop          ; No - keep waiting
+    
+    MOV EBX, 0xF101        ; Read key code (pops key)
+    MOV ECX, 0xF102        ; Read key state
+    
+    CMP ECX, 1             ; Key pressed?
+    JE key_pressed
+    
+    MOV 0xF000, 0          ; Key released - turn off pixel
+    JMP main_loop
+
+key_pressed:
+    MOV 0xF000, 1          ; Turn on pixel
+    JMP main_loop
 ```
 
-## Usage
+## Development
 
-1. Open or create an assembly file (`.asm` or `.s` extension)
-2. Use the TonX86 commands from the Command Palette (Ctrl+Shift+P):
-   - **TonX86: Run** - Execute the program
-   - **TonX86: Pause** - Pause execution
-   - **TonX86: Step Over** - Execute one instruction
-   - **TonX86: Step In** - Step into calls
-   - **TonX86: Step Out** - Step out of calls
-   - **TonX86: Reset** - Reset CPU state and memory
-3. Set breakpoints by clicking on line numbers
-4. View register and memory contents in the TonX86 side panel
-5. Use LCD display to visualize pixel data
-
-## Building the Extension
-
-To package the extension for distribution:
+### Build & Test
 
 ```bash
-npm run build
-# The compiled files will be in packages/extension/out/
+npm install          # Install dependencies
+npm run build        # Build all packages
+npm run watch        # Watch mode for development
+npm test             # Run tests
+npm run lint         # Run linter
+npm run check        # Run all checks (lint, build, test)
 ```
 
-## Project Status
+### Repository Setup (For Maintainers)
 
-**Current Version:** 0.0.1 (Foundation)
+**Apply Branch Protection (Automated):**
+```powershell
+# Windows
+pwsh .github/scripts/apply-branch-protection.ps1
 
-This is the initial foundation release with:
-- ✅ Monorepo structure
-- ✅ All core packages scaffolded
-- ✅ TypeScript compilation working
-- ✅ Basic ISA definitions
-- ⏳ Full instruction execution (in progress)
-- ⏳ Debug adapter integration (in progress)
-- ⏳ VS Code extension UI (in progress)
+# Linux/macOS
+bash .github/scripts/apply-branch-protection.sh
+```
+
+Requires: [GitHub CLI](https://cli.github.com/) + admin access
+
+See: [Setup Guide](.github/SETUP_BRANCH_PROTECTION.md) | [Config File](.github/branch-protection.json)
+
+### CI/CD
+
+The project includes automated workflows:
+
+- **CI Pipeline** - Runs on every push/PR
+  - Build verification (Node 18 & 20)
+  - TypeScript compilation
+  - Linting
+  - Test execution
+  - Security audit
+
+- **CodeQL Security Scan** - Weekly security analysis
+
+- **Dependabot** - Automated dependency updates
+  - Weekly checks for all packages
+  - Grouped minor/patch updates
+
+- **Release Workflow** - Triggered on version tags
+  - Packages extension as .vsix
+  - Creates GitHub release with artifact
+  - Ready for marketplace publication
+
+### Quality Standards
+
+All contributions must:
+- ✅ Pass TypeScript compilation
+- ✅ Pass all tests (102/102 currently)
+- ✅ Pass ESLint checks
+- ✅ Include tests for new features
+- ✅ Update relevant documentation
 
 ## Contributing
 
-Contributions are welcome! Please ensure:
-- All TypeScript files compile without errors
-- Code follows the established patterns
-- New features include documentation
-- All packages build successfully
+We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+**Quick Links:**
+- [Report a Bug](https://github.com/Toniboy1/TonX86/issues/new?template=bug_report.yml)
+- [Request a Feature](https://github.com/Toniboy1/TonX86/issues/new?template=feature_request.yml)
+- [Security Policy](SECURITY.md)
+
+**Important Requirements:**
+- All commits must be [GPG/SSH signed](https://github.com/Toniboy1/TonX86/blob/main/.github/COMMIT_SIGNING.md)
+- External contributors must submit pull requests (no direct pushes to `main`)
+- See [Branch Protection Rules](https://github.com/Toniboy1/TonX86/blob/main/.github/BRANCH_PROTECTION.md)
 
 ## License
 
-MIT
+MIT License - Free to use for educational and commercial purposes.
 
-## Resources
+**Attribution Required:** When using or distributing this software, you must:
+- Include the original copyright notice
+- Credit the author: **Anthony (Toniboy1)**
+- Link to: https://github.com/Toniboy1/TonX86
 
-- [VS Code Extension API](https://code.visualstudio.com/api)
-- [Debug Adapter Protocol](https://microsoft.github.io/debug-adapter-protocol/)
-- [Language Server Protocol](https://microsoft.github.io/language-server-protocol/)
-- [x86 Assembly](https://en.wikipedia.org/wiki/X86_assembly_language)
+Example: `"Built with TonX86 by Anthony (Toniboy1)"`
 
-## Author
-
-Anthony @ TonX86
+See [LICENSE](LICENSE) for full details.

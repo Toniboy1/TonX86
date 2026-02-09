@@ -1,66 +1,158 @@
 # TonX86 Instruction Set Architecture
 
-## Overview
-
-TonX86 is an educational x86-like assembly instruction set designed for learning low-level programming concepts.
-
 ## Registers
 
-- **EAX** (Accumulator)
-- **ECX** (Counter)
-- **EDX** (Data)
-- **EBX** (Base)
-- **ESP** (Stack Pointer)
-- **EBP** (Base Pointer)
-- **ESI** (Source Index)
-- **EDI** (Destination Index)
-
-## Memory
-
-Two separate memory banks (A and B), each 64KB.
+**General Purpose (32-bit):**
+- `EAX` - Accumulator
+- `ECX` - Counter
+- `EDX` - Data
+- `EBX` - Base
+- `ESP` - Stack Pointer
+- `EBP` - Base Pointer
+- `ESI` - Source Index
+- `EDI` - Destination Index
 
 ## Flags
 
 - **Z** (Zero) - Set when result is zero
-- **C** (Carry) - Set when operation overflows
-- **O** (Overflow) - Set when signed overflow occurs
+- **C** (Carry) - Set on unsigned overflow
+- **O** (Overflow) - Set on signed overflow
 - **S** (Sign) - Set when result is negative
-
-## Display
-
-LCD Grid support from 2x4 to 16x16 pixels for visual feedback.
 
 ## Instructions
 
 ### Data Movement
 
-**MOV reg, reg** - Move data between registers (1 cycle)
+**MOV dest, src** - Move data
+- Cycles: 1
+- Flags: None
+- Examples:
+  ```asm
+  MOV EAX, 42        ; Load immediate
+  MOV EAX, ECX       ; Register to register
+  MOV EAX, 0xF100    ; Read from I/O
+  MOV 0xF000, 1      ; Write to I/O
+  ```
 
 ### Arithmetic
 
-**ADD reg, reg** - Add two values (1 cycle, affects Z, C, O, S flags)
+**ADD dest, src** - Add
+- Cycles: 1
+- Flags: Z, C, O, S
+- Example: `ADD EAX, ECX`
 
-**SUB reg, reg** - Subtract two values (1 cycle, affects Z, C, O, S flags)
+**SUB dest, src** - Subtract
+- Cycles: 1
+- Flags: Z, C, O, S
+- Example: `SUB EAX, ECX`
+
+**CMP op1, op2** - Compare (SUB without storing result)
+- Cycles: 1
+- Flags: Z, C, O, S
+- Example: `CMP EAX, 0`
 
 ### Logical
 
-**AND reg, reg** - Bitwise AND (1 cycle, affects Z, S flags)
+**AND dest, src** - Bitwise AND
+- Cycles: 1
+- Flags: Z, S
+- Example: `AND EAX, ECX`
 
-**OR reg, reg** - Bitwise OR (1 cycle, affects Z, S flags)
+**OR dest, src** - Bitwise OR
+- Cycles: 1
+- Flags: Z, S
+- Example: `OR EAX, ECX`
 
 ### Control Flow
 
-**JMP addr** - Unconditional jump (1 cycle)
+**JMP label** - Unconditional jump
+- Cycles: 1
+- Flags: None
+- Example: `JMP loop_start`
 
-**JZ addr** - Jump if zero flag set (1 cycle)
+**JE/JZ label** - Jump if zero
+- Cycles: 1
+- Flags: None (reads Z flag)
+- Example: `JE end_loop`
 
-**HLT** - Halt execution (1 cycle)
+**JNE/JNZ label** - Jump if not zero
+- Cycles: 1
+- Flags: None (reads Z flag)
+- Example: `JNE loop_start`
 
-## Example Program
+**HLT** - Halt execution
+- Cycles: 1
+- Flags: None
+- Example: `HLT`
+
+## Memory-Mapped I/O
+
+### LCD Display (0xF000-0xF0FF)
+**Write-only** - Set pixel state
+
+Address formula: `0xF000 + (y * width + x)`
 
 ```asm
-MOV EAX, 5      ; Load 5 into EAX
-MOV ECX, 3      ; Load 3 into ECX
-ADD EAX, ECX    ; EAX = 8
-HLT             ; Stop execution
+MOV 0xF000, 1      ; Turn on pixel (0,0)
+MOV 0xF008, 0      ; Turn off pixel (0,1) in 8x8 grid
+```
+
+### Keyboard (0xF100-0xF102)
+**Read-only** - Keyboard input
+
+- `0xF100` - Status register (1=key available, 0=empty)
+- `0xF101` - Key code register (reading pops from queue)
+- `0xF102` - Key state register (1=pressed, 0=released)
+
+```asm
+MOV EAX, 0xF100    ; Check keyboard status
+MOV EBX, 0xF101    ; Read key code
+MOV ECX, 0xF102    ; Read key state
+```
+
+**Key Codes:**
+- Letters: A-Z (65-90), a-z (97-122)
+- Numbers: 0-9 (48-57)
+- Arrows: Up=128, Down=129, Left=130, Right=131
+- Special: Space=32, Enter=13, Esc=27, Tab=9, Backspace=8
+
+## Example Programs
+
+### Simple Addition
+```asm
+MOV EAX, 5
+MOV ECX, 3
+ADD EAX, ECX      ; EAX = 8
+HLT
+```
+
+### Conditional Jump
+```asm
+MOV EAX, 10
+SUB EAX, 10       ; Z flag set
+JZ is_zero        ; Jump taken
+HLT
+
+is_zero:
+  MOV EBX, 1      ; EBX = 1
+  HLT
+```
+
+### LCD Display
+```asm
+MOV 0xF000, 1     ; Turn on top-left pixel
+MOV 0xF001, 1     ; Turn on next pixel
+HLT
+```
+
+### Keyboard Input
+```asm
+loop:
+  MOV EAX, 0xF100   ; Check keyboard
+  CMP EAX, 1
+  JNE loop          ; Wait for key
+  
+  MOV EBX, 0xF101   ; Read key code
+  MOV ECX, 0xF102   ; Read key state
+  HLT
 ```

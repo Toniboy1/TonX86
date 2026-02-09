@@ -11,6 +11,22 @@ interface LCDConfig {
 }
 
 /**
+ * Keyboard Configuration interface
+ */
+interface KeyboardConfig {
+  enabled: boolean;
+}
+
+/**
+ * Validate and normalize keyboard configuration
+ */
+function getKeyboardConfig(): KeyboardConfig {
+  const config = vscode.workspace.getConfiguration("tonx86.keyboard");
+  const enabled = config.get<boolean>("enabled", true);
+  return { enabled };
+}
+
+/**
  * Validate and normalize LCD configuration
  */
 function getLCDConfig(): LCDConfig {
@@ -161,11 +177,25 @@ class LCDViewProvider implements vscode.WebviewViewProvider {
   public static readonly viewType = "tonx86.lcd";
   public static readonly panelViewType = "tonx86.lcd.panel";
   private lcdConfig: LCDConfig;
+  private keyboardConfig: KeyboardConfig;
   private lcdPanel: vscode.WebviewPanel | undefined;
   private webviewView: vscode.WebviewView | undefined;
+  private onKeyboardEvent:
+    | ((keyCode: number, pressed: boolean) => void)
+    | undefined;
 
   constructor() {
     this.lcdConfig = getLCDConfig();
+    this.keyboardConfig = getKeyboardConfig();
+  }
+
+  /**
+   * Set keyboard event handler
+   */
+  setKeyboardEventHandler(
+    handler: (keyCode: number, pressed: boolean) => void,
+  ): void {
+    this.onKeyboardEvent = handler;
   }
 
   resolveWebviewView(webviewView: vscode.WebviewView): void {
@@ -176,6 +206,15 @@ class LCDViewProvider implements vscode.WebviewViewProvider {
     };
 
     webviewView.webview.html = this.getHtmlForWebview();
+
+    // Handle messages from webview
+    webviewView.webview.onDidReceiveMessage((message) => {
+      if (message.type === "keyboardEvent" && this.keyboardConfig.enabled) {
+        if (this.onKeyboardEvent) {
+          this.onKeyboardEvent(message.keyCode, message.pressed);
+        }
+      }
+    });
   }
 
   /**
@@ -197,6 +236,7 @@ class LCDViewProvider implements vscode.WebviewViewProvider {
 
   private getHtmlForWebview(): string {
     const { width, height, pixelSize: configPixelSize } = this.lcdConfig;
+    const { enabled: keyboardEnabled } = this.keyboardConfig;
 
     // Calculate pixel size
     let pixelSize: number;
@@ -224,16 +264,28 @@ class LCDViewProvider implements vscode.WebviewViewProvider {
 					.pixel { display: inline-block; width: ${pixelSize}px; height: ${pixelSize}px; margin: 1px; background: #ddd; cursor: pointer; }
 					.pixel.on { background: #333; }
 					.info { font-size: 0.9em; color: #666; margin-top: 10px; }
+					.keyboard-status { font-size: 0.8em; color: ${keyboardEnabled ? "#007acc" : "#999"}; margin-top: 5px; }
 				</style>
 			</head>
 			<body>
 				<h3>LCD Display (${width}x${height})</h3>
-				<div id="lcd"></div>
+				<div id="lcd" tabindex="0"></div>
 				<div class="info">Pixel Size: ${pixelSize}px ${configPixelSize === "auto" ? "(auto)" : "(manual)"}</div>
+				<div class="keyboard-status">Keyboard: ${keyboardEnabled ? "Enabled (click LCD to focus)" : "Disabled"}</div>
 				<script>
+					const vscode = acquireVsCodeApi();
 					const lcd = document.getElementById('lcd');
 					const width = ${width}, height = ${height};
 					const pixels = [];
+					const keyboardEnabled = ${keyboardEnabled};
+					
+					// Map special keys to key codes
+					const specialKeys = {
+						'ArrowUp': 128,
+						'ArrowDown': 129,
+						'ArrowLeft': 130,
+						'ArrowRight': 131
+					};
 					
 					// Create pixel grid
 					for (let y = 0; y < height; y++) {
@@ -247,6 +299,83 @@ class LCDViewProvider implements vscode.WebviewViewProvider {
 							pixels.push(pixel);
 						}
 						lcd.appendChild(document.createElement('br'));
+					}
+					
+					// Keyboard event handling
+					if (keyboardEnabled) {
+						// Focus LCD on click
+						lcd.addEventListener('click', () => {
+							lcd.focus();
+						});
+						
+						// Capture keydown events
+						lcd.addEventListener('keydown', (e) => {
+							let keyCode = 0;
+							
+							// Check for special keys first
+							if (specialKeys[e.key]) {
+								keyCode = specialKeys[e.key];
+								e.preventDefault(); // Prevent default arrow key behavior
+							} else if (e.key.length === 1) {
+								// Single character (letter, number, symbol)
+								keyCode = e.key.charCodeAt(0);
+							} else if (e.key === 'Enter') {
+								keyCode = 13;
+							} else if (e.key === 'Escape') {
+								keyCode = 27;
+							} else if (e.key === 'Tab') {
+								keyCode = 9;
+								e.preventDefault();
+							} else if (e.key === 'Backspace') {
+								keyCode = 8;
+								e.preventDefault();
+							} else if (e.key === ' ' || e.key === 'Space') {
+								keyCode = 32;
+								e.preventDefault();
+							}
+							
+							if (keyCode > 0) {
+								vscode.postMessage({
+									type: 'keyboardEvent',
+									keyCode: keyCode,
+									pressed: true
+								});
+							}
+						});
+						
+						// Capture keyup events
+						lcd.addEventListener('keyup', (e) => {
+							let keyCode = 0;
+							
+							// Check for special keys first
+							if (specialKeys[e.key]) {
+								keyCode = specialKeys[e.key];
+								e.preventDefault();
+							} else if (e.key.length === 1) {
+								keyCode = e.key.charCodeAt(0);
+							} else if (e.key === 'Enter') {
+								keyCode = 13;
+							} else if (e.key === 'Escape') {
+								keyCode = 27;
+							} else if (e.key === 'Tab') {
+								keyCode = 9;
+								e.preventDefault();
+							} else if (e.key === 'Backspace') {
+								keyCode = 8;
+								e.preventDefault();
+							} else if (e.key === ' ' || e.key === 'Space') {
+								keyCode = 32;
+								e.preventDefault();
+							}
+							
+							if (keyCode > 0) {
+								vscode.postMessage({
+									type: 'keyboardEvent',
+									keyCode: keyCode,
+									pressed: false
+								});
+							}
+						});
 					}
 					
 					// Listen for pixel updates from extension
@@ -291,6 +420,15 @@ class LCDViewProvider implements vscode.WebviewViewProvider {
     );
 
     this.lcdPanel.webview.html = this.getHtmlForWebview();
+
+    // Handle messages from popped-out panel
+    this.lcdPanel.webview.onDidReceiveMessage((message) => {
+      if (message.type === "keyboardEvent" && this.keyboardConfig.enabled) {
+        if (this.onKeyboardEvent) {
+          this.onKeyboardEvent(message.keyCode, message.pressed);
+        }
+      }
+    });
 
     // Handle panel disposal
     this.lcdPanel.onDidDispose(() => {
@@ -391,6 +529,7 @@ const registersProvider = new RegistersProvider();
 const memoryProviderA = new MemoryProvider(0x0000, 16);
 const memoryProviderB = new MemoryProvider(0x0000, 16);
 let lcdProvider: LCDViewProvider;
+let currentDebugSession: vscode.DebugSession | undefined;
 
 export function activate(context: vscode.ExtensionContext): void {
   console.log("TonX86 extension is now active");
@@ -402,6 +541,21 @@ export function activate(context: vscode.ExtensionContext): void {
 
   // Register webview providers
   lcdProvider = new LCDViewProvider();
+
+  // Set keyboard event handler to forward to debug adapter
+  lcdProvider.setKeyboardEventHandler((keyCode: number, pressed: boolean) => {
+    if (currentDebugSession) {
+      currentDebugSession
+        .customRequest("keyboardEvent", {
+          keyCode,
+          pressed,
+        })
+        .then(undefined, (err: unknown) => {
+          console.error("Failed to send keyboard event:", err);
+        });
+    }
+  });
+
   context.subscriptions.push(
     vscode.window.registerWebviewViewProvider(
       LCDViewProvider.viewType,
@@ -423,10 +577,11 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.debug.onDidStartDebugSession((session) => {
       if (session.type === "tonx86") {
         console.log("TonX86 debug session started, polling LCD state");
-        // Poll LCD state every 100ms while debugging
+        currentDebugSession = session; // Store current session for keyboard events
+        // Poll LCD state every 50ms while debugging (20 FPS)
         lcdUpdateInterval = setInterval(async () => {
           await updateLCDDisplay(session);
-        }, 100);
+        }, 50);
       }
     }),
   );
@@ -435,6 +590,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.debug.onDidTerminateDebugSession((session) => {
       if (session.type === "tonx86") {
         console.log("TonX86 debug session terminated, stopping LCD polling");
+        currentDebugSession = undefined; // Clear session reference
         if (lcdUpdateInterval) {
           clearInterval(lcdUpdateInterval);
           lcdUpdateInterval = undefined;

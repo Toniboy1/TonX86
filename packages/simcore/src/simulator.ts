@@ -105,12 +105,96 @@ export class LCDDisplay {
 }
 
 /**
+ * Keyboard event interface
+ */
+export interface KeyboardEvent {
+  keyCode: number;
+  pressed: boolean;
+}
+
+/**
+ * TonX86 Keyboard Input - memory-mapped keyboard support
+ *
+ * Key Codes:
+ * - Letters: A-Z = 65-90 (uppercase), a-z = 97-122 (lowercase)
+ * - Numbers: 0-9 = 48-57
+ * - Symbols: Standard ASCII codes
+ * - Arrow Keys: Up=128, Down=129, Left=130, Right=131
+ * - Space: 32
+ * - Enter: 13
+ * - Escape: 27
+ * - Tab: 9
+ * - Backspace: 8
+ */
+export class Keyboard {
+  private keyQueue: KeyboardEvent[] = [];
+  private lastKeyCode: number = 0;
+  private lastKeyState: number = 0; // 0 = released, 1 = pressed
+
+  /**
+   * Push a key event to the queue
+   */
+  pushKey(keyCode: number, pressed: boolean): void {
+    this.keyQueue.push({ keyCode, pressed });
+    this.lastKeyCode = keyCode;
+    this.lastKeyState = pressed ? 1 : 0;
+  }
+
+  /**
+   * Get keyboard status register
+   * Bit 0: Key available in queue (1 = yes, 0 = no)
+   */
+  getStatus(): number {
+    return this.keyQueue.length > 0 ? 1 : 0;
+  }
+
+  /**
+   * Get last key code
+   */
+  getKeyCode(): number {
+    return this.lastKeyCode;
+  }
+
+  /**
+   * Get last key state (1 = pressed, 0 = released)
+   */
+  getKeyState(): number {
+    return this.lastKeyState;
+  }
+
+  /**
+   * Pop the oldest key event from queue and update registers to that key
+   * Returns true if a key was popped
+   */
+  popKey(): boolean {
+    const event = this.keyQueue.shift();
+    if (event) {
+      // Update registers to show the popped key
+      this.lastKeyCode = event.keyCode;
+      this.lastKeyState = event.pressed ? 1 : 0;
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * Clear keyboard queue and state
+   */
+  clear(): void {
+    this.keyQueue = [];
+    this.lastKeyCode = 0;
+    this.lastKeyState = 0;
+  }
+}
+
+/**
  * TonX86 Simulator - main execution engine
  */
 export class Simulator {
   private cpu: CPUState;
   private memory: Memory;
   private lcd: LCDDisplay;
+  private keyboard: Keyboard;
   private code: Uint8Array = new Uint8Array();
 
   // Map of mnemonics to register names
@@ -129,14 +213,41 @@ export class Simulator {
     this.cpu = new CPUState();
     this.memory = new Memory();
     this.lcd = new LCDDisplay(lcdWidth, lcdHeight);
+    this.keyboard = new Keyboard();
+  }
+
+  /**
+   * Read from memory-mapped I/O addresses
+   * 0xF100: Keyboard status register
+   * 0xF101: Keyboard key code register
+   * 0xF102: Keyboard key state register
+   */
+  private readIO(address: number): number {
+    const IO_KEYBOARD_STATUS = 0xf100;
+    const IO_KEYBOARD_KEYCODE = 0xf101;
+    const IO_KEYBOARD_KEYSTATE = 0xf102;
+
+    if (address === IO_KEYBOARD_STATUS) {
+      return this.keyboard.getStatus();
+    } else if (address === IO_KEYBOARD_KEYCODE) {
+      // Reading key code pops the key from queue
+      this.keyboard.popKey();
+      return this.keyboard.getKeyCode();
+    } else if (address === IO_KEYBOARD_KEYSTATE) {
+      return this.keyboard.getKeyState();
+    } else {
+      throw new Error(`Unknown I/O read address: 0x${address.toString(16)}`);
+    }
   }
 
   /**
    * Write to memory-mapped I/O addresses
-   * 0xF000 onwards: LCD display
+   * 0xF000-0xF0FF: LCD display
+   * 0xF100-0xF1FF: Keyboard (read-only, writes ignored)
    */
   private writeIO(address: number, value: number): void {
     const IO_LCD_BASE = 0xf000;
+    const IO_KEYBOARD_BASE = 0xf100;
     const lcdSize = this.lcd["width"] * this.lcd["height"];
 
     if (address >= IO_LCD_BASE && address < IO_LCD_BASE + lcdSize) {
@@ -153,6 +264,12 @@ export class Simulator {
       }
 
       this.lcd.setPixel(x, y, value);
+    } else if (
+      address >= IO_KEYBOARD_BASE &&
+      address < IO_KEYBOARD_BASE + 0x100
+    ) {
+      // Keyboard registers are read-only, ignore writes
+      return;
     } else {
       throw new Error(`Unknown I/O address: 0x${address.toString(16)}`);
     }
@@ -205,8 +322,17 @@ export class Simulator {
         const src = this.parseOperand(operands[1]);
 
         // Get source value
-        const srcValue =
-          src.type === "register" ? this.cpu.registers[src.value] : src.value;
+        let srcValue: number;
+        if (src.type === "register") {
+          srcValue = this.cpu.registers[src.value];
+        } else {
+          // Check if source is an I/O address (0xF000+)
+          if (src.value >= 0xf000) {
+            srcValue = this.readIO(src.value);
+          } else {
+            srcValue = src.value;
+          }
+        }
 
         // Handle destination
         if (dest.type === "register") {
@@ -376,6 +502,7 @@ export class Simulator {
     this.cpu.reset();
     this.memory.clear();
     this.lcd.clear();
+    this.keyboard.clear();
   }
 
   getState() {
@@ -419,6 +546,24 @@ export class Simulator {
 
   getLCDDisplay(): Uint8Array {
     return this.lcd.getDisplay();
+  }
+
+  /**
+   * Push a keyboard event
+   */
+  pushKeyboardEvent(keyCode: number, pressed: boolean): void {
+    this.keyboard.pushKey(keyCode, pressed);
+  }
+
+  /**
+   * Get keyboard status
+   */
+  getKeyboardStatus(): { status: number; keyCode: number; keyState: number } {
+    return {
+      status: this.keyboard.getStatus(),
+      keyCode: this.keyboard.getKeyCode(),
+      keyState: this.keyboard.getKeyState(),
+    };
   }
 
   addBreakpoint(address: number): void {

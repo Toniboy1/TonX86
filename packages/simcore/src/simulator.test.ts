@@ -1,4 +1,4 @@
-import { Simulator, CPUState, Memory, LCDDisplay } from "./simulator";
+import { Simulator, CPUState, Memory, LCDDisplay, Keyboard } from "./simulator";
 
 describe("CPUState", () => {
   let cpu: CPUState;
@@ -610,5 +610,263 @@ describe("Simulator - LCD Integration", () => {
     for (let i = 0; i < display.length; i++) {
       expect(display[i]).toBe(0);
     }
+  });
+});
+
+describe("Keyboard", () => {
+  let keyboard: Keyboard;
+
+  beforeEach(() => {
+    keyboard = new Keyboard();
+  });
+
+  describe("key event queue", () => {
+    test("initializes with empty queue", () => {
+      expect(keyboard.getStatus()).toBe(0);
+      expect(keyboard.getKeyCode()).toBe(0);
+      expect(keyboard.getKeyState()).toBe(0);
+    });
+
+    test("pushKey() adds key to queue and updates state", () => {
+      keyboard.pushKey(65, true); // 'A' pressed
+      expect(keyboard.getStatus()).toBe(1);
+      expect(keyboard.getKeyCode()).toBe(65);
+      expect(keyboard.getKeyState()).toBe(1);
+    });
+
+    test("popKey() removes oldest key from queue", () => {
+      keyboard.pushKey(65, true); // 'A' pressed
+      keyboard.pushKey(66, false); // 'B' released
+
+      expect(keyboard.getStatus()).toBe(1); // 2 keys in queue
+
+      const popped = keyboard.popKey();
+      expect(popped).toBe(true);
+      expect(keyboard.getKeyCode()).toBe(65);
+      expect(keyboard.getKeyState()).toBe(1);
+
+      expect(keyboard.getStatus()).toBe(1); // 1 key left
+    });
+
+    test("multiple pops work correctly", () => {
+      keyboard.pushKey(65, true); // 'A' pressed
+      keyboard.pushKey(66, true); // 'B' pressed
+      keyboard.pushKey(67, false); // 'C' released
+
+      // Pop first key
+      keyboard.popKey();
+      expect(keyboard.getKeyCode()).toBe(65);
+      expect(keyboard.getKeyState()).toBe(1);
+
+      // Pop second key
+      keyboard.popKey();
+      expect(keyboard.getKeyCode()).toBe(66);
+      expect(keyboard.getKeyState()).toBe(1);
+
+      // Pop third key
+      keyboard.popKey();
+      expect(keyboard.getKeyCode()).toBe(67);
+      expect(keyboard.getKeyState()).toBe(0);
+    });
+
+    test("popKey() returns false when queue is empty", () => {
+      const popped = keyboard.popKey();
+      expect(popped).toBe(false);
+    });
+
+    test("status reflects queue state", () => {
+      expect(keyboard.getStatus()).toBe(0); // empty
+
+      keyboard.pushKey(65, true);
+      expect(keyboard.getStatus()).toBe(1); // has keys
+
+      keyboard.popKey();
+      expect(keyboard.getStatus()).toBe(0); // empty again
+    });
+
+    test("clear() resets all state", () => {
+      keyboard.pushKey(65, true);
+      keyboard.pushKey(66, true);
+      keyboard.pushKey(67, false);
+
+      keyboard.clear();
+
+      expect(keyboard.getStatus()).toBe(0);
+      expect(keyboard.getKeyCode()).toBe(0);
+      expect(keyboard.getKeyState()).toBe(0);
+    });
+  });
+
+  describe("key code handling", () => {
+    test("handles letter key codes (A-Z)", () => {
+      keyboard.pushKey(65, true); // 'A'
+      expect(keyboard.getKeyCode()).toBe(65);
+
+      keyboard.pushKey(90, true); // 'Z'
+      expect(keyboard.getKeyCode()).toBe(90);
+    });
+
+    test("handles number key codes (0-9)", () => {
+      keyboard.pushKey(48, true); // '0'
+      expect(keyboard.getKeyCode()).toBe(48);
+
+      keyboard.pushKey(57, true); // '9'
+      expect(keyboard.getKeyCode()).toBe(57);
+    });
+
+    test("handles arrow key codes", () => {
+      keyboard.pushKey(128, true); // Up
+      expect(keyboard.getKeyCode()).toBe(128);
+
+      keyboard.pushKey(129, true); // Down
+      expect(keyboard.getKeyCode()).toBe(129);
+
+      keyboard.pushKey(130, true); // Left
+      expect(keyboard.getKeyCode()).toBe(130);
+
+      keyboard.pushKey(131, true); // Right
+      expect(keyboard.getKeyCode()).toBe(131);
+    });
+
+    test("handles special key codes", () => {
+      keyboard.pushKey(13, true); // Enter
+      expect(keyboard.getKeyCode()).toBe(13);
+
+      keyboard.pushKey(27, true); // Escape
+      expect(keyboard.getKeyCode()).toBe(27);
+
+      keyboard.pushKey(32, true); // Space
+      expect(keyboard.getKeyCode()).toBe(32);
+    });
+
+    test("handles key press and release states", () => {
+      keyboard.pushKey(65, true); // pressed
+      expect(keyboard.getKeyState()).toBe(1);
+
+      keyboard.pushKey(65, false); // released
+      expect(keyboard.getKeyState()).toBe(0);
+    });
+  });
+});
+
+describe("Simulator - Keyboard Integration", () => {
+  let sim: Simulator;
+
+  beforeEach(() => {
+    sim = new Simulator(8, 8);
+  });
+
+  test("pushKeyboardEvent() adds key to simulator", () => {
+    sim.pushKeyboardEvent(65, true); // 'A' pressed
+    const status = sim.getKeyboardStatus();
+    expect(status.status).toBe(1);
+    expect(status.keyCode).toBe(65);
+    expect(status.keyState).toBe(1);
+  });
+
+  test("multiple keyboard events queue correctly", () => {
+    sim.pushKeyboardEvent(65, true); // 'A' pressed
+    sim.pushKeyboardEvent(66, true); // 'B' pressed
+
+    const status = sim.getKeyboardStatus();
+    expect(status.status).toBe(1); // has keys in queue
+  });
+
+  test("reset() clears keyboard state", () => {
+    sim.pushKeyboardEvent(65, true);
+    sim.reset();
+
+    const status = sim.getKeyboardStatus();
+    expect(status.status).toBe(0);
+    expect(status.keyCode).toBe(0);
+    expect(status.keyState).toBe(0);
+  });
+
+  test("MOV can read keyboard status (0xF100)", () => {
+    sim.pushKeyboardEvent(65, true);
+    sim.executeInstruction("MOV", ["EAX", "0xF100"]);
+    const registers = sim.getRegisters();
+    expect(registers.EAX).toBe(1); // status = 1 (key available)
+  });
+
+  test("MOV can read key code (0xF101)", () => {
+    sim.pushKeyboardEvent(65, true); // 'A'
+    sim.executeInstruction("MOV", ["EAX", "0xF101"]);
+    const registers = sim.getRegisters();
+    expect(registers.EAX).toBe(65); // key code = 65
+  });
+
+  test("MOV can read key state (0xF102)", () => {
+    sim.pushKeyboardEvent(65, true); // pressed
+    sim.executeInstruction("MOV", ["EAX", "0xF102"]);
+    let registers = sim.getRegisters();
+    expect(registers.EAX).toBe(1); // state = 1 (pressed)
+
+    sim.pushKeyboardEvent(66, false); // released
+    sim.executeInstruction("MOV", ["EBX", "0xF102"]);
+    registers = sim.getRegisters();
+    expect(registers.EBX).toBe(0); // state = 0 (released)
+  });
+
+  test("reading key code (0xF101) pops key from queue", () => {
+    sim.pushKeyboardEvent(65, true);
+    sim.pushKeyboardEvent(66, true);
+
+    // First read gets 'A' and pops it
+    sim.executeInstruction("MOV", ["EAX", "0xF101"]);
+    let registers = sim.getRegisters();
+    expect(registers.EAX).toBe(65);
+
+    // Next read gets 'B'
+    sim.executeInstruction("MOV", ["EBX", "0xF101"]);
+    registers = sim.getRegisters();
+    expect(registers.EBX).toBe(66);
+  });
+
+  test("keyboard I/O addresses are read-only (writes ignored)", () => {
+    sim.executeInstruction("MOV", ["0xF100", "99"]); // Try to write to status
+    sim.executeInstruction("MOV", ["EAX", "0xF100"]);
+    const registers = sim.getRegisters();
+    expect(registers.EAX).toBe(0); // Should still be 0, not 99
+  });
+
+  test("keyboard works alongside LCD I/O", () => {
+    // Write to LCD
+    sim.executeInstruction("MOV", ["0xF000", "1"]); // LCD pixel 0
+
+    // Push keyboard event
+    sim.pushKeyboardEvent(65, true);
+
+    // Read keyboard
+    sim.executeInstruction("MOV", ["EAX", "0xF101"]);
+
+    // Verify both work
+    const lcd = sim.getLCDDisplay();
+    expect(lcd[0]).toBe(1);
+
+    const registers = sim.getRegisters();
+    expect(registers.EAX).toBe(65);
+  });
+
+  test("arrow keys work correctly", () => {
+    sim.pushKeyboardEvent(128, true); // Up
+    sim.executeInstruction("MOV", ["EAX", "0xF101"]);
+    let registers = sim.getRegisters();
+    expect(registers.EAX).toBe(128);
+
+    sim.pushKeyboardEvent(129, true); // Down
+    sim.executeInstruction("MOV", ["EBX", "0xF101"]);
+    registers = sim.getRegisters();
+    expect(registers.EBX).toBe(129);
+
+    sim.pushKeyboardEvent(130, true); // Left
+    sim.executeInstruction("MOV", ["ECX", "0xF101"]);
+    registers = sim.getRegisters();
+    expect(registers.ECX).toBe(130);
+
+    sim.pushKeyboardEvent(131, true); // Right
+    sim.executeInstruction("MOV", ["EDX", "0xF101"]);
+    registers = sim.getRegisters();
+    expect(registers.EDX).toBe(131);
   });
 });
