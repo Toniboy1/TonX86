@@ -7,6 +7,7 @@ import {
 import { DebugProtocol } from "vscode-debugprotocol";
 import * as fs from "fs";
 import * as path from "path";
+import { Simulator } from "@tonx86/simcore";
 
 interface SourceInfo {
   path: string;
@@ -71,9 +72,11 @@ export class TonX86DebugSession extends DebugSession {
   private configurationDone = false; // Track if configuration is done
   private shouldAutoStart = false; // Track if we should auto-start after config
   private isFirstContinue = true; // Track if this is the first continue call
+  private simulator: Simulator; // CPU simulator instance
 
   public constructor() {
     super();
+    this.simulator = new Simulator(8, 8); // Create simulator with 8x8 LCD
     console.error("[TonX86] Debug adapter constructor called");
   }
 
@@ -232,6 +235,15 @@ export class TonX86DebugSession extends DebugSession {
         return;
       }
 
+      // Execute the instruction through simulator
+      console.error(
+        `[TonX86] Executing: ${currentInstr.mnemonic} ${currentInstr.operands.join(", ")}`,
+      );
+      this.simulator.executeInstruction(
+        currentInstr.mnemonic,
+        currentInstr.operands,
+      );
+
       // Check if we hit HLT
       if (currentInstr.mnemonic === "HLT") {
         console.error(
@@ -386,16 +398,52 @@ export class TonX86DebugSession extends DebugSession {
       "[TonX86] Variables request for ref:",
       args.variablesReference,
     );
+
+    // Get actual register values from simulator
+    const registers = this.simulator.getRegisters();
+
     response.body = {
       variables: [
-        { name: "EAX", value: "0x00000000", variablesReference: 0 },
-        { name: "ECX", value: "0x00000000", variablesReference: 0 },
-        { name: "EDX", value: "0x00000000", variablesReference: 0 },
-        { name: "EBX", value: "0x00000000", variablesReference: 0 },
-        { name: "ESP", value: "0x00000000", variablesReference: 0 },
-        { name: "EBP", value: "0x00000000", variablesReference: 0 },
-        { name: "ESI", value: "0x00000000", variablesReference: 0 },
-        { name: "EDI", value: "0x00000000", variablesReference: 0 },
+        {
+          name: "EAX",
+          value: `0x${registers.EAX.toString(16).padStart(8, "0")}`,
+          variablesReference: 0,
+        },
+        {
+          name: "ECX",
+          value: `0x${registers.ECX.toString(16).padStart(8, "0")}`,
+          variablesReference: 0,
+        },
+        {
+          name: "EDX",
+          value: `0x${registers.EDX.toString(16).padStart(8, "0")}`,
+          variablesReference: 0,
+        },
+        {
+          name: "EBX",
+          value: `0x${registers.EBX.toString(16).padStart(8, "0")}`,
+          variablesReference: 0,
+        },
+        {
+          name: "ESP",
+          value: `0x${registers.ESP.toString(16).padStart(8, "0")}`,
+          variablesReference: 0,
+        },
+        {
+          name: "EBP",
+          value: `0x${registers.EBP.toString(16).padStart(8, "0")}`,
+          variablesReference: 0,
+        },
+        {
+          name: "ESI",
+          value: `0x${registers.ESI.toString(16).padStart(8, "0")}`,
+          variablesReference: 0,
+        },
+        {
+          name: "EDI",
+          value: `0x${registers.EDI.toString(16).padStart(8, "0")}`,
+          variablesReference: 0,
+        },
       ],
     };
     this.sendResponse(response);

@@ -113,10 +113,197 @@ export class Simulator {
   private lcd: LCDDisplay;
   private code: Uint8Array = new Uint8Array();
 
+  // Map of mnemonics to register names
+  private registerMap: { [key: string]: number } = {
+    EAX: 0,
+    ECX: 1,
+    EDX: 2,
+    EBX: 3,
+    ESP: 4,
+    EBP: 5,
+    ESI: 6,
+    EDI: 7,
+  };
+
   constructor(lcdWidth: number = 8, lcdHeight: number = 8) {
     this.cpu = new CPUState();
     this.memory = new Memory();
     this.lcd = new LCDDisplay(lcdWidth, lcdHeight);
+  }
+
+  /**
+   * Parse a register name or immediate value
+   */
+  private parseOperand(operand: string): {
+    type: "register" | "immediate";
+    value: number;
+  } {
+    operand = operand.trim().toUpperCase();
+
+    // Check if it's a register
+    if (this.registerMap.hasOwnProperty(operand)) {
+      return {
+        type: "register",
+        value: this.registerMap[operand],
+      };
+    }
+
+    // Parse as immediate value (decimal, hex 0x, or binary 0b)
+    let value = 0;
+    if (operand.startsWith("0X")) {
+      value = parseInt(operand.substring(2), 16);
+    } else if (operand.startsWith("0B")) {
+      value = parseInt(operand.substring(2), 2);
+    } else {
+      value = parseInt(operand, 10);
+    }
+
+    return {
+      type: "immediate",
+      value: value & 0xffffffff,
+    };
+  }
+
+  /**
+   * Execute a single instruction
+   */
+  executeInstruction(mnemonic: string, operands: string[]): void {
+    mnemonic = mnemonic.toUpperCase();
+
+    switch (mnemonic) {
+      case "MOV": {
+        // MOV destination, source
+        if (operands.length !== 2) break;
+        const dest = this.parseOperand(operands[0]);
+        const src = this.parseOperand(operands[1]);
+
+        if (dest.type === "register" && src.type === "immediate") {
+          this.cpu.registers[dest.value] = src.value;
+        } else if (dest.type === "register" && src.type === "register") {
+          this.cpu.registers[dest.value] = this.cpu.registers[src.value];
+        }
+        break;
+      }
+
+      case "ADD": {
+        // ADD destination, source
+        if (operands.length !== 2) break;
+        const dest = this.parseOperand(operands[0]);
+        const src = this.parseOperand(operands[1]);
+
+        if (dest.type === "register") {
+          const srcValue =
+            src.type === "register" ? this.cpu.registers[src.value] : src.value;
+          this.cpu.registers[dest.value] =
+            (this.cpu.registers[dest.value] + srcValue) & 0xffffffff;
+          this.updateFlags(this.cpu.registers[dest.value]);
+        }
+        break;
+      }
+
+      case "SUB": {
+        // SUB destination, source
+        if (operands.length !== 2) break;
+        const dest = this.parseOperand(operands[0]);
+        const src = this.parseOperand(operands[1]);
+
+        if (dest.type === "register") {
+          const srcValue =
+            src.type === "register" ? this.cpu.registers[src.value] : src.value;
+          this.cpu.registers[dest.value] =
+            (this.cpu.registers[dest.value] - srcValue) & 0xffffffff;
+          this.updateFlags(this.cpu.registers[dest.value]);
+        }
+        break;
+      }
+
+      case "INC": {
+        // INC destination
+        if (operands.length !== 1) break;
+        const dest = this.parseOperand(operands[0]);
+
+        if (dest.type === "register") {
+          this.cpu.registers[dest.value] =
+            (this.cpu.registers[dest.value] + 1) & 0xffffffff;
+          this.updateFlags(this.cpu.registers[dest.value]);
+        }
+        break;
+      }
+
+      case "DEC": {
+        // DEC destination
+        if (operands.length !== 1) break;
+        const dest = this.parseOperand(operands[0]);
+
+        if (dest.type === "register") {
+          this.cpu.registers[dest.value] =
+            (this.cpu.registers[dest.value] - 1) & 0xffffffff;
+          this.updateFlags(this.cpu.registers[dest.value]);
+        }
+        break;
+      }
+
+      case "CMP": {
+        // CMP destination, source
+        if (operands.length !== 2) break;
+        const dest = this.parseOperand(operands[0]);
+        const src = this.parseOperand(operands[1]);
+
+        if (dest.type === "register") {
+          const destValue = this.cpu.registers[dest.value];
+          const srcValue =
+            src.type === "register" ? this.cpu.registers[src.value] : src.value;
+          const result = (destValue - srcValue) & 0xffffffff;
+          this.updateFlags(result);
+        }
+        break;
+      }
+
+      case "JMP": {
+        // JMP label (not implemented - labels need symbol table)
+        break;
+      }
+
+      case "JE":
+      case "JZ": {
+        // JE/JZ label (jump if equal/zero)
+        // Requires symbol table - skip for now
+        break;
+      }
+
+      case "JNE":
+      case "JNZ": {
+        // JNE/JNZ label (jump if not equal/not zero)
+        // Requires symbol table - skip for now
+        break;
+      }
+
+      case "HLT": {
+        // HLT - halt processor
+        this.cpu.halted = true;
+        this.cpu.running = false;
+        break;
+      }
+    }
+  }
+
+  /**
+   * Update CPU flags based on result
+   */
+  private updateFlags(result: number): void {
+    // Set Zero flag if result is zero
+    if (result === 0) {
+      this.cpu.flags |= 0x40; // Zero flag (bit 6)
+    } else {
+      this.cpu.flags &= ~0x40;
+    }
+
+    // Set Sign flag if result is negative (bit 31 set)
+    if ((result & 0x80000000) !== 0) {
+      this.cpu.flags |= 0x80; // Sign flag (bit 7)
+    } else {
+      this.cpu.flags &= ~0x80;
+    }
   }
 
   loadProgram(bytecode: Uint8Array): void {
@@ -165,6 +352,19 @@ export class Simulator {
       flags: this.cpu.flags,
       running: this.cpu.running,
       halted: this.cpu.halted,
+    };
+  }
+
+  getRegisters() {
+    return {
+      EAX: this.cpu.registers[0],
+      ECX: this.cpu.registers[1],
+      EDX: this.cpu.registers[2],
+      EBX: this.cpu.registers[3],
+      ESP: this.cpu.registers[4],
+      EBP: this.cpu.registers[5],
+      ESI: this.cpu.registers[6],
+      EDI: this.cpu.registers[7],
     };
   }
 

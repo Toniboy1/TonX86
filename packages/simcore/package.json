@@ -3,6 +3,7 @@
   "version": "0.0.1",
   "description": "TonX86 Simulator Core - x86-like execution engine",
   "main": "out/simulator.js",
+  "types": "out/simulator.d.ts",
   "scripts": {
     "build": "tsc",
     "watch": "tsc -w",
