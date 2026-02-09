@@ -1,0 +1,69 @@
+{
+  "version": "1.0",
+  "instructions": [
+    {
+      "mnemonic": "MOV",
+      "opcode": "0x89",
+      "operands": ["reg", "reg"],
+      "description": "Move data between registers",
+      "cycles": 1,
+      "flags": []
+    },
+    {
+      "mnemonic": "ADD",
+      "opcode": "0x01",
+      "operands": ["reg", "reg"],
+      "description": "Add two registers and store result",
+      "cycles": 1,
+      "flags": ["Z", "C", "O", "S"]
+    },
+    {
+      "mnemonic": "SUB",
+      "opcode": "0x29",
+      "operands": ["reg", "reg"],
+      "description": "Subtract two registers",
+      "cycles": 1,
+      "flags": ["Z", "C", "O", "S"]
+    },
+    {
+      "mnemonic": "AND",
+      "opcode": "0x21",
+      "operands": ["reg", "reg"],
+      "description": "Bitwise AND two registers",
+      "cycles": 1,
+      "flags": ["Z", "S"]
+    },
+    {
+      "mnemonic": "OR",
+      "opcode": "0x09",
+      "operands": ["reg", "reg"],
+      "description": "Bitwise OR two registers",
+      "cycles": 1,
+      "flags": ["Z", "S"]
+    },
+    {
+      "mnemonic": "JMP",
+      "opcode": "0xE9",
+      "operands": ["addr"],
+      "description": "Unconditional jump to address",
+      "cycles": 1,
+      "flags": []
+    },
+    {
+      "mnemonic": "JZ",
+      "opcode": "0x74",
+      "operands": ["addr"],
+      "description": "Jump if zero flag is set",
+      "cycles": 1,
+      "flags": []
+    },
+    {
+      "mnemonic": "HLT",
+      "opcode": "0xF4",
+      "operands": [],
+      "description": "Halt execution",
+      "cycles": 1,
+      "flags": []
+    }
+  ]
+}

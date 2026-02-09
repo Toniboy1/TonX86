@@ -1,0 +1,320 @@
+{
+  "name": "tonx86",
+  "displayName": "TonX86",
+  "description": "Educational x86-like assembly environment for VS Code",
+  "version": "0.0.1",
+  "publisher": "tonx86",
+  "author": {
+    "name": "Anthony (Toniboy1)",
+    "url": "https://github.com/Toniboy1"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Toniboy1/TonX86.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Toniboy1/TonX86/issues"
+  },
+  "homepage": "https://github.com/Toniboy1/TonX86#readme",
+  "engines": {
+    "vscode": "^1.84.0"
+  },
+  "categories": [
+    "Debuggers",
+    "Programming Languages",
+    "Education"
+  ],
+  "activationEvents": [
+    "onDebug"
+  ],
+  "main": "out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "tonx86.assemble",
+        "title": "TonX86: Assemble",
+        "category": "TonX86",
+        "icon": "$(symbol-class)"
+      },
+      {
+        "command": "tonx86.run",
+        "title": "TonX86: Run",
+        "category": "TonX86",
+        "icon": "$(debug-start)"
+      },
+      {
+        "command": "tonx86.pause",
+        "title": "TonX86: Pause",
+        "category": "TonX86",
+        "icon": "$(debug-pause)"
+      },
+      {
+        "command": "tonx86.stepOver",
+        "title": "TonX86: Step Over",
+        "category": "TonX86",
+        "icon": "$(debug-step-over)"
+      },
+      {
+        "command": "tonx86.stepIn",
+        "title": "TonX86: Step In",
+        "category": "TonX86",
+        "icon": "$(debug-step-in)"
+      },
+      {
+        "command": "tonx86.stepOut",
+        "title": "TonX86: Step Out",
+        "category": "TonX86",
+        "icon": "$(debug-step-out)"
+      },
+      {
+        "command": "tonx86.reset",
+        "title": "TonX86: Reset",
+        "category": "TonX86",
+        "icon": "$(debug-disconnect)"
+      },
+      {
+        "command": "tonx86.lcdPopOut",
+        "title": "TonX86: Pop Out LCD Display",
+        "category": "TonX86",
+        "icon": "$(open-preview)"
+      },
+      {
+        "command": "tonx86.lcdPopIn",
+        "title": "TonX86: Pop In LCD Display",
+        "category": "TonX86",
+        "icon": "$(close)"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "tonx86-explorer",
+          "title": "TonX86",
+          "icon": "$(bracket)"
+        }
+      ]
+    },
+    "views": {
+      "tonx86-explorer": [
+        {
+          "icon": "",
+          "id": "tonx86.registers",
+          "name": "Registers",
+          "type": "tree"
+        },
+        {
+          "icon": "",
+          "id": "tonx86.memoryA",
+          "name": "Memory A",
+          "type": "tree"
+        },
+        {
+          "icon": "",
+          "id": "tonx86.memoryB",
+          "name": "Memory B",
+          "type": "tree"
+        },
+        {
+          "icon": "",
+          "id": "tonx86.lcd",
+          "name": "LCD Display",
+          "type": "webview"
+        },
+        {
+          "icon": "",
+          "id": "tonx86.docs",
+          "name": "ISA Docs",
+          "type": "webview"
+        }
+      ]
+    },
+    "languages": [
+      {
+        "id": "tonx86",
+        "aliases": [
+          "TonX86 Assembly",
+          "tonx86"
+        ],
+        "extensions": [
+          ".asm"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "tonx86",
+        "scopeName": "source.tonx86",
+        "path": "./syntaxes/tonx86.tmLanguage.json"
+      }
+    ],
+    "breakpoints": [
+      {
+        "language": "tonx86"
+      }
+    ],
+    "debuggers": [
+      {
+        "type": "tonx86",
+        "label": "TonX86 Debugger",
+        "program": "../debug-adapter/out/debugAdapter.js",
+        "runtime": "node",
+        "configurationAttributes": {
+          "launch": {
+            "required": [
+              "program"
+            ],
+            "properties": {
+              "program": {
+                "type": "string",
+                "description": "Absolute path to the TonX86 assembly file to debug",
+                "default": "${workspaceFolder}/${fileBasename}"
+              },
+              "stopOnEntry": {
+                "type": "boolean",
+                "description": "Automatically stop after launch",
+                "default": true
+              },
+              "console": {
+                "type": "string",
+                "enum": [
+                  "internalConsole",
+                  "integratedTerminal",
+                  "externalTerminal"
+                ],
+                "description": "Where to launch the debug target",
+                "default": "internalConsole"
+              },
+              "cpuSpeed": {
+                "type": "number",
+                "description": "CPU execution speed in percentage (1-200%). 100% = normal speed, 50% = half speed, 200% = double speed. Lower values add delay between instructions.",
+                "default": 100,
+                "minimum": 1,
+                "maximum": 200
+              },
+              "enableLogging": {
+                "type": "boolean",
+                "description": "Enable debug logging to tonx86-debug.log file. When disabled, no log file is created (improves performance).",
+                "default": false
+              }
+            }
+          }
+        },
+        "initialConfigurations": [
+          {
+            "name": "TonX86: Launch",
+            "type": "tonx86",
+            "request": "launch",
+            "program": "${workspaceFolder}/${fileBasename}",
+            "stopOnEntry": true,
+            "console": "internalConsole",
+            "cpuSpeed": 100,
+            "enableLogging": false
+          }
+        ],
+        "configurationSnippets": [
+          {
+            "label": "TonX86: Launch Program",
+            "description": "Launch a TonX86 assembly program for debugging",
+            "body": {
+              "name": "TonX86: Launch",
+              "type": "tonx86",
+              "request": "launch",
+              "program": "${workspaceFolder}/${fileBasename}",
+              "stopOnEntry": true,
+              "console": "internalConsole",
+              "cpuSpeed": 100,
+              "enableLogging": false
+            }
+          }
+        ]
+      }
+    ],
+    "configuration": [
+      {
+        "title": "TonX86 LCD Display",
+        "properties": {
+          "tonx86.lcd.enabled": {
+            "type": "boolean",
+            "default": true,
+            "description": "Enable LCD display view in the debug explorer"
+          },
+          "tonx86.lcd.width": {
+            "type": "integer",
+            "default": 16,
+            "minimum": 2,
+            "maximum": 256,
+            "description": "LCD display width in pixels (2-256)"
+          },
+          "tonx86.lcd.height": {
+            "type": "integer",
+            "default": 16,
+            "minimum": 2,
+            "maximum": 256,
+            "description": "LCD display height in pixels (2-256)"
+          },
+          "tonx86.lcd.pixelSize": {
+            "type": [
+              "string",
+              "number"
+            ],
+            "default": "auto",
+            "description": "Pixel size in pixels. Set to 'auto' for automatic sizing, or a number between 2 and 500 for manual size"
+          }
+        }
+      },
+      {
+        "title": "TonX86 Keyboard",
+        "properties": {
+          "tonx86.keyboard.enabled": {
+            "type": "boolean",
+            "default": true,
+            "description": "Enable keyboard input capture for the simulator. When enabled, keyboard events are captured and made available to assembly programs via memory-mapped I/O (0xF100-0xF102)"
+          }
+        }
+      },
+      {
+        "title": "TonX86 CPU",
+        "properties": {
+          "tonx86.cpu.speed": {
+            "type": "number",
+            "default": 100,
+            "minimum": 1,
+            "maximum": 200,
+            "description": "CPU execution speed in percentage (1-200%). 100% = normal speed, 50% = half speed, 200% = double speed. Lower values add delay between instructions for easier debugging."
+          }
+        }
+      },
+      {
+        "title": "TonX86 Assembly",
+        "properties": {
+          "tonx86.assembly.autoAssemble": {
+            "type": "boolean",
+            "default": true,
+            "description": "Automatically assemble on file save"
+          },
+          "tonx86.assembly.showDiagnostics": {
+            "type": "boolean",
+            "default": true,
+            "description": "Show syntax and semantic diagnostics"
+          }
+        }
+      }
+    ]
+  },
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc -w",
+    "lint": "eslint src",
+    "test": "echo no tests"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.84.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "eslint": "^8.0.0",
+    "typescript": "^5.0.0"
+  }
+}

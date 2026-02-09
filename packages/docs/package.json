@@ -1,0 +1,11 @@
+{
+  "name": "@tonx86/docs",
+  "version": "0.0.1",
+  "description": "TonX86 Documentation - ISA and embedded docs",
+  "scripts": {
+    "build": "echo Building docs",
+    "watch": "echo Watching docs",
+    "test": "echo no tests",
+    "lint": "echo no linting for docs"
+  }
+}
