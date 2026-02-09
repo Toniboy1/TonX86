@@ -35,7 +35,7 @@ function getLCDConfig(): LCDConfig {
   const enabled = config.get<boolean>("enabled", true);
   let width = config.get<number>("width", 16);
   let height = config.get<number>("height", 16);
-  let pixelSize = config.get<number | string>("pixelSize", "auto");
+  const pixelSize = config.get<number | string>("pixelSize", "auto");
 
   // Validate width
   if (width < 2 || width > 256 || !Number.isInteger(width)) {

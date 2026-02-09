@@ -285,7 +285,7 @@ export class Simulator {
     operand = operand.trim().toUpperCase();
 
     // Check if it's a register
-    if (this.registerMap.hasOwnProperty(operand)) {
+    if (Object.hasOwn(this.registerMap, operand)) {
       return {
         type: "register",
         value: this.registerMap[operand],
