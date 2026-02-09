@@ -12,41 +12,93 @@
     "Programming Languages",
     "Education"
   ],
-  "activationEvents": ["*"],
+  "activationEvents": [
+    "*"
+  ],
   "main": "out/extension.js",
   "contributes": {
     "commands": [
       {
+        "command": "tonx86.assemble",
+        "title": "TonX86: Assemble",
+        "category": "TonX86",
+        "icon": "$(symbol-class)"
+      },
+      {
         "command": "tonx86.run",
         "title": "TonX86: Run",
-        "category": "TonX86"
+        "category": "TonX86",
+        "icon": "$(debug-start)"
       },
       {
         "command": "tonx86.pause",
         "title": "TonX86: Pause",
-        "category": "TonX86"
+        "category": "TonX86",
+        "icon": "$(debug-pause)"
       },
       {
         "command": "tonx86.stepOver",
         "title": "TonX86: Step Over",
-        "category": "TonX86"
+        "category": "TonX86",
+        "icon": "$(debug-step-over)"
       },
       {
         "command": "tonx86.stepIn",
         "title": "TonX86: Step In",
-        "category": "TonX86"
+        "category": "TonX86",
+        "icon": "$(debug-step-in)"
       },
       {
         "command": "tonx86.stepOut",
         "title": "TonX86: Step Out",
-        "category": "TonX86"
+        "category": "TonX86",
+        "icon": "$(debug-step-out)"
       },
       {
         "command": "tonx86.reset",
         "title": "TonX86: Reset",
-        "category": "TonX86"
+        "category": "TonX86",
+        "icon": "$(debug-disconnect)"
       }
     ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "tonx86-explorer",
+          "title": "TonX86",
+          "icon": "$(bracket)"
+        }
+      ]
+    },
+    "views": {
+      "tonx86-explorer": [
+        {
+          "id": "tonx86.registers",
+          "name": "Registers",
+          "type": "tree"
+        },
+        {
+          "id": "tonx86.memoryA",
+          "name": "Memory A",
+          "type": "tree"
+        },
+        {
+          "id": "tonx86.memoryB",
+          "name": "Memory B",
+          "type": "tree"
+        },
+        {
+          "id": "tonx86.lcd",
+          "name": "LCD Display",
+          "type": "webview"
+        },
+        {
+          "id": "tonx86.docs",
+          "name": "ISA Docs",
+          "type": "webview"
+        }
+      ]
+    },
     "breakpoints": [
       {
         "language": "asm"

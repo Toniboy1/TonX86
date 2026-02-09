@@ -103,17 +103,21 @@ class MemoryProvider implements vscode.TreeDataProvider<MemoryRange> {
 class LCDViewProvider implements vscode.WebviewViewProvider {
 	public static readonly viewType = 'tonx86.lcd';
 
-	constructor() {}
+	constructor(private extensionUri: vscode.Uri) {}
 
-	resolveWebviewView(webviewView: vscode.WebviewView): void {
+	resolveWebviewView(
+		webviewView: vscode.WebviewView,
+		__context: vscode.WebviewViewResolveContext,
+		__token: vscode.CancellationToken,
+	): void {
 		webviewView.webview.options = {
 			enableScripts: true,
 		};
 
-		webviewView.webview.html = this.getHtmlForWebview();
+		webviewView.webview.html = this.getHtmlForWebview(webviewView.webview);
 	}
 
-	private getHtmlForWebview(): string {
+	private getHtmlForWebview(__webview: vscode.Webview): string {
 		return `
 			<!DOCTYPE html>
 			<html lang="en">
@@ -150,7 +154,7 @@ class LCDViewProvider implements vscode.WebviewViewProvider {
 	}
 
 	updateDisplay(): void {
-		// Update implementation placeholder
+		// Update implementation would go here
 	}
 }
 
@@ -160,17 +164,21 @@ class LCDViewProvider implements vscode.WebviewViewProvider {
 class DocsViewProvider implements vscode.WebviewViewProvider {
 	public static readonly viewType = 'tonx86.docs';
 
-	constructor() {}
+	constructor(private extensionUri: vscode.Uri) {}
 
-	resolveWebviewView(webviewView: vscode.WebviewView): void {
+	resolveWebviewView(
+		webviewView: vscode.WebviewView,
+		__context: vscode.WebviewViewResolveContext,
+		__token: vscode.CancellationToken,
+	): void {
 		webviewView.webview.options = {
 			enableScripts: true,
 		};
 
-		webviewView.webview.html = this.getHtmlForWebview();
+		webviewView.webview.html = this.getHtmlForWebview(webviewView.webview);
 	}
 
-	private getHtmlForWebview(): string {
+	private getHtmlForWebview(__webview: vscode.Webview): string {
 		return `
 			<!DOCTYPE html>
 			<html lang="en">
@@ -245,14 +253,14 @@ export function activate(context: vscode.ExtensionContext): void {
 	context.subscriptions.push(
 		vscode.window.registerWebviewViewProvider(
 			LCDViewProvider.viewType,
-			new LCDViewProvider(),
+			new LCDViewProvider(context.extensionUri),
 		),
 	);
 
 	context.subscriptions.push(
 		vscode.window.registerWebviewViewProvider(
 			DocsViewProvider.viewType,
-			new DocsViewProvider(),
+			new DocsViewProvider(context.extensionUri),
 		),
 	);
 
