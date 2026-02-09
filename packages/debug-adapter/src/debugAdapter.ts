@@ -9,6 +9,17 @@ import * as fs from "fs";
 import * as path from "path";
 import { Simulator } from "@tonx86/simcore";
 
+// File-based logger for debugging - will be set after launch
+let LOG_FILE = "";
+function logToFile(message: string): void {
+  if (!LOG_FILE) return;
+  try {
+    fs.appendFileSync(LOG_FILE, `${new Date().toISOString()} ${message}\n`);
+  } catch (e) {
+    // Ignore file write errors
+  }
+}
+
 interface SourceInfo {
   path: string;
   lines: string[];
@@ -56,7 +67,9 @@ function parseAssembly(lines: string[]): ParseResult {
 
     const mnemonic = parts[0].toUpperCase();
     const operandString = parts.slice(1).join(" ");
-    const operands = operandString
+    // Strip comments before parsing operands (comments start with ;)
+    const operandStringWithoutComment = operandString.split(";")[0];
+    const operands = operandStringWithoutComment
       .split(",")
       .map((op) => op.trim())
       .filter((op) => op.length > 0);
@@ -130,6 +143,19 @@ export class TonX86DebugSession extends DebugSession {
     console.error("[TonX86] stopOnEntry value:", launchArgs.stopOnEntry);
 
     console.error("[TonX86] Program path:", this.programPath);
+
+    // Initialize log file in same directory as the program being debugged
+    if (this.programPath) {
+      const programDir = path.dirname(this.programPath);
+      LOG_FILE = path.join(programDir, "tonx86-debug.log");
+      try {
+        fs.writeFileSync(LOG_FILE, `=== TonX86 Debug Session Started ===\n`);
+        console.error(`[TonX86] Log file: ${LOG_FILE}`);
+        logToFile(`Program: ${this.programPath}`);
+      } catch (e) {
+        console.error(`[TonX86] Failed to create log file: ${e}`);
+      }
+    }
 
     // Load source file
     if (this.programPath && fs.existsSync(this.programPath)) {
@@ -249,34 +275,39 @@ export class TonX86DebugSession extends DebugSession {
           currentInstr.mnemonic,
           currentInstr.operands,
         );
+
+        // Log execution to file
+        const lcdData = this.simulator.getLCDDisplay();
+        const pixelCount = lcdData.filter((p) => p !== 0).length;
+        const pixelIndices = lcdData
+          .map((v, i) => (v ? i : -1))
+          .filter((i) => i !== -1);
+        logToFile(
+          JSON.stringify({
+            action: "CONTINUE",
+            ip: this.instructionPointer,
+            line: currentInstr.line,
+            instruction: `${currentInstr.mnemonic} ${currentInstr.operands.join(", ")}`,
+            lcdPixels: pixelCount,
+            lcdLit: Array.from(pixelIndices),
+            lcdRaw: Array.from(lcdData), // Show actual pixel values
+          }),
+        );
       } catch (err) {
+        logToFile(
+          JSON.stringify({
+            action: "ERROR",
+            ip: this.instructionPointer,
+            line: currentInstr.line,
+            error: String(err),
+          }),
+        );
         console.error(
           `[TonX86] ERROR during instruction execution at IP=${this.instructionPointer}, line=${currentInstr.line}:`,
           err,
         );
         this.sendEvent(new TerminatedEvent());
         return;
-      }
-
-      // Log LCD state after every instruction
-      try {
-        const lcdData = this.simulator.getLCDDisplay();
-        // Compact string: 8x8 grid, 0/1 per pixel
-        const width = 8; // TODO: get actual width if configurable
-        let lcdString = "\n";
-        for (let y = 0; y < 8; y++) {
-          let row = "";
-          for (let x = 0; x < 8; x++) {
-            row += lcdData[y * width + x] ? "#" : ".";
-          }
-          lcdString += row + "\n";
-        }
-        console.error(
-          `[TonX86] LCD State after IP=${this.instructionPointer}, line=${currentInstr.line}:`,
-        );
-        console.error(lcdString);
-      } catch (e) {
-        console.error("[TonX86] LCD logging error:", e);
       }
 
       this.currentLine = currentInstr.line;
@@ -564,10 +595,46 @@ export class TonX86DebugSession extends DebugSession {
       );
 
       // Execute the instruction
-      this.simulator.executeInstruction(
-        currentInstr.mnemonic,
-        currentInstr.operands,
-      );
+      try {
+        this.simulator.executeInstruction(
+          currentInstr.mnemonic,
+          currentInstr.operands,
+        );
+      } catch (err) {
+        logToFile(
+          JSON.stringify({
+            action: "ERROR",
+            ip: this.instructionPointer,
+            line: currentInstr.line,
+            error: String(err),
+          }),
+        );
+        console.error(`[TonX86] ERROR during instruction execution:`, err);
+        this.sendEvent(new TerminatedEvent());
+        return;
+      }
+
+      // Log LCD state after instruction
+      try {
+        const lcdData = this.simulator.getLCDDisplay();
+        const pixelCount = lcdData.filter((p) => p !== 0).length;
+        const pixelIndices = lcdData
+          .map((v, i) => (v ? i : -1))
+          .filter((i) => i !== -1);
+        logToFile(
+          JSON.stringify({
+            action: "NEXT",
+            ip: this.instructionPointer - 1,
+            line: currentInstr.line,
+            instruction: `${currentInstr.mnemonic} ${currentInstr.operands.join(", ")}`,
+            lcdPixels: pixelCount,
+            lcdLit: Array.from(pixelIndices),
+            lcdRaw: Array.from(lcdData), // Show actual pixel values
+          }),
+        );
+      } catch (e) {
+        logToFile(`[NEXT] LCD logging error: ${e}`);
+      }
 
       this.currentLine = currentInstr.line;
 

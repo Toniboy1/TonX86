@@ -224,6 +224,14 @@
             "minimum": 2,
             "maximum": 256,
             "description": "LCD display height in pixels (2-256)"
+          },
+          "tonx86.lcd.pixelSize": {
+            "type": [
+              "string",
+              "number"
+            ],
+            "default": "auto",
+            "description": "Pixel size in pixels. Set to 'auto' for automatic sizing, or a number between 2 and 500 for manual size"
           }
         }
       },

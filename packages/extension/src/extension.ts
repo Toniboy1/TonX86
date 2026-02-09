@@ -7,6 +7,7 @@ interface LCDConfig {
   enabled: boolean;
   width: number;
   height: number;
+  pixelSize: number | "auto";
 }
 
 /**
@@ -18,6 +19,7 @@ function getLCDConfig(): LCDConfig {
   const enabled = config.get<boolean>("enabled", true);
   let width = config.get<number>("width", 16);
   let height = config.get<number>("height", 16);
+  let pixelSize = config.get<number | string>("pixelSize", "auto");
 
   // Validate width
   if (width < 2 || width > 256 || !Number.isInteger(width)) {
@@ -31,7 +33,19 @@ function getLCDConfig(): LCDConfig {
     console.warn("Invalid LCD height, resetting to default (16)");
   }
 
-  return { enabled, width, height };
+  // Validate pixel size
+  let finalPixelSize: number | "auto" = "auto";
+  if (pixelSize !== "auto") {
+    const numPixelSize = Number(pixelSize);
+    if (isNaN(numPixelSize) || numPixelSize < 2 || numPixelSize > 500) {
+      finalPixelSize = "auto";
+      console.warn("Invalid LCD pixel size, resetting to 'auto'");
+    } else {
+      finalPixelSize = Math.floor(numPixelSize);
+    }
+  }
+
+  return { enabled, width, height, pixelSize: finalPixelSize };
 }
 
 /**
@@ -182,11 +196,19 @@ class LCDViewProvider implements vscode.WebviewViewProvider {
   }
 
   private getHtmlForWebview(): string {
-    const { width, height } = this.lcdConfig;
-    const pixelSize = Math.max(
-      10,
-      Math.min(30, Math.floor(600 / Math.max(width, height))),
-    );
+    const { width, height, pixelSize: configPixelSize } = this.lcdConfig;
+
+    // Calculate pixel size
+    let pixelSize: number;
+    if (configPixelSize === "auto") {
+      // Auto-calculate based on display dimensions
+      pixelSize = Math.max(
+        10,
+        Math.min(30, Math.floor(600 / Math.max(width, height))),
+      );
+    } else {
+      pixelSize = configPixelSize as number;
+    }
 
     return `
 			<!DOCTYPE html>
@@ -207,7 +229,7 @@ class LCDViewProvider implements vscode.WebviewViewProvider {
 			<body>
 				<h3>LCD Display (${width}x${height})</h3>
 				<div id="lcd"></div>
-				<div class="info">Pixel Size: ${pixelSize}px</div>
+				<div class="info">Pixel Size: ${pixelSize}px ${configPixelSize === "auto" ? "(auto)" : "(manual)"}</div>
 				<script>
 					const lcd = document.getElementById('lcd');
 					const width = ${width}, height = ${height};
@@ -219,6 +241,8 @@ class LCDViewProvider implements vscode.WebviewViewProvider {
 							const pixel = document.createElement('div');
 							pixel.className = 'pixel';
 							pixel.id = \`pixel-\${x}-\${y}\`;
+							const address = 0xF000 + (y * width + x);
+							pixel.title = \`Address: 0x\${address.toString(16).toUpperCase()} (x:\${x}, y:\${y})\`;
 							lcd.appendChild(pixel);
 							pixels.push(pixel);
 						}

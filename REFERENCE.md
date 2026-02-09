@@ -32,11 +32,13 @@ This document provides a comprehensive listing of all commands, settings, views,
 | `tonx86.lcd.enabled` | boolean | `true` | - | Enable/disable LCD display view in the debug explorer |
 | `tonx86.lcd.width` | integer | `16` | 2-256 | LCD display width in pixels |
 | `tonx86.lcd.height` | integer | `16` | 2-256 | LCD display height in pixels |
+| `tonx86.lcd.pixelSize` | string/number | `"auto"` | 2-500 | Pixel size in pixels. Set to 'auto' for automatic sizing, or a number between 2 and 500 for manual size |
 
 **Validation Rules:**
 - Width must be integer between 2 and 256 (inclusive)
 - Height must be integer between 2 and 256 (inclusive)
-- Invalid values reset to default (16)
+- Pixel size must be "auto" or a number between 2 and 500 (inclusive)
+- Invalid values reset to defaults (16 for width/height, "auto" for pixel size)
 - Warnings logged to console for invalid configurations
 - Settings apply on extension reload or debug session restart
 
@@ -87,7 +89,10 @@ This document provides a comprehensive listing of all commands, settings, views,
 
 ### LCD Display
 - Configurable dimensions (2x2 to 256x256 pixels)
-- Dynamic pixel sizing based on viewport and configuration
+- Configurable pixel size ("auto" mode or manual 2-500px)
+- Dynamic pixel sizing based on viewport and configuration in auto mode
+- Manual pixel size mode for precise control
+- Hover tooltip displays memory address (0xF000+) and coordinates for each pixel
 - HTML5 canvas-based rendering with CSS grid
 - Pop out functionality to separate WebviewPanel for large displays
 - Configuration change monitoring with user notifications
@@ -124,9 +129,10 @@ packages/extension/
 ### `LCDConfig`
 ```typescript
 interface LCDConfig {
-  enabled: boolean;    // Whether LCD display is active
-  width: number;       // Width in pixels (2-256)
-  height: number;      // Height in pixels (2-256)
+  enabled: boolean;           // Whether LCD display is active
+  width: number;              // Width in pixels (2-256)
+  height: number;             // Height in pixels (2-256)
+  pixelSize: number | "auto"; // Pixel size: "auto" or manual 2-500
 }
 ```
 
