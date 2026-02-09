@@ -27,8 +27,12 @@ export class TonX86DebugSession extends DebugSession {
   ): void {
     console.error("[TonX86] Launch request received with args:", args);
     this.sendResponse(response);
-    // Send stopped event at entry
-    this.sendEvent(new StoppedEvent("entry", 1));
+    
+    // Send stopped event after a brief delay to ensure client is ready
+    setTimeout(() => {
+      console.error("[TonX86] Sending stopped event");
+      this.sendEvent(new StoppedEvent("entry", 1));
+    }, 100);
   }
 
   protected setBreakPointsRequest(
