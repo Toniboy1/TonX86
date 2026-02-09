@@ -43,7 +43,7 @@ jobs:
       run: |
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
-        git tag -s v${{ needs.check-version.outputs.version }} -m "Release ${{ needs.check-version.outputs.version }}"
+        git tag v${{ needs.check-version.outputs.version }} -m "Release ${{ needs.check-version.outputs.version }}"
         git tag -l
     
     - name: Push tags
