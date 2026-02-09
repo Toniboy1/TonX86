@@ -5,3 +5,8 @@ out
 *.vsix
 *.log
 .DS_Store
+
+# Test coverage
+coverage
+*.lcov
+.nyc_output

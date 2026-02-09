@@ -32,8 +32,21 @@ jobs:
     - name: Build all packages
       run: npm run build
     
-    - name: Run tests
-      run: npm test --if-present
+    - name: Run tests with coverage
+      run: |
+        cd packages/simcore
+        npm test -- --coverage --coverageReporters=text --coverageReporters=lcov
+    
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v4
+      if: matrix.node-version == '20.x'
+      with:
+        files: ./packages/simcore/coverage/lcov.info
+        flags: unittests
+        name: codecov-umbrella
+        fail_ci_if_error: false
+      env:
+        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
     
     - name: Check TypeScript compilation
       run: npx tsc --noEmit --project tsconfig.json
