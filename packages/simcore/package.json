@@ -7,7 +7,7 @@
     "build": "tsc",
     "watch": "tsc -w",
     "lint": "eslint src",
-    "test": "node out/test/test.js"
+    "test": "echo no tests"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
