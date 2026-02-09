@@ -3,8 +3,8 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![CI](https://github.com/Toniboy1/TonX86/workflows/CI/badge.svg)](https://github.com/Toniboy1/TonX86/actions)
 [![CodeQL](https://github.com/Toniboy1/TonX86/workflows/CodeQL/badge.svg)](https://github.com/Toniboy1/TonX86/security/code-scanning)
-[![codecov](https://codecov.io/gh/Toniboy1/TonX86/branch/main/graph/badge.svg)](https://codecov.io/gh/Toniboy1/TonX86)
 [![Tests](https://img.shields.io/badge/tests-102%20passing-brightgreen)](https://github.com/Toniboy1/TonX86/actions)
+[![Coverage](https://img.shields.io/badge/coverage-92%25-brightgreen)](https://github.com/Toniboy1/TonX86/actions)
 
 Educational x86-like assembly environment for VS Code with integrated debugging, memory visualization, LCD display, and keyboard input.
 
@@ -168,13 +168,11 @@ See: [Setup Guide](.github/SETUP_BRANCH_PROTECTION.md) | [Config File](.github/b
 
 The project includes automated workflows:
 
-- **CI Pipeline** - Runs on every push/PR
-  - Build verification (Node 18 & 20)
+- **CI Pipeline** - Runs on every push/PR\n  - Build verification (Node 18 & 20)
   - TypeScript compilation
   - Linting
   - Test execution with coverage (102 tests)
   - Security audit
-  - Coverage reporting to Codecov
 
 - **CodeQL Security Scan** - Weekly security analysis
 
