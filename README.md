@@ -168,11 +168,14 @@ See: [Setup Guide](.github/SETUP_BRANCH_PROTECTION.md) | [Config File](.github/b
 
 The project includes automated workflows:
 
-- **CI Pipeline** - Runs on every push/PR\n  - Build verification (Node 18 & 20)
+- **CI Pipeline** - Runs on every push/PR
+  - Build verification (Node 18 & 20)
   - TypeScript compilation
   - Linting
   - Test execution with coverage (102 tests)
   - Security audit
+  - Coverage reports uploaded as artifacts
+  - Coverage comments on PRs (free service)
 
 - **CodeQL Security Scan** - Weekly security analysis
 
@@ -184,6 +187,11 @@ The project includes automated workflows:
   - Packages extension as .vsix
   - Creates GitHub release with artifact
   - Ready for marketplace publication
+
+**Coverage Reports:**
+- View HTML coverage report: Check artifacts in [Actions](https://github.com/Toniboy1/TonX86/actions)
+- Coverage comments appear on pull requests automatically
+- All coverage runs executed locally during CI builds
 
 ### Quality Standards
 

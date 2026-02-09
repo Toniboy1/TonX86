@@ -35,7 +35,23 @@ jobs:
     - name: Run tests with coverage
       run: |
         cd packages/simcore
-        npm test -- --coverage --coverageReporters=text --coverageReporters=text-summary
+        npm test -- --coverage --coverageReporters=text --coverageReporters=text-summary --coverageReporters=html
+    
+    - name: Upload coverage report as artifact
+      uses: actions/upload-artifact@v4
+      if: matrix.node-version == '20.x'
+      with:
+        name: coverage-report
+        path: packages/simcore/coverage/
+        retention-days: 30
+    
+    - name: Comment coverage on PR
+      uses: romeovs/lcov-reporter-action@v0.3.1
+      if: github.event_name == 'pull_request' && matrix.node-version == '20.x'
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        lcov-file: ./packages/simcore/coverage/lcov.info
+      continue-on-error: true
     
     - name: Check TypeScript compilation
       run: npx tsc --noEmit --project tsconfig.json
