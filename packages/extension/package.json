@@ -142,7 +142,7 @@
       {
         "type": "tonx86",
         "label": "TonX86 Debugger",
-        "program": "./out/debugAdapter.js",
+        "program": "${workspaceFolder}/packages/debug-adapter/out/debugAdapter.js",
         "runtime": "node",
         "configurationAttributes": {
           "launch": {
