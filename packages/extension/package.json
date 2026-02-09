@@ -59,6 +59,18 @@
         "title": "TonX86: Reset",
         "category": "TonX86",
         "icon": "$(debug-disconnect)"
+      },
+      {
+        "command": "tonx86.lcdPopOut",
+        "title": "TonX86: Pop Out LCD Display",
+        "category": "TonX86",
+        "icon": "$(open-preview)"
+      },
+      {
+        "command": "tonx86.lcdPopIn",
+        "title": "TonX86: Pop In LCD Display",
+        "category": "TonX86",
+        "icon": "$(close)"
       }
     ],
     "viewsContainers": {

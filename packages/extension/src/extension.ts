@@ -136,7 +136,9 @@ class MemoryProvider implements vscode.TreeDataProvider<MemoryRange> {
  */
 class LCDViewProvider implements vscode.WebviewViewProvider {
 	public static readonly viewType = 'tonx86.lcd';
+	public static readonly panelViewType = 'tonx86.lcd.panel';
 	private lcdConfig: LCDConfig;
+	private lcdPanel: vscode.WebviewPanel | undefined;
 
 	constructor() {
 		this.lcdConfig = getLCDConfig();
@@ -197,6 +199,38 @@ class LCDViewProvider implements vscode.WebviewViewProvider {
 
 	getLCDConfig(): LCDConfig {
 		return this.lcdConfig;
+	}
+
+	popOut(): void {
+		if (this.lcdPanel) {
+			this.lcdPanel.reveal(vscode.ViewColumn.Beside);
+			return;
+		}
+
+		this.lcdPanel = vscode.window.createWebviewPanel(
+			LCDViewProvider.panelViewType,
+			'TonX86 LCD Display',
+			vscode.ViewColumn.Beside,
+			{ enableScripts: true }
+		);
+
+		this.lcdPanel.webview.html = this.getHtmlForWebview();
+
+		// Handle panel disposal
+		this.lcdPanel.onDidDispose(() => {
+			this.lcdPanel = undefined;
+		});
+	}
+
+	popIn(): void {
+		if (this.lcdPanel) {
+			this.lcdPanel.dispose();
+			this.lcdPanel = undefined;
+		}
+	}
+
+	isPopped(): boolean {
+		return this.lcdPanel !== undefined;
 	}
 }
 
@@ -359,6 +393,21 @@ export function activate(context: vscode.ExtensionContext): void {
 		vscode.commands.registerCommand('tonx86.reset', () => {
 			vscode.window.showInformationMessage('TonX86: Reset');
 			registersProvider.updateRegisters([0, 0, 0, 0, 0, 0, 0, 0]);
+		}),
+	);
+
+	// LCD pop out/pop in commands
+	context.subscriptions.push(
+		vscode.commands.registerCommand('tonx86.lcdPopOut', () => {
+			console.log('LCD: Pop out');
+			lcdProvider.popOut();
+		}),
+	);
+
+	context.subscriptions.push(
+		vscode.commands.registerCommand('tonx86.lcdPopIn', () => {
+			console.log('LCD: Pop in');
+			lcdProvider.popIn();
 		}),
 	);
 }
