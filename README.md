@@ -149,21 +149,6 @@ cd packages/simcore
 npm test -- --coverage
 ```
 
-### Repository Setup (For Maintainers)
-
-**Apply Branch Protection (Automated):**
-```powershell
-# Windows
-pwsh .github/scripts/apply-branch-protection.ps1
-
-# Linux/macOS
-bash .github/scripts/apply-branch-protection.sh
-```
-
-Requires: [GitHub CLI](https://cli.github.com/) + admin access
-
-See: [Setup Guide](.github/SETUP_BRANCH_PROTECTION.md) | [Config File](.github/branch-protection.json)
-
 ### CI/CD
 
 The project includes automated workflows:
