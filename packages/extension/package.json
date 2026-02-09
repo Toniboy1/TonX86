@@ -13,7 +13,9 @@
     "Education"
   ],
   "activationEvents": [
-    "*"
+    "*",
+    "onLanguage:tonx86",
+    "onDebug"
   ],
   "main": "out/extension.js",
   "contributes": {
@@ -111,9 +113,90 @@
         }
       ]
     },
+    "languages": [
+      {
+        "id": "tonx86",
+        "aliases": [
+          "TonX86 Assembly",
+          "tonx86"
+        ],
+        "extensions": [
+          ".asm"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "tonx86",
+        "scopeName": "source.tonx86",
+        "path": "./syntaxes/tonx86.tmLanguage.json"
+      }
+    ],
     "breakpoints": [
       {
-        "language": "asm"
+        "language": "tonx86"
+      }
+    ],
+    "debuggers": [
+      {
+        "type": "tonx86",
+        "label": "TonX86 Debugger",
+        "program": "./out/debugAdapter.js",
+        "runtime": "node",
+        "configurationAttributes": {
+          "launch": {
+            "required": [
+              "program"
+            ],
+            "properties": {
+              "program": {
+                "type": "string",
+                "description": "Absolute path to the TonX86 assembly file to debug",
+                "default": "${workspaceFolder}/${fileBasename}"
+              },
+              "stopOnEntry": {
+                "type": "boolean",
+                "description": "Automatically stop after launch",
+                "default": true
+              },
+              "console": {
+                "type": "string",
+                "enum": [
+                  "internalConsole",
+                  "integratedTerminal",
+                  "externalTerminal"
+                ],
+                "description": "Where to launch the debug target",
+                "default": "internalConsole"
+              }
+            }
+          }
+        },
+        "initialConfigurations": [
+          {
+            "name": "TonX86: Launch",
+            "type": "tonx86",
+            "request": "launch",
+            "program": "${workspaceFolder}/${fileBasename}",
+            "stopOnEntry": true,
+            "console": "internalConsole"
+          }
+        ],
+        "configurationSnippets": [
+          {
+            "label": "TonX86: Launch Program",
+            "description": "Launch a TonX86 assembly program for debugging",
+            "body": {
+              "name": "TonX86: Launch",
+              "type": "tonx86",
+              "request": "launch",
+              "program": "${workspaceFolder}/${fileBasename}",
+              "stopOnEntry": true,
+              "console": "internalConsole"
+            }
+          }
+        ]
       }
     ],
     "configuration": [
@@ -138,6 +221,21 @@
             "minimum": 2,
             "maximum": 256,
             "description": "LCD display height in pixels (2-256)"
+          }
+        }
+      },
+      {
+        "title": "TonX86 Assembly",
+        "properties": {
+          "tonx86.assembly.autoAssemble": {
+            "type": "boolean",
+            "default": true,
+            "description": "Automatically assemble on file save"
+          },
+          "tonx86.assembly.showDiagnostics": {
+            "type": "boolean",
+            "default": true,
+            "description": "Show syntax and semantic diagnostics"
           }
         }
       }
