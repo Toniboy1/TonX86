@@ -10,10 +10,6 @@ updates:
     labels:
       - "dependencies"
       - "automated"
-    auto-merge: true
-    commit-message:
-      prefix: "chore(deps)"
-      include: "scope"
     groups:
       development-dependencies:
         dependency-type: "development"
@@ -25,7 +21,7 @@ updates:
         update-types:
           - "minor"
           - "patch"
-  
+
   # Debug adapter package
   - package-ecosystem: "npm"
     directory: "/packages/debug-adapter"
@@ -36,11 +32,7 @@ updates:
     labels:
       - "dependencies"
       - "debug-adapter"
-    auto-merge: true
-    commit-message:
-      prefix: "chore(deps)"
-      include: "scope"
-  
+
   # Extension package
   - package-ecosystem: "npm"
     directory: "/packages/extension"
@@ -51,11 +43,7 @@ updates:
     labels:
       - "dependencies"
       - "extension"
-    auto-merge: true
-    commit-message:
-      prefix: "chore(deps)"
-      include: "scope"
-  
+
   # Language server package
   - package-ecosystem: "npm"
     directory: "/packages/language-server"
@@ -66,11 +54,7 @@ updates:
     labels:
       - "dependencies"
       - "language-server"
-    auto-merge: true
-    commit-message:
-      prefix: "chore(deps)"
-      include: "scope"
-  
+
   # Simcore package
   - package-ecosystem: "npm"
     directory: "/packages/simcore"
@@ -81,11 +65,7 @@ updates:
     labels:
       - "dependencies"
       - "simcore"
-    auto-merge: true
-    commit-message:
-      prefix: "chore(deps)"
-      include: "scope"
-  
+
   # Docs package
   - package-ecosystem: "npm"
     directory: "/packages/docs"
@@ -96,11 +76,7 @@ updates:
     labels:
       - "dependencies"
       - "docs"
-    auto-merge: true
-    commit-message:
-      prefix: "chore(deps)"
-      include: "scope"
-  
+
   # GitHub Actions
   - package-ecosystem: "github-actions"
     directory: "/"
@@ -109,7 +85,3 @@ updates:
     labels:
       - "dependencies"
       - "github-actions"
-    auto-merge: true
-    commit-message:
-      prefix: "chore(deps)"
-      include: "scope"
