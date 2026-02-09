@@ -173,28 +173,20 @@ export class TonX86DebugSession extends DebugSession {
     console.error("[TonX86] Sending InitializedEvent");
     this.sendEvent(new InitializedEvent());
 
-    // Send stopped event only if stopOnEntry is explicitly set to true
-    if (launchArgs.stopOnEntry === true) {
+    // Always stop at the first instruction so user can inspect initial state
+    if (this.instructions.length > 0) {
       console.error(
-        "[TonX86] stopOnEntry is TRUE, sending StoppedEvent at entry",
+        "[TonX86] Stopping at first instruction at line",
+        this.currentLine,
       );
       setTimeout(() => {
-        console.error(
-          "[TonX86] Sending stopped event at line",
-          this.currentLine,
-        );
         this.sendEvent(new StoppedEvent("entry", 1));
       }, 100);
     } else {
-      console.error(
-        "[TonX86] stopOnEntry is FALSE or undefined, will auto-start after config",
-      );
-      this.shouldAutoStart = true;
+      console.error("[TonX86] No instructions to debug, program will terminate");
+      this.sendEvent(new TerminatedEvent());
     }
-    console.error(
-      "[TonX86] launchRequest complete, shouldAutoStart=",
-      this.shouldAutoStart,
-    );
+    console.error("[TonX86] launchRequest complete");
   }
 
   /**
@@ -225,7 +217,17 @@ export class TonX86DebugSession extends DebugSession {
     while (this.instructionPointer < this.instructions.length) {
       const currentInstr = this.instructions[this.instructionPointer];
 
-      // Execute the instruction through simulator FIRST
+      // Check if we hit a breakpoint
+      if (this.breakpoints.has(currentInstr.line)) {
+        console.error("[TonX86] Hit breakpoint at line", currentInstr.line);
+        this.currentLine = currentInstr.line;
+
+        // Send stopped event at breakpoint
+        this.sendEvent(new StoppedEvent("breakpoint", 1));
+        return;
+      }
+
+      // Execute the instruction through simulator
       console.error(
         `[TonX86] Executing: ${currentInstr.mnemonic} ${currentInstr.operands.join(", ")}`,
       );
@@ -248,24 +250,7 @@ export class TonX86DebugSession extends DebugSession {
         return;
       }
 
-      // Advance to next instruction
       this.instructionPointer++;
-
-      // Now check if the NEXT instruction has a breakpoint
-      if (this.instructionPointer < this.instructions.length) {
-        const nextInstr = this.instructions[this.instructionPointer];
-        if (this.breakpoints.has(nextInstr.line)) {
-          console.error(
-            "[TonX86] Hit breakpoint at next line",
-            nextInstr.line,
-          );
-          this.currentLine = nextInstr.line;
-
-          // Send stopped event at breakpoint
-          this.sendEvent(new StoppedEvent("breakpoint", 1));
-          return;
-        }
-      }
     }
 
     // If we reach here, no HLT was found - program ended
@@ -613,22 +598,9 @@ export class TonX86DebugSession extends DebugSession {
   protected configurationDoneRequest(
     response: DebugProtocol.ConfigurationDoneResponse,
   ): void {
-    console.error(
-      "[TonX86] Configuration done, shouldAutoStart=",
-      this.shouldAutoStart,
-    );
+    console.error("[TonX86] Configuration done");
     this.configurationDone = true;
     this.sendResponse(response);
-
-    // If we should auto-start, do it now that configuration is complete
-    if (this.shouldAutoStart) {
-      console.error(
-        "[TonX86] Configuration complete, calling continueExecution",
-      );
-      this.continueExecution();
-    } else {
-      console.error("[TonX86] shouldAutoStart is FALSE, not auto-starting");
-    }
   }
 }
 
