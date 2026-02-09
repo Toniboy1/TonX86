@@ -1,162 +1,174 @@
-import * as vscode from 'vscode';
+import * as vscode from "vscode";
 
 /**
  * LCD Configuration interface
  */
 interface LCDConfig {
-	enabled: boolean;
-	width: number;
-	height: number;
+  enabled: boolean;
+  width: number;
+  height: number;
 }
 
 /**
  * Validate and normalize LCD configuration
  */
 function getLCDConfig(): LCDConfig {
-	const config = vscode.workspace.getConfiguration('tonx86.lcd');
-	
-	const enabled = config.get<boolean>('enabled', true);
-	let width = config.get<number>('width', 16);
-	let height = config.get<number>('height', 16);
+  const config = vscode.workspace.getConfiguration("tonx86.lcd");
 
-	// Validate width
-	if (width < 2 || width > 256 || !Number.isInteger(width)) {
-		width = 16;
-		console.warn('Invalid LCD width, resetting to default (16)');
-	}
+  const enabled = config.get<boolean>("enabled", true);
+  let width = config.get<number>("width", 16);
+  let height = config.get<number>("height", 16);
 
-	// Validate height
-	if (height < 2 || height > 256 || !Number.isInteger(height)) {
-		height = 16;
-		console.warn('Invalid LCD height, resetting to default (16)');
-	}
+  // Validate width
+  if (width < 2 || width > 256 || !Number.isInteger(width)) {
+    width = 16;
+    console.warn("Invalid LCD width, resetting to default (16)");
+  }
 
-	return { enabled, width, height };
+  // Validate height
+  if (height < 2 || height > 256 || !Number.isInteger(height)) {
+    height = 16;
+    console.warn("Invalid LCD height, resetting to default (16)");
+  }
+
+  return { enabled, width, height };
 }
 
 /**
  * Register data for tree view
  */
 interface RegisterItem {
-	name: string;
-	value: number;
+  name: string;
+  value: number;
 }
 
 /**
  * Tree Data Provider for Registers
  */
 class RegistersProvider implements vscode.TreeDataProvider<RegisterItem> {
-	private _onDidChangeTreeData = new vscode.EventEmitter<RegisterItem | undefined>();
-	readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
+  private _onDidChangeTreeData = new vscode.EventEmitter<
+    RegisterItem | undefined
+  >();
+  readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
 
-	private registers: RegisterItem[] = [
-		{ name: 'EAX', value: 0 },
-		{ name: 'ECX', value: 0 },
-		{ name: 'EDX', value: 0 },
-		{ name: 'EBX', value: 0 },
-		{ name: 'ESP', value: 0 },
-		{ name: 'EBP', value: 0 },
-		{ name: 'ESI', value: 0 },
-		{ name: 'EDI', value: 0 },
-	];
+  private registers: RegisterItem[] = [
+    { name: "EAX", value: 0 },
+    { name: "ECX", value: 0 },
+    { name: "EDX", value: 0 },
+    { name: "EBX", value: 0 },
+    { name: "ESP", value: 0 },
+    { name: "EBP", value: 0 },
+    { name: "ESI", value: 0 },
+    { name: "EDI", value: 0 },
+  ];
 
-	getTreeItem(element: RegisterItem): vscode.TreeItem {
-		const item = new vscode.TreeItem(`${element.name}: 0x${element.value.toString(16).padStart(8, '0')}`);
-		item.collapsibleState = vscode.TreeItemCollapsibleState.None;
-		return item;
-	}
+  getTreeItem(element: RegisterItem): vscode.TreeItem {
+    const item = new vscode.TreeItem(
+      `${element.name}: 0x${element.value.toString(16).padStart(8, "0")}`,
+    );
+    item.collapsibleState = vscode.TreeItemCollapsibleState.None;
+    return item;
+  }
 
-	getChildren(): RegisterItem[] {
-		return this.registers;
-	}
+  getChildren(): RegisterItem[] {
+    return this.registers;
+  }
 
-	updateRegisters(values: number[]): void {
-		this.registers.forEach((reg, index) => {
-			if (index < values.length) {
-				reg.value = values[index];
-			}
-		});
-		this._onDidChangeTreeData.fire(undefined);
-	}
+  updateRegisters(values: number[]): void {
+    this.registers.forEach((reg, index) => {
+      if (index < values.length) {
+        reg.value = values[index];
+      }
+    });
+    this._onDidChangeTreeData.fire(undefined);
+  }
 }
 
 /**
  * Memory range for display
  */
 interface MemoryRange {
-	address: string;
-	value: string;
+  address: string;
+  value: string;
 }
 
 /**
  * Tree Data Provider for Memory
  */
 class MemoryProvider implements vscode.TreeDataProvider<MemoryRange> {
-	private _onDidChangeTreeData = new vscode.EventEmitter<MemoryRange | undefined>();
-	readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
+  private _onDidChangeTreeData = new vscode.EventEmitter<
+    MemoryRange | undefined
+  >();
+  readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
 
-	private memory: MemoryRange[] = [];
+  private memory: MemoryRange[] = [];
 
-	constructor(private startAddr = 0, private length = 16) {
-		this.initializeMemory();
-	}
+  constructor(
+    private startAddr = 0,
+    private length = 16,
+  ) {
+    this.initializeMemory();
+  }
 
-	private initializeMemory(): void {
-		this.memory = [];
-		for (let i = 0; i < this.length; i++) {
-			this.memory.push({
-				address: `0x${(this.startAddr + i).toString(16).padStart(4, '0')}`,
-				value: '0x00'
-			});
-		}
-	}
+  private initializeMemory(): void {
+    this.memory = [];
+    for (let i = 0; i < this.length; i++) {
+      this.memory.push({
+        address: `0x${(this.startAddr + i).toString(16).padStart(4, "0")}`,
+        value: "0x00",
+      });
+    }
+  }
 
-	getTreeItem(element: MemoryRange): vscode.TreeItem {
-		const item = new vscode.TreeItem(`${element.address}: ${element.value}`);
-		item.collapsibleState = vscode.TreeItemCollapsibleState.None;
-		return item;
-	}
+  getTreeItem(element: MemoryRange): vscode.TreeItem {
+    const item = new vscode.TreeItem(`${element.address}: ${element.value}`);
+    item.collapsibleState = vscode.TreeItemCollapsibleState.None;
+    return item;
+  }
 
-	getChildren(): MemoryRange[] {
-		return this.memory;
-	}
+  getChildren(): MemoryRange[] {
+    return this.memory;
+  }
 
-	updateMemory(data: Uint8Array): void {
-		data.forEach((value, index) => {
-			if (index < this.memory.length) {
-				this.memory[index].value = `0x${value.toString(16).padStart(2, '0')}`;
-			}
-		});
-		this._onDidChangeTreeData.fire(undefined);
-	}
+  updateMemory(data: Uint8Array): void {
+    data.forEach((value, index) => {
+      if (index < this.memory.length) {
+        this.memory[index].value = `0x${value.toString(16).padStart(2, "0")}`;
+      }
+    });
+    this._onDidChangeTreeData.fire(undefined);
+  }
 }
 
 /**
  * Webview Provider for LCD Display
  */
 class LCDViewProvider implements vscode.WebviewViewProvider {
-	public static readonly viewType = 'tonx86.lcd';
-	public static readonly panelViewType = 'tonx86.lcd.panel';
-	private lcdConfig: LCDConfig;
-	private lcdPanel: vscode.WebviewPanel | undefined;
+  public static readonly viewType = "tonx86.lcd";
+  public static readonly panelViewType = "tonx86.lcd.panel";
+  private lcdConfig: LCDConfig;
+  private lcdPanel: vscode.WebviewPanel | undefined;
 
-	constructor() {
-		this.lcdConfig = getLCDConfig();
-	}
+  constructor() {
+    this.lcdConfig = getLCDConfig();
+  }
 
-	resolveWebviewView(webviewView: vscode.WebviewView): void {
-		webviewView.webview.options = {
-			enableScripts: true,
-		};
+  resolveWebviewView(webviewView: vscode.WebviewView): void {
+    webviewView.webview.options = {
+      enableScripts: true,
+    };
 
-		webviewView.webview.html = this.getHtmlForWebview();
-	}
+    webviewView.webview.html = this.getHtmlForWebview();
+  }
 
-	private getHtmlForWebview(): string {
-		const { width, height } = this.lcdConfig;
-		const pixelSize = Math.max(10, Math.min(30, Math.floor(600 / Math.max(width, height))));
+  private getHtmlForWebview(): string {
+    const { width, height } = this.lcdConfig;
+    const pixelSize = Math.max(
+      10,
+      Math.min(30, Math.floor(600 / Math.max(width, height))),
+    );
 
-		return `
+    return `
 			<!DOCTYPE html>
 			<html lang="en">
 			<head>
@@ -191,67 +203,67 @@ class LCDViewProvider implements vscode.WebviewViewProvider {
 			</body>
 			</html>
 		`;
-	}
+  }
 
-	updateLCDConfig(): void {
-		this.lcdConfig = getLCDConfig();
-	}
+  updateLCDConfig(): void {
+    this.lcdConfig = getLCDConfig();
+  }
 
-	getLCDConfig(): LCDConfig {
-		return this.lcdConfig;
-	}
+  getLCDConfig(): LCDConfig {
+    return this.lcdConfig;
+  }
 
-	popOut(): void {
-		if (this.lcdPanel) {
-			this.lcdPanel.reveal(vscode.ViewColumn.Beside);
-			return;
-		}
+  popOut(): void {
+    if (this.lcdPanel) {
+      this.lcdPanel.reveal(vscode.ViewColumn.Beside);
+      return;
+    }
 
-		this.lcdPanel = vscode.window.createWebviewPanel(
-			LCDViewProvider.panelViewType,
-			'TonX86 LCD Display',
-			vscode.ViewColumn.Beside,
-			{ enableScripts: true }
-		);
+    this.lcdPanel = vscode.window.createWebviewPanel(
+      LCDViewProvider.panelViewType,
+      "TonX86 LCD Display",
+      vscode.ViewColumn.Beside,
+      { enableScripts: true },
+    );
 
-		this.lcdPanel.webview.html = this.getHtmlForWebview();
+    this.lcdPanel.webview.html = this.getHtmlForWebview();
 
-		// Handle panel disposal
-		this.lcdPanel.onDidDispose(() => {
-			this.lcdPanel = undefined;
-		});
-	}
+    // Handle panel disposal
+    this.lcdPanel.onDidDispose(() => {
+      this.lcdPanel = undefined;
+    });
+  }
 
-	popIn(): void {
-		if (this.lcdPanel) {
-			this.lcdPanel.dispose();
-			this.lcdPanel = undefined;
-		}
-	}
+  popIn(): void {
+    if (this.lcdPanel) {
+      this.lcdPanel.dispose();
+      this.lcdPanel = undefined;
+    }
+  }
 
-	isPopped(): boolean {
-		return this.lcdPanel !== undefined;
-	}
+  isPopped(): boolean {
+    return this.lcdPanel !== undefined;
+  }
 }
 
 /**
  * Webview Provider for ISA Documentation
  */
 class DocsViewProvider implements vscode.WebviewViewProvider {
-	public static readonly viewType = 'tonx86.docs';
+  public static readonly viewType = "tonx86.docs";
 
-	constructor() {}
+  constructor() {}
 
-	resolveWebviewView(webviewView: vscode.WebviewView): void {
-		webviewView.webview.options = {
-			enableScripts: true,
-		};
+  resolveWebviewView(webviewView: vscode.WebviewView): void {
+    webviewView.webview.options = {
+      enableScripts: true,
+    };
 
-		webviewView.webview.html = this.getHtmlForWebview();
-	}
+    webviewView.webview.html = this.getHtmlForWebview();
+  }
 
-	private getHtmlForWebview(): string {
-		return `
+  private getHtmlForWebview(): string {
+    return `
 			<!DOCTYPE html>
 			<html lang="en">
 			<head>
@@ -305,7 +317,7 @@ class DocsViewProvider implements vscode.WebviewViewProvider {
 			</body>
 			</html>
 		`;
-	}
+  }
 }
 
 // Global state
@@ -315,103 +327,105 @@ const memoryProviderB = new MemoryProvider(0x0000, 16);
 let lcdProvider: LCDViewProvider;
 
 export function activate(context: vscode.ExtensionContext): void {
-	console.log('TonX86 extension is now active');
+  console.log("TonX86 extension is now active");
 
-	// Register tree data providers
-	vscode.window.registerTreeDataProvider('tonx86.registers', registersProvider);
-	vscode.window.registerTreeDataProvider('tonx86.memoryA', memoryProviderA);
-	vscode.window.registerTreeDataProvider('tonx86.memoryB', memoryProviderB);
+  // Register tree data providers
+  vscode.window.registerTreeDataProvider("tonx86.registers", registersProvider);
+  vscode.window.registerTreeDataProvider("tonx86.memoryA", memoryProviderA);
+  vscode.window.registerTreeDataProvider("tonx86.memoryB", memoryProviderB);
 
-	// Register webview providers
-	lcdProvider = new LCDViewProvider();
-	context.subscriptions.push(
-		vscode.window.registerWebviewViewProvider(
-			LCDViewProvider.viewType,
-			lcdProvider,
-		),
-	);
+  // Register webview providers
+  lcdProvider = new LCDViewProvider();
+  context.subscriptions.push(
+    vscode.window.registerWebviewViewProvider(
+      LCDViewProvider.viewType,
+      lcdProvider,
+    ),
+  );
 
-	context.subscriptions.push(
-		vscode.window.registerWebviewViewProvider(
-			DocsViewProvider.viewType,
-			new DocsViewProvider(),
-		),
-	);
+  context.subscriptions.push(
+    vscode.window.registerWebviewViewProvider(
+      DocsViewProvider.viewType,
+      new DocsViewProvider(),
+    ),
+  );
 
-	// Monitor configuration changes
-	context.subscriptions.push(
-		vscode.workspace.onDidChangeConfiguration((event) => {
-			if (event.affectsConfiguration('tonx86.lcd')) {
-				console.log('LCD configuration changed');
-				lcdProvider.updateLCDConfig();
-				// Reload the webview
-				vscode.window.showInformationMessage('LCD configuration updated. Reload the LCD view to apply changes.');
-			}
-		}),
-	);
+  // Monitor configuration changes
+  context.subscriptions.push(
+    vscode.workspace.onDidChangeConfiguration((event) => {
+      if (event.affectsConfiguration("tonx86.lcd")) {
+        console.log("LCD configuration changed");
+        lcdProvider.updateLCDConfig();
+        // Reload the webview
+        vscode.window.showInformationMessage(
+          "LCD configuration updated. Reload the LCD view to apply changes.",
+        );
+      }
+    }),
+  );
 
-	// Register commands
-	context.subscriptions.push(
-		vscode.commands.registerCommand('tonx86.assemble', () => {
-			vscode.window.showInformationMessage('TonX86: Assemble');
-		}),
-	);
+  // Register commands
+  context.subscriptions.push(
+    vscode.commands.registerCommand("tonx86.assemble", () => {
+      vscode.window.showInformationMessage("TonX86: Assemble");
+    }),
+  );
 
-	context.subscriptions.push(
-		vscode.commands.registerCommand('tonx86.run', () => {
-			vscode.window.showInformationMessage('TonX86: Run');
-			// Update views (non-blocking)
-			registersProvider.updateRegisters([10, 20, 30, 40, 50, 60, 70, 80]);
-		}),
-	);
+  context.subscriptions.push(
+    vscode.commands.registerCommand("tonx86.run", () => {
+      vscode.window.showInformationMessage("TonX86: Run");
+      // Update views (non-blocking)
+      registersProvider.updateRegisters([10, 20, 30, 40, 50, 60, 70, 80]);
+    }),
+  );
 
-	context.subscriptions.push(
-		vscode.commands.registerCommand('tonx86.pause', () => {
-			vscode.window.showInformationMessage('TonX86: Pause');
-		}),
-	);
+  context.subscriptions.push(
+    vscode.commands.registerCommand("tonx86.pause", () => {
+      vscode.window.showInformationMessage("TonX86: Pause");
+    }),
+  );
 
-	context.subscriptions.push(
-		vscode.commands.registerCommand('tonx86.stepOver', () => {
-			vscode.window.showInformationMessage('TonX86: Step Over');
-		}),
-	);
+  context.subscriptions.push(
+    vscode.commands.registerCommand("tonx86.stepOver", () => {
+      vscode.window.showInformationMessage("TonX86: Step Over");
+    }),
+  );
 
-	context.subscriptions.push(
-		vscode.commands.registerCommand('tonx86.stepIn', () => {
-			vscode.window.showInformationMessage('TonX86: Step In');
-		}),
-	);
+  context.subscriptions.push(
+    vscode.commands.registerCommand("tonx86.stepIn", () => {
+      vscode.window.showInformationMessage("TonX86: Step In");
+    }),
+  );
 
-	context.subscriptions.push(
-		vscode.commands.registerCommand('tonx86.stepOut', () => {
-			vscode.window.showInformationMessage('TonX86: Step Out');
-		}),
-	);
+  context.subscriptions.push(
+    vscode.commands.registerCommand("tonx86.stepOut", () => {
+      vscode.window.showInformationMessage("TonX86: Step Out");
+    }),
+  );
 
-	context.subscriptions.push(
-		vscode.commands.registerCommand('tonx86.reset', () => {
-			vscode.window.showInformationMessage('TonX86: Reset');
-			registersProvider.updateRegisters([0, 0, 0, 0, 0, 0, 0, 0]);
-		}),
-	);
+  context.subscriptions.push(
+    vscode.commands.registerCommand("tonx86.reset", () => {
+      vscode.window.showInformationMessage("TonX86: Reset");
+      registersProvider.updateRegisters([0, 0, 0, 0, 0, 0, 0, 0]);
+    }),
+  );
 
-	// LCD pop out/pop in commands
-	context.subscriptions.push(
-		vscode.commands.registerCommand('tonx86.lcdPopOut', () => {
-			console.log('LCD: Pop out');
-			lcdProvider.popOut();
-		}),
-	);
+  // LCD pop out/pop in commands
+  context.subscriptions.push(
+    vscode.commands.registerCommand("tonx86.lcdPopOut", () => {
+      console.log("LCD: Pop out");
+      lcdProvider.popOut();
+    }),
+  );
 
-	context.subscriptions.push(
-		vscode.commands.registerCommand('tonx86.lcdPopIn', () => {
-			console.log('LCD: Pop in');
-			lcdProvider.popIn();
-		}),
-	);
+  context.subscriptions.push(
+    vscode.commands.registerCommand("tonx86.lcdPopIn", () => {
+      console.log("LCD: Pop in");
+      lcdProvider.popIn();
+    }),
+  );
 }
 
 export function deactivate(): void {
-	console.log('TonX86 extension is now deactive');
+  console.log("TonX86 extension is now deactive");
 }
