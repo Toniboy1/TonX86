@@ -76,9 +76,9 @@ jobs:
       run: |
         npm ci
         npm run build
-        cd packages/extension
         npm install -g @vscode/vsce
-        vsce package --out ../../tonx86-${{ needs.check-version.outputs.version }}.vsix
+        cd packages/extension
+        vsce package -o ../../tonx86-${{ needs.check-version.outputs.version }}.vsix
     
     - name: Upload Extension to Release
       uses: softprops/action-gh-release@v1
