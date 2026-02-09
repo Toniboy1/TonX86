@@ -225,17 +225,7 @@ export class TonX86DebugSession extends DebugSession {
     while (this.instructionPointer < this.instructions.length) {
       const currentInstr = this.instructions[this.instructionPointer];
 
-      // Check if we hit a breakpoint
-      if (this.breakpoints.has(currentInstr.line)) {
-        console.error("[TonX86] Hit breakpoint at line", currentInstr.line);
-        this.currentLine = currentInstr.line;
-
-        // Send stopped event at breakpoint
-        this.sendEvent(new StoppedEvent("breakpoint", 1));
-        return;
-      }
-
-      // Execute the instruction through simulator
+      // Execute the instruction through simulator FIRST
       console.error(
         `[TonX86] Executing: ${currentInstr.mnemonic} ${currentInstr.operands.join(", ")}`,
       );
@@ -244,20 +234,38 @@ export class TonX86DebugSession extends DebugSession {
         currentInstr.operands,
       );
 
+      this.currentLine = currentInstr.line;
+
       // Check if we hit HLT
       if (currentInstr.mnemonic === "HLT") {
         console.error(
           "[TonX86] Program halted at HLT instruction at line",
           currentInstr.line,
         );
-        this.currentLine = currentInstr.line;
 
         // Terminate the debug session
         this.sendEvent(new TerminatedEvent());
         return;
       }
 
+      // Advance to next instruction
       this.instructionPointer++;
+
+      // Now check if the NEXT instruction has a breakpoint
+      if (this.instructionPointer < this.instructions.length) {
+        const nextInstr = this.instructions[this.instructionPointer];
+        if (this.breakpoints.has(nextInstr.line)) {
+          console.error(
+            "[TonX86] Hit breakpoint at next line",
+            nextInstr.line,
+          );
+          this.currentLine = nextInstr.line;
+
+          // Send stopped event at breakpoint
+          this.sendEvent(new StoppedEvent("breakpoint", 1));
+          return;
+        }
+      }
     }
 
     // If we reach here, no HLT was found - program ended
