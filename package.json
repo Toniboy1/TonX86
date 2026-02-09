@@ -20,7 +20,7 @@
     "packages/*"
   ],
   "scripts": {
-    "build": "npm -ws run build",
+    "build": "npm run build -w packages/simcore && npm -ws run build",
     "watch": "npm -ws run watch",
     "dev": "npm run watch",
     "test": "npm -ws run test",

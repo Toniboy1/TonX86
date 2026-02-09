@@ -12,7 +12,12 @@
     "moduleResolution": "node",
     "declaration": true,
     "declarationMap": true,
-    "sourceMap": true
+    "sourceMap": true,
+    "composite": true,
+    "baseUrl": ".",
+    "paths": {
+      "@tonx86/simcore": ["../simcore/src"]
+    }
   },
   "references": [
     { "path": "../simcore" }

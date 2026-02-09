@@ -2,8 +2,8 @@
   "name": "@tonx86/simcore",
   "version": "0.0.1",
   "description": "TonX86 Simulator Core - x86-like execution engine",
-  "main": "out/simulator.js",
-  "types": "out/simulator.d.ts",
+  "main": "out/index.js",
+  "types": "out/index.d.ts",
   "scripts": {
     "build": "tsc",
     "watch": "tsc -w",
