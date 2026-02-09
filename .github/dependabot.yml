@@ -6,15 +6,25 @@ updates:
     schedule:
       interval: "weekly"
       day: "monday"
-    open-pull-requests-limit: 2
+    open-pull-requests-limit: 5
     labels:
       - "dependencies"
       - "automated"
+    auto-merge: true
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
     groups:
-      prod-dependencies:
-        dependency-type: "production"
-      dev-dependencies:
+      development-dependencies:
         dependency-type: "development"
+        update-types:
+          - "minor"
+          - "patch"
+      production-dependencies:
+        dependency-type: "production"
+        update-types:
+          - "minor"
+          - "patch"
   
   # Debug adapter package
   - package-ecosystem: "npm"
@@ -22,10 +32,14 @@ updates:
     schedule:
       interval: "weekly"
       day: "monday"
-    open-pull-requests-limit: 1
+    open-pull-requests-limit: 3
     labels:
       - "dependencies"
       - "debug-adapter"
+    auto-merge: true
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
   
   # Extension package
   - package-ecosystem: "npm"
@@ -33,10 +47,14 @@ updates:
     schedule:
       interval: "weekly"
       day: "monday"
-    open-pull-requests-limit: 1
+    open-pull-requests-limit: 3
     labels:
       - "dependencies"
       - "extension"
+    auto-merge: true
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
   
   # Language server package
   - package-ecosystem: "npm"
@@ -44,10 +62,14 @@ updates:
     schedule:
       interval: "weekly"
       day: "monday"
-    open-pull-requests-limit: 1
+    open-pull-requests-limit: 3
     labels:
       - "dependencies"
       - "language-server"
+    auto-merge: true
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
   
   # Simcore package
   - package-ecosystem: "npm"
@@ -55,10 +77,14 @@ updates:
     schedule:
       interval: "weekly"
       day: "monday"
-    open-pull-requests-limit: 1
+    open-pull-requests-limit: 3
     labels:
       - "dependencies"
       - "simcore"
+    auto-merge: true
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
   
   # Docs package
   - package-ecosystem: "npm"
@@ -66,10 +92,14 @@ updates:
     schedule:
       interval: "weekly"
       day: "monday"
-    open-pull-requests-limit: 1
+    open-pull-requests-limit: 3
     labels:
       - "dependencies"
       - "docs"
+    auto-merge: true
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
   
   # GitHub Actions
   - package-ecosystem: "github-actions"
@@ -79,3 +109,7 @@ updates:
     labels:
       - "dependencies"
       - "github-actions"
+    auto-merge: true
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
