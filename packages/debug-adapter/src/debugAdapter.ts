@@ -214,7 +214,6 @@ export class TonX86DebugSession extends DebugSession {
     console.error("[TonX86]   isFirstContinue=", this.isFirstContinue);
 
     // Only advance past current instruction if NOT the first continue
-    // (first continue starts at instruction 0 which is where we want to be)
     if (!this.isFirstContinue) {
       console.error(
         "[TonX86] Not first continue, advancing instruction pointer",
@@ -231,7 +230,7 @@ export class TonX86DebugSession extends DebugSession {
     while (this.instructionPointer < this.instructions.length) {
       const currentInstr = this.instructions[this.instructionPointer];
 
-      // Check if we hit a breakpoint
+      // Check if we hit a breakpoint BEFORE executing
       if (this.breakpoints.has(currentInstr.line)) {
         console.error("[TonX86] Hit breakpoint at line", currentInstr.line);
         this.currentLine = currentInstr.line;
@@ -265,13 +264,7 @@ export class TonX86DebugSession extends DebugSession {
       }
 
       // Handle jump instructions
-      if (
-        currentInstr.mnemonic === "JMP" ||
-        currentInstr.mnemonic === "JE" ||
-        currentInstr.mnemonic === "JZ" ||
-        currentInstr.mnemonic === "JNE" ||
-        currentInstr.mnemonic === "JNZ"
-      ) {
+      if (["JMP", "JE", "JZ", "JNE", "JNZ"].includes(currentInstr.mnemonic)) {
         const targetLabel = currentInstr.operands[0];
         const targetIndex = this.labels.get(targetLabel);
 
@@ -530,44 +523,81 @@ export class TonX86DebugSession extends DebugSession {
       this.instructionPointer,
     );
 
-    // Check if current instruction is HLT (halt) - end of program
-    const currentInstr = this.instructions[this.instructionPointer];
-    if (currentInstr && currentInstr.mnemonic === "HLT") {
-      console.error(
-        "[TonX86] Program halted at HLT instruction on line",
-        this.currentLine,
-      );
-      this.sendResponse(response);
-
-      // Terminate the debug session
-      setTimeout(() => {
-        console.error("[TonX86] Sending TerminatedEvent");
-        this.sendEvent(new TerminatedEvent());
-      }, 50);
-      return;
-    }
-
-    // Move to next instruction
-    if (this.instructionPointer + 1 < this.instructions.length) {
-      this.instructionPointer++;
-      this.currentLine = this.instructions[this.instructionPointer].line;
-      const instr = this.instructions[this.instructionPointer];
-      console.error(
-        "[TonX86] Stepped to line",
-        this.currentLine,
-        "instruction:",
-        instr.raw,
-      );
-    } else {
-      console.error("[TonX86] Reached end of program");
-    }
-
     this.sendResponse(response);
 
-    // Send stopped event to notify debugger
-    setTimeout(() => {
-      this.sendEvent(new StoppedEvent("step", 1));
-    }, 50);
+    // Execute current instruction, then stop
+    if (this.instructionPointer < this.instructions.length) {
+      const currentInstr = this.instructions[this.instructionPointer];
+
+      console.error(
+        `[TonX86] Executing (next): ${currentInstr.mnemonic} ${currentInstr.operands.join(", ")}`,
+      );
+
+      // Execute the instruction
+      this.simulator.executeInstruction(
+        currentInstr.mnemonic,
+        currentInstr.operands,
+      );
+
+      this.currentLine = currentInstr.line;
+
+      // Check if we hit HLT
+      if (currentInstr.mnemonic === "HLT") {
+        console.error(
+          "[TonX86] Program halted at HLT instruction at line",
+          currentInstr.line,
+        );
+        setTimeout(() => {
+          this.sendEvent(new TerminatedEvent());
+        }, 50);
+        return;
+      }
+
+      // Handle jump instructions
+      if (["JMP", "JE", "JZ", "JNE", "JNZ"].includes(currentInstr.mnemonic)) {
+        const targetLabel = currentInstr.operands[0];
+        const targetIndex = this.labels.get(targetLabel);
+
+        if (targetIndex !== undefined) {
+          const shouldJump =
+            currentInstr.mnemonic === "JMP" ||
+            (["JE", "JZ"].includes(currentInstr.mnemonic) &&
+              this.isZeroFlagSet()) ||
+            (["JNE", "JNZ"].includes(currentInstr.mnemonic) &&
+              !this.isZeroFlagSet());
+
+          if (shouldJump) {
+            console.error(
+              `[TonX86] Jump taken to label "${targetLabel}" at instruction index ${targetIndex}`,
+            );
+            this.instructionPointer = targetIndex;
+          } else {
+            console.error(
+              `[TonX86] Conditional jump not taken (label: ${targetLabel})`,
+            );
+            this.instructionPointer++;
+          }
+        } else {
+          console.error(
+            `[TonX86] Jump target "${targetLabel}" not found in labels`,
+          );
+          this.instructionPointer++;
+        }
+      } else {
+        // Move to next instruction for non-jump instructions
+        this.instructionPointer++;
+      }
+
+      // Send stopped event
+      setTimeout(() => {
+        this.sendEvent(new StoppedEvent("step", 1));
+      }, 50);
+    } else {
+      console.error("[TonX86] Reached end of program");
+      setTimeout(() => {
+        this.sendEvent(new TerminatedEvent());
+      }, 50);
+    }
   }
 
   protected stepInRequest(
@@ -581,44 +611,81 @@ export class TonX86DebugSession extends DebugSession {
       this.instructionPointer,
     );
 
-    // Check if current instruction is HLT (halt) - end of program
-    const currentInstr = this.instructions[this.instructionPointer];
-    if (currentInstr && currentInstr.mnemonic === "HLT") {
-      console.error(
-        "[TonX86] Program halted at HLT instruction on line",
-        this.currentLine,
-      );
-      this.sendResponse(response);
-
-      // Terminate the debug session
-      setTimeout(() => {
-        console.error("[TonX86] Sending TerminatedEvent");
-        this.sendEvent(new TerminatedEvent());
-      }, 50);
-      return;
-    }
-
-    // For now, step in works same as step over (no function calls in assembly)
-    if (this.instructionPointer + 1 < this.instructions.length) {
-      this.instructionPointer++;
-      this.currentLine = this.instructions[this.instructionPointer].line;
-      const instr = this.instructions[this.instructionPointer];
-      console.error(
-        "[TonX86] Stepped to line",
-        this.currentLine,
-        "instruction:",
-        instr.raw,
-      );
-    } else {
-      console.error("[TonX86] Reached end of program");
-    }
-
     this.sendResponse(response);
 
-    // Send stopped event to notify debugger
-    setTimeout(() => {
-      this.sendEvent(new StoppedEvent("step", 1));
-    }, 50);
+    // Execute current instruction, then stop (same as next for our flat program)
+    if (this.instructionPointer < this.instructions.length) {
+      const currentInstr = this.instructions[this.instructionPointer];
+
+      console.error(
+        `[TonX86] Executing (stepIn): ${currentInstr.mnemonic} ${currentInstr.operands.join(", ")}`,
+      );
+
+      // Execute the instruction
+      this.simulator.executeInstruction(
+        currentInstr.mnemonic,
+        currentInstr.operands,
+      );
+
+      this.currentLine = currentInstr.line;
+
+      // Check if we hit HLT
+      if (currentInstr.mnemonic === "HLT") {
+        console.error(
+          "[TonX86] Program halted at HLT instruction at line",
+          currentInstr.line,
+        );
+        setTimeout(() => {
+          this.sendEvent(new TerminatedEvent());
+        }, 50);
+        return;
+      }
+
+      // Handle jump instructions
+      if (["JMP", "JE", "JZ", "JNE", "JNZ"].includes(currentInstr.mnemonic)) {
+        const targetLabel = currentInstr.operands[0];
+        const targetIndex = this.labels.get(targetLabel);
+
+        if (targetIndex !== undefined) {
+          const shouldJump =
+            currentInstr.mnemonic === "JMP" ||
+            (["JE", "JZ"].includes(currentInstr.mnemonic) &&
+              this.isZeroFlagSet()) ||
+            (["JNE", "JNZ"].includes(currentInstr.mnemonic) &&
+              !this.isZeroFlagSet());
+
+          if (shouldJump) {
+            console.error(
+              `[TonX86] Jump taken to label "${targetLabel}" at instruction index ${targetIndex}`,
+            );
+            this.instructionPointer = targetIndex;
+          } else {
+            console.error(
+              `[TonX86] Conditional jump not taken (label: ${targetLabel})`,
+            );
+            this.instructionPointer++;
+          }
+        } else {
+          console.error(
+            `[TonX86] Jump target "${targetLabel}" not found in labels`,
+          );
+          this.instructionPointer++;
+        }
+      } else {
+        // Move to next instruction for non-jump instructions
+        this.instructionPointer++;
+      }
+
+      // Send stopped event
+      setTimeout(() => {
+        this.sendEvent(new StoppedEvent("step", 1));
+      }, 50);
+    } else {
+      console.error("[TonX86] Reached end of program");
+      setTimeout(() => {
+        this.sendEvent(new TerminatedEvent());
+      }, 50);
+    }
   }
 
   protected stepOutRequest(
