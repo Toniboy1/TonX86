@@ -1,30 +1,50 @@
 {
-  "name": "@tonx86/extension",
+  "name": "tonx86",
+  "displayName": "TonX86",
+  "description": "Educational x86-like assembly environment for VS Code",
   "version": "0.0.1",
-  "description": "TonX86 VS Code Extension UI",
+  "publisher": "tonx86",
+  "engines": {
+    "vscode": "^1.84.0"
+  },
+  "categories": [
+    "Debuggers",
+    "Programming Languages",
+    "Education"
+  ],
+  "activationEvents": ["*"],
   "main": "out/extension.js",
-  "activationEvents": ["onLanguage:asm"],
   "contributes": {
     "commands": [
       {
         "command": "tonx86.run",
-        "title": "TonX86: Run"
+        "title": "TonX86: Run",
+        "category": "TonX86"
       },
       {
         "command": "tonx86.pause",
-        "title": "TonX86: Pause"
+        "title": "TonX86: Pause",
+        "category": "TonX86"
       },
       {
         "command": "tonx86.stepOver",
-        "title": "TonX86: Step Over"
+        "title": "TonX86: Step Over",
+        "category": "TonX86"
       },
       {
         "command": "tonx86.stepIn",
-        "title": "TonX86: Step In"
+        "title": "TonX86: Step In",
+        "category": "TonX86"
       },
       {
         "command": "tonx86.stepOut",
-        "title": "TonX86: Step Out"
+        "title": "TonX86: Step Out",
+        "category": "TonX86"
+      },
+      {
+        "command": "tonx86.reset",
+        "title": "TonX86: Reset",
+        "category": "TonX86"
       }
     ],
     "breakpoints": [
@@ -38,9 +58,6 @@
     "watch": "tsc -w",
     "lint": "eslint src",
     "test": "echo no tests"
-  },
-  "dependencies": {
-    "vscode": "^1.84.0"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",

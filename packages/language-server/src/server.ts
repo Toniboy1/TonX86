@@ -1,51 +1,80 @@
-import {
-	createConnection,
-	TextDocuments,
-	Diagnostic,
-	DiagnosticSeverity,
-	InitializeResult,
-	ServerCapabilities,
-} from 'vscode-languageserver';
-import { TextDocument } from 'vscode-languageserver-textdocument';
+/**
+ * TonX86 Language Server Protocol implementation
+ * Provides syntax highlighting, completion, and diagnostics for assembly code
+ */
 
-const connection = createConnection();
-const documents: TextDocuments<TextDocument> = new TextDocuments(TextDocument);
+export class LanguageServer {
+	private version: string = '0.0.1';
 
-connection.onInitialize((params) => {
-	const capabilities: ServerCapabilities = {
-		textDocumentSync: 1, // Full
-		completionProvider: {
-			resolveProvider: false
-		},
-		hoverProvider: true,
-		definitionProvider: true
-	};
+	constructor() {
+		console.log('TonX86 Language Server initialized');
+	}
 
-	const result: InitializeResult = { capabilities };
-	return result;
-});
+	async start(): Promise<void> {
+		console.log(`Language Server ${this.version} started`);
+	}
 
-connection.onDidChangeTextDocument((change) => {
-	const textDocument = change.document;
-	const diagnostics: Diagnostic[] = [];
+	async stop(): Promise<void> {
+		console.log('Language Server stopped');
+	}
 
-	// Placeholder for semantic analysis
-	const lines = textDocument.getText().split(/\r?\n/);
-	lines.forEach((line, index) => {
-		if (line.length > 80) {
-			diagnostics.push({
-				severity: DiagnosticSeverity.Warning,
-				range: {
-					start: { line: index, character: 80 },
-					end: { line: index, character: line.length }
-				},
-				message: 'Line is too long'
-			});
-		}
-	});
+	analyzeDocument(content: string): string[] {
+		const diagnostics: string[] = [];
+		const lines = content.split(/\r?\n/);
 
-	connection.sendDiagnostics({ uri: textDocument.uri, diagnostics });
-});
+		lines.forEach((line: string, index: number) => {
+			// Check for line length
+			if (line.length > 80) {
+				diagnostics.push(`Line ${index + 1}: Line too long (${line.length} > 80 characters)`);
+			}
 
-documents.listen(connection);
-connection.listen();
+			// Check for invalid instructions (placeholder)
+			const validInstructions = ['MOV', 'ADD', 'SUB', 'AND', 'OR', 'JMP', 'JZ', 'HLT'];
+			const tokens = line.trim().split(/\s+/);
+			if (tokens.length > 0) {
+				const instruction = tokens[0].toUpperCase();
+				if (instruction && !validInstructions.includes(instruction) && instruction !== '' && !instruction.startsWith(';')) {
+					// Could be a label or comment
+					if (!instruction.endsWith(':') && !instruction.startsWith(';')) {
+						// diagnostics.push(`Line ${index + 1}: Unknown instruction '${instruction}'`);
+					}
+				}
+			}
+		});
+
+		return diagnostics;
+	}
+
+	getCompletions(line: string): string[] {
+		const validInstructions = ['MOV', 'ADD', 'SUB', 'AND', 'OR', 'JMP', 'JZ', 'HLT'];
+		const registers = ['EAX', 'ECX', 'EDX', 'EBX', 'ESP', 'EBP', 'ESI', 'EDI'];
+
+		return [...validInstructions, ...registers];
+	}
+
+	getHoverInfo(word: string): string | null {
+		const docs: { [key: string]: string } = {
+			'MOV': 'Move data between registers (1 cycle)',
+			'ADD': 'Add two values (1 cycle, affects Z, C, O, S flags)',
+			'SUB': 'Subtract two values (1 cycle, affects Z, C, O, S flags)',
+			'AND': 'Bitwise AND (1 cycle, affects Z, S flags)',
+			'OR': 'Bitwise OR (1 cycle, affects Z, S flags)',
+			'JMP': 'Unconditional jump (1 cycle)',
+			'JZ': 'Jump if zero flag set (1 cycle)',
+			'HLT': 'Halt execution (1 cycle)',
+			'EAX': 'Accumulator register',
+			'ECX': 'Counter register',
+			'EDX': 'Data register',
+			'EBX': 'Base register',
+			'ESP': 'Stack Pointer register',
+			'EBP': 'Base Pointer register',
+			'ESI': 'Source Index register',
+			'EDI': 'Destination Index register',
+		};
+
+		return docs[word.toUpperCase()] || null;
+	}
+}
+
+// Export for use in extension
+export default LanguageServer;

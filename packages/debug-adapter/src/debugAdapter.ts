@@ -9,11 +9,7 @@ export class TonX86DebugSession extends DebugSession {
 	protected initializeRequest(response: DebugProtocol.InitializeResponse, args: DebugProtocol.InitializeRequestArguments): void {
 		response.body = {
 			supportsConfigurationDoneRequest: true,
-			supportsSetBreakpoint: true,
-			supportsStepInRequest: true,
-			supportsStepOverRequest: true,
-			supportsStepOutRequest: true,
-			supportsSingleThreadExecutionRequests: true,
+			supportsSetVariable: true,
 		};
 		this.sendResponse(response);
 	}
