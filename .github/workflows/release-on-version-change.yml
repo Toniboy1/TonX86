@@ -75,10 +75,8 @@ jobs:
     - name: Build and Package Extension
       run: |
         npm ci
-        npm run build
-        npm install -g @vscode/vsce
-        cd packages/extension
-        vsce package -o ../../tonx86-${{ needs.check-version.outputs.version }}.vsix
+        npm run package
+        mv packages/extension/tonx86-*.vsix tonx86-${{ needs.check-version.outputs.version }}.vsix
     
     - name: Upload Extension to Release
       uses: softprops/action-gh-release@v1
@@ -91,6 +89,6 @@ jobs:
     - name: Publish to VS Code Marketplace
       run: |
         cd packages/extension
-        npx @vscode/vsce publish -p ${{ secrets.VSCE_PAT }}
+        npx @vscode/vsce publish --no-dependencies -p ${{ secrets.VSCE_PAT }}
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
