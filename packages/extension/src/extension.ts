@@ -1,4 +1,11 @@
 import * as vscode from "vscode";
+import * as path from "path";
+import {
+  LanguageClient,
+  LanguageClientOptions,
+  ServerOptions,
+  TransportKind,
+} from "vscode-languageclient/node";
 
 /**
  * LCD Configuration interface
@@ -546,9 +553,45 @@ const memoryProviderA = new MemoryProvider(0x0000, 16);
 const memoryProviderB = new MemoryProvider(0x0000, 16);
 let lcdProvider: LCDViewProvider;
 let currentDebugSession: vscode.DebugSession | undefined;
+let client: LanguageClient;
 
 export function activate(context: vscode.ExtensionContext): void {
   console.log("TonX86 extension is now active");
+
+  // Initialize Language Server
+  const serverModule = context.asAbsolutePath(
+    path.join("dist", "languageServer.js"),
+  );
+
+  // Server options
+  const serverOptions: ServerOptions = {
+    run: { module: serverModule, transport: TransportKind.ipc },
+    debug: {
+      module: serverModule,
+      transport: TransportKind.ipc,
+      options: { execArgv: ["--nolazy", "--inspect=6009"] },
+    },
+  };
+
+  // Client options
+  const clientOptions: LanguageClientOptions = {
+    documentSelector: [{ scheme: "file", language: "tonx86" }],
+    synchronize: {
+      fileEvents: vscode.workspace.createFileSystemWatcher("**/*.asm"),
+    },
+  };
+
+  // Create the language client
+  client = new LanguageClient(
+    "tonx86LanguageServer",
+    "TonX86 Language Server",
+    serverOptions,
+    clientOptions,
+  );
+
+  // Start the client (and the server)
+  client.start();
+  console.log("TonX86 Language Server started");
 
   // Register tree data providers
   vscode.window.registerTreeDataProvider("tonx86.registers", registersProvider);
@@ -703,6 +746,10 @@ export function activate(context: vscode.ExtensionContext): void {
   );
 }
 
-export function deactivate(): void {
-  console.log("TonX86 extension is now deactive");
+export function deactivate(): Thenable<void> | undefined {
+  console.log("TonX86 extension is now deactivated");
+  if (!client) {
+    return undefined;
+  }
+  return client.stop();
 }

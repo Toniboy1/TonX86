@@ -73,6 +73,30 @@
       ]
     },
     {
+      "mnemonic": "CMP",
+      "opcode": "0x39",
+      "operands": ["reg", "reg"],
+      "description": "Compare two values (SUB without storing result)",
+      "cycles": 1,
+      "flags": ["Z", "C", "O", "S"]
+    },
+    {
+      "mnemonic": "INC",
+      "opcode": "0xFF",
+      "operands": ["reg"],
+      "description": "Increment register by 1",
+      "cycles": 1,
+      "flags": ["Z", "O", "S"]
+    },
+    {
+      "mnemonic": "DEC",
+      "opcode": "0xFF",
+      "operands": ["reg"],
+      "description": "Decrement register by 1",
+      "cycles": 1,
+      "flags": ["Z", "O", "S"]
+    },
+    {
       "mnemonic": "JMP",
       "opcode": "0xE9",
       "operands": ["label"],
