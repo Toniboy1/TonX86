@@ -301,6 +301,20 @@
             "description": "Show syntax and semantic diagnostics"
           }
         }
+      },
+      {
+        "title": "TonX86 Compatibility",
+        "properties": {
+          "tonx86.compatibility.mode": {
+            "type": "string",
+            "enum": [
+              "educational",
+              "strict-x86"
+            ],
+            "default": "educational",
+            "description": "x86 compatibility mode: 'educational' for simplified learning (flexible memory access, simplified flags), 'strict-x86' for realistic x86 behavior (no memory-to-memory MOV, segment registers, proper constraints)"
+          }
+        }
       }
     ]
   },

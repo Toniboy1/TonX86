@@ -54,6 +54,25 @@ npm run build
 | `tonx86.lcd.pixelSize` | `"auto"` | Pixel size: "auto" or 2-500 |
 | `tonx86.keyboard.enabled` | `true` | Enable keyboard input capture |
 | `tonx86.cpu.speed` | `100` | CPU speed 1-200% (100=normal) |
+| `tonx86.compatibility.mode` | `"educational"` | Compatibility mode: "educational" or "strict-x86" |
+
+### Compatibility Modes
+
+**Educational Mode** (default):
+- Simplified instruction behavior for learning
+- Flexible memory access (memory-to-memory operations allowed)
+- Memory-mapped I/O support
+- Ideal for beginners learning assembly concepts
+
+**Strict x86 Mode**:
+- Enforces realistic x86 constraints
+- No memory-to-memory MOV instructions (use register as intermediate)
+- More realistic flag behavior (planned)
+- Segment register requirements (planned)
+- Proper instruction constraints matching real x86 architecture
+- Recommended for students transitioning to real x86 assembly
+
+Students should start in **educational mode** to learn core concepts, then switch to **strict-x86 mode** when ready to practice real x86 assembly patterns.
 
 ### Launch Configuration
 

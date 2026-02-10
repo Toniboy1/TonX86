@@ -189,6 +189,11 @@ export class Keyboard {
 }
 
 /**
+ * Compatibility mode for x86 behavior
+ */
+export type CompatibilityMode = "educational" | "strict-x86";
+
+/**
  * TonX86 Simulator - main execution engine
  */
 export class Simulator {
@@ -198,6 +203,7 @@ export class Simulator {
   private keyboard: Keyboard;
   private code: Uint8Array = new Uint8Array();
   private consoleOutput: string = ""; // Buffer for console output from INT 0x10 and INT 0x21
+  private compatibilityMode: CompatibilityMode = "educational";
 
   // Map of mnemonics to register names
   private registerMap: { [key: string]: number } = {
@@ -211,11 +217,12 @@ export class Simulator {
     EDI: 7,
   };
 
-  constructor(lcdWidth: number = 8, lcdHeight: number = 8) {
+  constructor(lcdWidth: number = 8, lcdHeight: number = 8, compatibilityMode: CompatibilityMode = "educational") {
     this.cpu = new CPUState();
     this.memory = new Memory();
     this.lcd = new LCDDisplay(lcdWidth, lcdHeight);
     this.keyboard = new Keyboard();
+    this.compatibilityMode = compatibilityMode;
     // Initialize ESP to top of stack
     this.cpu.registers[4] = 0xffff;
   }
@@ -366,6 +373,16 @@ export class Simulator {
         if (operands.length !== 2) break;
         const dest = this.parseOperand(operands[0]);
         const src = this.parseOperand(operands[1]);
+
+        // In strict-x86 mode, memory-to-memory MOV is not allowed
+        if (this.compatibilityMode === "strict-x86") {
+          // Both operands are immediate (memory addresses), which is not allowed in strict x86
+          if (dest.type === "immediate" && src.type === "immediate" && src.value >= 0xf000) {
+            throw new Error(
+              "Memory-to-memory MOV not allowed in strict-x86 mode. Use a register as intermediate.",
+            );
+          }
+        }
 
         // Get source value
         let srcValue: number;
@@ -726,5 +743,19 @@ export class Simulator {
 
   removeBreakpoint(address: number): void {
     this.cpu.removeBreakpoint(address);
+  }
+
+  /**
+   * Get the current compatibility mode
+   */
+  getCompatibilityMode(): CompatibilityMode {
+    return this.compatibilityMode;
+  }
+
+  /**
+   * Set the compatibility mode
+   */
+  setCompatibilityMode(mode: CompatibilityMode): void {
+    this.compatibilityMode = mode;
   }
 }
