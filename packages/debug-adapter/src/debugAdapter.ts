@@ -3,6 +3,7 @@ import {
   StoppedEvent,
   TerminatedEvent,
   InitializedEvent,
+  OutputEvent,
 } from "vscode-debugadapter";
 import { DebugProtocol } from "vscode-debugprotocol";
 import * as fs from "fs";
@@ -223,6 +224,8 @@ export class TonX86DebugSession extends DebugSession {
           currentInstr.mnemonic,
           currentInstr.operands,
         );
+        // Emit any console output from interrupt handlers
+        this.emitConsoleOutput();
       } catch (err) {
         console.error(`[TonX86] ERROR at line ${currentInstr.line}:`, err);
         this.sendEvent(new TerminatedEvent());
@@ -578,6 +581,8 @@ export class TonX86DebugSession extends DebugSession {
           currentInstr.mnemonic,
           currentInstr.operands,
         );
+        // Emit any console output from interrupt handlers
+        this.emitConsoleOutput();
       } catch (err) {
         logToFile(
           JSON.stringify({
@@ -701,6 +706,8 @@ export class TonX86DebugSession extends DebugSession {
         currentInstr.mnemonic,
         currentInstr.operands,
       );
+      // Emit any console output from interrupt handlers
+      this.emitConsoleOutput();
 
       this.currentLine = currentInstr.line;
 
@@ -805,6 +812,17 @@ export class TonX86DebugSession extends DebugSession {
     console.error("[TonX86] Configuration done");
     this.configurationDone = true;
     this.sendResponse(response);
+  }
+
+  /**
+   * Helper to emit console output from interrupt handlers
+   */
+  private emitConsoleOutput(): void {
+    const output = this.simulator.getConsoleOutput();
+    if (output.length > 0) {
+      this.sendEvent(new OutputEvent(output, "stdout"));
+      this.simulator.clearConsoleOutput();
+    }
   }
 
   /**

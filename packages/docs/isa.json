@@ -152,6 +152,36 @@
       ]
     },
     {
+      "mnemonic": "INT",
+      "opcode": "0xCD",
+      "operands": ["imm8"],
+      "description": "Software interrupt - call interrupt handler",
+      "cycles": 2,
+      "flags": [],
+      "examples": [
+        "MOV AH, 0x0E       ; Teletype output function",
+        "MOV AL, 'H'        ; Character to print",
+        "INT 0x10           ; Video services interrupt",
+        "",
+        "MOV AH, 0x02       ; Write character function",
+        "MOV DL, 'A'        ; Character to print",
+        "INT 0x21           ; DOS services interrupt",
+        "",
+        "INT 0x20           ; Terminate program"
+      ]
+    },
+    {
+      "mnemonic": "IRET",
+      "opcode": "0xCF",
+      "operands": [],
+      "description": "Return from interrupt handler",
+      "cycles": 2,
+      "flags": ["All restored from stack"],
+      "examples": [
+        "IRET               ; Return from interrupt"
+      ]
+    },
+    {
       "mnemonic": "HLT",
       "opcode": "0xF4",
       "operands": [],
