@@ -330,6 +330,100 @@ describe("Simulator - executeInstruction", () => {
     });
   });
 
+  describe("XCHG instruction", () => {
+    test("exchanges two register values", () => {
+      sim.executeInstruction("MOV", ["EAX", "10"]);
+      sim.executeInstruction("MOV", ["ECX", "20"]);
+      sim.executeInstruction("XCHG", ["EAX", "ECX"]);
+      const regs = sim.getRegisters();
+      expect(regs.EAX).toBe(20);
+      expect(regs.ECX).toBe(10);
+    });
+
+    test("XCHG with same register does nothing", () => {
+      sim.executeInstruction("MOV", ["EAX", "42"]);
+      sim.executeInstruction("XCHG", ["EAX", "EAX"]);
+      const regs = sim.getRegisters();
+      expect(regs.EAX).toBe(42);
+    });
+
+    test("works with all register pairs", () => {
+      sim.executeInstruction("MOV", ["EBX", "100"]);
+      sim.executeInstruction("MOV", ["EDX", "200"]);
+      sim.executeInstruction("XCHG", ["EBX", "EDX"]);
+      const regs = sim.getRegisters();
+      expect(regs.EBX).toBe(200);
+      expect(regs.EDX).toBe(100);
+    });
+  });
+
+  describe("LEA instruction", () => {
+    test("loads effective address (immediate) into register", () => {
+      sim.executeInstruction("LEA", ["EAX", "0x1000"]);
+      const regs = sim.getRegisters();
+      expect(regs.EAX).toBe(0x1000);
+    });
+
+    test("can load any address value", () => {
+      sim.executeInstruction("LEA", ["ECX", "0xF100"]);
+      const regs = sim.getRegisters();
+      expect(regs.ECX).toBe(0xf100);
+    });
+  });
+
+  describe("MOVZX instruction", () => {
+    test("zero-extends 8-bit value to 32-bit", () => {
+      sim.executeInstruction("MOV", ["EAX", "0xFFFFFFFF"]);
+      sim.executeInstruction("MOV", ["ECX", "0x7F"]);
+      sim.executeInstruction("MOVZX", ["EAX", "ECX"]);
+      const regs = sim.getRegisters();
+      expect(regs.EAX).toBe(0x7f); // Zero-extended, high bits cleared
+    });
+
+    test("zero-extends immediate value", () => {
+      sim.executeInstruction("MOVZX", ["EAX", "0xFF"]);
+      const regs = sim.getRegisters();
+      expect(regs.EAX).toBe(0xff);
+    });
+
+    test("only uses low byte of source register", () => {
+      sim.executeInstruction("MOV", ["ECX", "0x5678"]);
+      sim.executeInstruction("MOVZX", ["EAX", "ECX"]);
+      const regs = sim.getRegisters();
+      expect(regs.EAX).toBe(0x78); // Only low byte
+    });
+  });
+
+  describe("MOVSX instruction", () => {
+    test("sign-extends positive 8-bit value to 32-bit", () => {
+      sim.executeInstruction("MOV", ["ECX", "0x7F"]); // +127
+      sim.executeInstruction("MOVSX", ["EAX", "ECX"]);
+      const regs = sim.getRegisters();
+      expect(regs.EAX).toBe(0x7f); // Positive, no sign extension needed
+    });
+
+    test("sign-extends negative 8-bit value to 32-bit", () => {
+      sim.executeInstruction("MOV", ["ECX", "0xFF"]); // -1 in 8-bit
+      sim.executeInstruction("MOVSX", ["EAX", "ECX"]);
+      const regs = sim.getRegisters();
+      expect(regs.EAX).toBe(0xffffffff); // Sign-extended to -1 in 32-bit
+    });
+
+    test("sign-extends 0x80 (most negative 8-bit)", () => {
+      sim.executeInstruction("MOV", ["ECX", "0x80"]); // -128 in 8-bit
+      sim.executeInstruction("MOVSX", ["EAX", "ECX"]);
+      const regs = sim.getRegisters();
+      expect(regs.EAX).toBe(0xffffff80); // Sign-extended
+    });
+
+    test("only uses low byte of source register", () => {
+      sim.executeInstruction("MOV", ["ECX", "0x56FF"]);
+      sim.executeInstruction("MOVSX", ["EAX", "ECX"]);
+      const regs = sim.getRegisters();
+      expect(regs.EAX).toBe(0xffffffff); // Only low byte (0xFF) sign-extended
+    });
+  });
+
   describe("ADD instruction", () => {
     test("adds immediate to register", () => {
       sim.executeInstruction("MOV", ["EAX", "10"]);

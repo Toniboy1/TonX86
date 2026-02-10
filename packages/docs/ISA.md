@@ -34,6 +34,26 @@
   MOV 0xF000, 1      ; Write to I/O
   ```
 
+**XCHG dest, src** - Exchange values
+- Cycles: 1
+- Flags: None
+- Example: `XCHG EAX, ECX`
+
+**LEA dest, src** - Load effective address
+- Cycles: 1
+- Flags: None
+- Example: `LEA EAX, 0x1000`
+
+**MOVZX dest, src** - Move with zero extend
+- Cycles: 1
+- Flags: None
+- Example: `MOVZX EAX, ECX` (moves low byte of ECX to EAX, zero-extending)
+
+**MOVSX dest, src** - Move with sign extend
+- Cycles: 1
+- Flags: None
+- Example: `MOVSX EAX, ECX` (moves low byte of ECX to EAX, sign-extending)
+
 ### Arithmetic
 
 **ADD dest, src** - Add

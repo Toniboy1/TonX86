@@ -79,6 +79,10 @@ npm run build
 | Mnemonic | Operands | Flags | Description |
 |----------|----------|-------|-------------|
 | `MOV` | reg/mem, reg/imm | - | Move data |
+| `XCHG` | reg, reg | - | Exchange values |
+| `LEA` | reg, imm | - | Load effective address |
+| `MOVZX` | reg, reg/imm | - | Move with zero extend |
+| `MOVSX` | reg, reg/imm | - | Move with sign extend |
 | `ADD` | reg, reg/imm | ZCOS | Add |
 | `SUB` | reg, reg/imm | ZCOS | Subtract |
 | `INC` | reg | ZCOS | Increment |

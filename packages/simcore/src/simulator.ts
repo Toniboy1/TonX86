@@ -390,6 +390,80 @@ export class Simulator {
         break;
       }
 
+      case "XCHG": {
+        // XCHG destination, source - Exchange values
+        if (operands.length !== 2) break;
+        const dest = this.parseOperand(operands[0]);
+        const src = this.parseOperand(operands[1]);
+
+        if (dest.type === "register" && src.type === "register") {
+          const temp = this.cpu.registers[dest.value];
+          this.cpu.registers[dest.value] = this.cpu.registers[src.value];
+          this.cpu.registers[src.value] = temp;
+        }
+        break;
+      }
+
+      case "LEA": {
+        // LEA destination, source - Load effective address
+        // In simplified form, just load the immediate value (address) into register
+        if (operands.length !== 2) break;
+        const dest = this.parseOperand(operands[0]);
+        const src = this.parseOperand(operands[1]);
+
+        if (dest.type === "register" && src.type === "immediate") {
+          this.cpu.registers[dest.value] = src.value;
+        }
+        break;
+      }
+
+      case "MOVZX": {
+        // MOVZX destination, source - Move with zero extension
+        // Moves 8 or 16-bit value into 32-bit register, zero-extending
+        if (operands.length !== 2) break;
+        const dest = this.parseOperand(operands[0]);
+        const src = this.parseOperand(operands[1]);
+
+        if (dest.type === "register") {
+          let srcValue: number;
+          if (src.type === "register") {
+            // Treat source as 8-bit (low byte)
+            srcValue = this.cpu.registers[src.value] & 0xff;
+          } else {
+            srcValue = src.value & 0xff;
+          }
+          this.cpu.registers[dest.value] = srcValue; // Already zero-extended
+        }
+        break;
+      }
+
+      case "MOVSX": {
+        // MOVSX destination, source - Move with sign extension
+        // Moves 8 or 16-bit value into 32-bit register, sign-extending
+        if (operands.length !== 2) break;
+        const dest = this.parseOperand(operands[0]);
+        const src = this.parseOperand(operands[1]);
+
+        if (dest.type === "register") {
+          let srcValue: number;
+          if (src.type === "register") {
+            // Treat source as 8-bit (low byte)
+            srcValue = this.cpu.registers[src.value] & 0xff;
+          } else {
+            srcValue = src.value & 0xff;
+          }
+          // Sign extend from 8-bit to 32-bit
+          if (srcValue & 0x80) {
+            // Negative (bit 7 set)
+            this.cpu.registers[dest.value] = srcValue | 0xffffff00;
+          } else {
+            // Positive
+            this.cpu.registers[dest.value] = srcValue;
+          }
+        }
+        break;
+      }
+
       case "ADD": {
         // ADD destination, source
         if (operands.length !== 2) break;
