@@ -140,6 +140,22 @@ const INSTRUCTIONS = [
     flags: [],
     example: "HLT  ; Stop program",
   },
+  {
+    name: "INT",
+    description: "Software interrupt - call interrupt handler",
+    syntax: "INT interrupt_number",
+    cycles: 2,
+    flags: [],
+    example: "INT 0x10  ; Call BIOS video interrupt",
+  },
+  {
+    name: "IRET",
+    description: "Return from interrupt handler",
+    syntax: "IRET",
+    cycles: 2,
+    flags: ["All restored from stack"],
+    example: "IRET  ; Return from interrupt",
+  },
 ];
 
 // Register definitions
