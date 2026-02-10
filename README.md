@@ -35,13 +35,59 @@ Extension (UI/LCD/Keyboard) ←→ Debug Adapter (DAP) ←→ Simulator Core
 - `simcore/` - CPU emulation, memory, I/O
 - `docs/` - ISA reference
 
-## Quick Start
+## Getting Started
 
-```bash
-npm install
-npm run build
-# Press F5 in VS Code to launch Extension Development Host
-```
+### For Users (Extension)
+
+1. **Install from VS Code Marketplace** (when published):
+   - Open VS Code
+   - Go to Extensions (Ctrl+Shift+X)
+   - Search for "TonX86"
+   - Click Install
+
+2. **Try the Examples**:
+   - Create a new `.asm` file or explore the `examples/` folder
+   - Examples include:
+     - [01-basic-instructions.asm](examples/01-basic-instructions.asm) - MOV, ADD, SUB operations
+     - [02-jumps.asm](examples/02-jumps.asm) - Conditional and unconditional jumps
+     - [03-call-ret.asm](examples/03-call-ret.asm) - Function calls and returns
+     - [04-stack.asm](examples/04-stack.asm) - Stack operations (PUSH/POP)
+     - [08-lcd.asm](examples/08-lcd.asm) - LCD display programming
+     - [14-keyboard.asm](examples/14-keyboard.asm) - Keyboard input handling
+     - [20-flags.asm](examples/20-flags.asm) - Flag register operations
+     - ...and more! See the `examples/` folder for all 20 examples
+
+3. **Start Debugging**:
+   - Open any `.asm` file
+   - Press F5 or click "Run and Debug" in the sidebar
+   - Set breakpoints, step through code, and watch registers/memory update in real-time
+
+### For Contributors (From GitHub)
+
+1. **Clone the Repository**:
+   ```bash
+   git clone https://github.com/Toniboy1/TonX86.git
+   cd TonX86
+   ```
+
+2. **Install Dependencies**:
+   ```bash
+   npm install
+   ```
+
+3. **Build the Project**:
+   ```bash
+   npm run build
+   ```
+
+4. **Launch Extension Development Host**:
+   - Press F5 in VS Code to open a new window with the extension loaded
+   - Open any file from the `examples/` folder to start experimenting
+
+5. **Run Tests**:
+   ```bash
+   npm test
+   ```
 
 ## Configuration
 

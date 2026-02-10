@@ -27,6 +27,33 @@ Educational x86-like assembly language environment for learning low-level progra
 - **Diagnostics**: Real-time error detection
 - **Hover Documentation**: Instruction reference on hover
 
+## 🎯 Getting Started
+
+### Step 1: Install the Extension
+- Open VS Code
+- Go to Extensions (Ctrl+Shift+X / Cmd+Shift+X)
+- Search for "TonX86"
+- Click Install
+
+### Step 2: Explore Examples
+The extension includes 20 example programs to help you learn. Find them in the [examples folder on GitHub](https://github.com/Toniboy1/TonX86/tree/main/examples):
+
+- **[01-basic-instructions.asm](https://github.com/Toniboy1/TonX86/blob/main/examples/01-basic-instructions.asm)** - MOV, ADD, SUB operations
+- **[02-jumps.asm](https://github.com/Toniboy1/TonX86/blob/main/examples/02-jumps.asm)** - Conditional and unconditional jumps
+- **[03-call-ret.asm](https://github.com/Toniboy1/TonX86/blob/main/examples/03-call-ret.asm)** - Function calls and returns
+- **[04-stack.asm](https://github.com/Toniboy1/TonX86/blob/main/examples/04-stack.asm)** - Stack operations (PUSH/POP)
+- **[08-lcd.asm](https://github.com/Toniboy1/TonX86/blob/main/examples/08-lcd.asm)** - LCD display programming
+- **[14-keyboard.asm](https://github.com/Toniboy1/TonX86/blob/main/examples/14-keyboard.asm)** - Keyboard input handling
+- **[20-flags.asm](https://github.com/Toniboy1/TonX86/blob/main/examples/20-flags.asm)** - CPU flag operations
+
+...and 13 more examples covering interrupts, memory modes, bitwise operations, and more!
+
+### Step 3: Write Your First Program
+Create a new `.asm` file and start coding. The Language Server provides syntax highlighting, IntelliSense, and diagnostics as you type.
+
+### Step 4: Debug and Run
+Press F5 to start debugging. Use breakpoints, step through instructions, and watch your program execute in real-time!
+
 ## 🚀 Quick Start
 
 ### 1. Create an Assembly File
