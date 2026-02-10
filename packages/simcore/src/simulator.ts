@@ -397,7 +397,7 @@ export class Simulator {
             offset: 0,
           };
         }
-        
+
         // Handle [immediate] like [0xF000]
         let addr = 0;
         if (memExpr.startsWith("0X")) {
@@ -407,7 +407,7 @@ export class Simulator {
         } else {
           addr = parseInt(memExpr, 10);
         }
-        
+
         return {
           type: "memory",
           value: 0,
@@ -533,7 +533,9 @@ export class Simulator {
           const isDestMemory =
             dest.type === "immediate" || dest.type === "memory";
           const isSrcMemory =
-            (src.type === "immediate" && src.value >= 0xf000 && src.value <= 0xffff) ||
+            (src.type === "immediate" &&
+              src.value >= 0xf000 &&
+              src.value <= 0xffff) ||
             src.type === "memory";
 
           if (isDestMemory && isSrcMemory) {
