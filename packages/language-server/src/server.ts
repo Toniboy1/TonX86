@@ -359,12 +359,13 @@ function validateCallingConventions(
   // Parse functions
   let currentFunction: FunctionInfo | null = null;
   
-  lines.forEach((line, lineIndex) => {
+  for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+    const line = lines[lineIndex];
     const trimmed = line.trim();
     
     // Skip empty lines and comments
     if (!trimmed || trimmed.startsWith(";")) {
-      return;
+      continue;
     }
 
     // Check for function start (label)
@@ -389,17 +390,17 @@ function validateCallingConventions(
         modifiesCalleeSavedRegs: new Set(),
         savesCalleeSavedRegs: new Set(),
       };
-      return;
+      continue;
     }
 
     if (!currentFunction) {
-      return;
+      continue;
     }
 
     // Parse instruction
     const tokens = trimmed.split(/[\s,]+/).filter((t) => !t.startsWith(";"));
     if (tokens.length === 0) {
-      return;
+      continue;
     }
 
     const instruction = tokens[0].toUpperCase();
@@ -452,10 +453,10 @@ function validateCallingConventions(
         }
       }
     }
-  });
+  }
 
   // Add last function
-  if (currentFunction) {
+  if (currentFunction !== null) {
     currentFunction.endLine = lines.length - 1;
     functions.push(currentFunction);
   }
