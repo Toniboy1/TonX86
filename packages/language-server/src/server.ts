@@ -189,6 +189,14 @@ const INSTRUCTIONS = [
     example: "IDIV EBX  ; EAX = EAX / EBX (signed)",
   },
   {
+    name: "MOD",
+    description: "Modulo operation (dest = dest % src)",
+    syntax: "MOD destination, source",
+    cycles: 1,
+    flags: ["Z", "S"],
+    example: "MOD EAX, 64  ; EAX = EAX % 64",
+  },
+  {
     name: "CMP",
     description: "Compare two values (SUB without storing result)",
     syntax: "CMP destination, source",
@@ -275,6 +283,14 @@ const INSTRUCTIONS = [
     cycles: 1,
     flags: [],
     example: "HLT  ; Stop program",
+  },
+  {
+    name: "RAND",
+    description: "Generate random number from 0 to max-1",
+    syntax: "RAND destination, max",
+    cycles: 1,
+    flags: ["Z", "S"],
+    example: "RAND EAX, 64  ; EAX = random(0..63)",
   },
   {
     name: "PUSH",
@@ -417,6 +433,11 @@ function validateDocument(document: TextDocument): void {
       return;
     }
 
+    // Skip EQU directives (constant definitions)
+    if (/^\w+:?\s+EQU\s+/i.test(trimmed)) {
+      return;
+    }
+
     // Parse instruction
     const tokens = trimmed.split(/[\s,]+/).filter((t) => !t.startsWith(";"));
     if (tokens.length === 0) {
@@ -536,8 +557,10 @@ function validateCallingConventions(
     "DIV",
     "IMUL",
     "IDIV",
+    "MOD",
     "NEG",
     "NOT",
+    "RAND",
   ];
 
   // First pass: identify which labels are actual functions (CALL targets + first label)

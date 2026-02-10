@@ -296,6 +296,18 @@
       ]
     },
     {
+      "mnemonic": "MOD",
+      "opcode": "0xED",
+      "operands": ["reg", "reg/imm"],
+      "description": "Modulo operation (dest = dest % src)",
+      "cycles": 1,
+      "flags": ["Z", "S"],
+      "examples": [
+        "MOD EAX, 64        ; EAX = EAX % 64",
+        "MOD ECX, EBX       ; ECX = ECX % EBX"
+      ]
+    },
+    {
       "mnemonic": "JMP",
       "opcode": "0xE9",
       "operands": ["label"],
@@ -434,6 +446,18 @@
       "flags": [],
       "examples": [
         "HLT                ; Stop execution"
+      ]
+    },
+    {
+      "mnemonic": "RAND",
+      "opcode": "0xEE",
+      "operands": ["reg", "reg/imm"],
+      "description": "Generate random number from 0 to max-1, store in dest",
+      "cycles": 1,
+      "flags": ["Z", "S"],
+      "examples": [
+        "RAND EAX, 64       ; EAX = random(0..63)",
+        "RAND EBX, ECX      ; EBX = random(0..ECX-1)"
       ]
     }
   ]
