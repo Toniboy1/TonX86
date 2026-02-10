@@ -30,5 +30,5 @@ loop_start:
     MOV ESI, 0xBAD      ; Line 30 - Should NOT execute
     
 finish:
-    MOV EDI, 0xDone     ; Line 33 - Final instruction
+    MOV EDI, 0xD09E     ; Line 33 - Final instruction (0xDONE as hex)
     HLT                 ; Line 34 - Halt
