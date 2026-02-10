@@ -108,6 +108,21 @@ npm run build
 - `CALL label` - Pushes return address, jumps to label
 - `RET` - Pops return address, jumps to it
 
+### Calling Conventions
+
+TonX86 supports standard x86 calling conventions with LSP diagnostics:
+- **cdecl** - C declaration (caller cleans stack, parameters right-to-left)
+- **stdcall** - Standard call (callee cleans stack, Windows API style)
+- **fastcall** - Fast call (first 2 params in registers ECX/EDX)
+
+The language server provides real-time diagnostics for:
+- Missing function prologues/epilogues
+- Unbalanced stack operations
+- Callee-saved register violations
+- Stack cleanup pattern detection
+
+See [CALLING_CONVENTIONS.md](packages/docs/CALLING_CONVENTIONS.md) and [examples/calling-conventions/](examples/calling-conventions/) for detailed documentation and examples.
+
 ### Flags
 **Z** (Zero) | **C** (Carry) | **O** (Overflow) | **S** (Sign)
 
