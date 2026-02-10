@@ -1,5 +1,6 @@
 {
   "version": "1.0",
+  "note": "Some instructions are aliases with identical opcodes: JE/JZ (0x74), JNE/JNZ (0x75)",
   "instructions": [
     {
       "mnemonic": "MOV",
