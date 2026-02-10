@@ -1,5 +1,5 @@
 {
-  "name": "@tonx86/extension",
+  "name": "tonx86",
   "version": "0.1.8",
   "description": "Educational x86-like assembly environment for VS Code",
   "private": true,
@@ -19,6 +19,9 @@
   "workspaces": [
     "packages/*"
   ],
+  "engines": {
+    "vscode": "^1.8.0"
+  },
   "scripts": {
     "build": "npm run build -w packages/simcore && npm -ws run build",
     "watch": "npm -ws run watch",
@@ -26,6 +29,10 @@
     "test": "npm -ws run test",
     "lint": "npm -ws run lint",
     "check": "npm run lint && npm run build && npm test",
-    "precommit": "npm run check"
+    "precommit": "npm run check",
+    "package": "npm run build && cd packages/extension && vsce package"
+  },
+  "devDependencies": {
+    "@vscode/vsce": "^3.7.1"
   }
 }
