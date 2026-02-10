@@ -96,6 +96,14 @@ export class LCDDisplay {
     this.pixels[y * this.width + x] = value ? 1 : 0;
   }
 
+  getWidth(): number {
+    return this.width;
+  }
+
+  getHeight(): number {
+    return this.height;
+  }
+
   clear(): void {
     this.pixels.fill(0);
   }
@@ -264,12 +272,12 @@ export class Simulator {
     const IO_LCD_BASE = 0xf000;
     const IO_LCD_LIMIT = 0xf100;
     const IO_KEYBOARD_BASE = 0xf100;
-    const lcdSize = this.lcd["width"] * this.lcd["height"];
+    const lcdSize = this.lcd.getWidth() * this.lcd.getHeight();
 
     if (address >= IO_LCD_BASE && address < IO_LCD_LIMIT) {
       // LCD pixel write
       const pixelIndex = address - IO_LCD_BASE;
-      const width = this.lcd["width"];
+      const width = this.lcd.getWidth();
       const x = pixelIndex % width;
       const y = Math.floor(pixelIndex / width);
 

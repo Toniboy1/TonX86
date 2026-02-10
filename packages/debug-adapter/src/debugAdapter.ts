@@ -47,6 +47,63 @@ export class TonX86DebugSession extends DebugSession {
   }
 
   /**
+   * Detect required LCD dimensions by scanning for LCD I/O addresses
+   */
+  private detectLCDDimensions(instructions: Instruction[]): [number, number] {
+    let maxAddress = 0;
+    let foundLCDAccess = false;
+
+    // Scan all instructions for LCD I/O operations
+    for (const instr of instructions) {
+      // Look for any operand containing 0xF000-0xF0FF addresses
+      for (const operand of instr.operands) {
+        if (typeof operand === "string") {
+          const opUpper = operand.toUpperCase();
+
+          // Check for direct memory access [0xFxxx]
+          if (opUpper.startsWith("[") && opUpper.includes("0XF")) {
+            const addressStr = opUpper.slice(1, -1).replace(/[\[\]]/g, "");
+            if (addressStr.startsWith("0XF")) {
+              const address = parseInt(addressStr, 16);
+              if (address >= 0xf000 && address <= 0xf0ff) {
+                maxAddress = Math.max(maxAddress, address);
+                foundLCDAccess = true;
+              }
+            }
+          }
+
+          // Check for 0xF000 base constant (indicates computed LCD addressing)
+          if (opUpper.includes("0XF0")) {
+            const match = opUpper.match(/0X(F0[0-9A-F][0-9A-F])/);
+            if (match) {
+              const address = parseInt(match[0], 16);
+              if (address >= 0xf000 && address <= 0xf0ff) {
+                maxAddress = Math.max(maxAddress, address);
+                foundLCDAccess = true;
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // If we found LCD access, default to 16x16 for better compatibility
+    // (16x16 can display 8x8 content, but computed addresses might not be visible during static analysis)
+    if (foundLCDAccess) {
+      const offset = maxAddress - 0xf000;
+      if (offset >= 64) {
+        // Found addresses beyond 8x8 range, definitely use 16x16
+        return [16, 16];
+      }
+      // Default to 16x16 when LCD is used (safer choice for computed addresses)
+      return [16, 16];
+    }
+
+    // No LCD access detected, use 8x8
+    return [8, 8];
+  }
+
+  /**
    * Get the next instruction line number
    */
   private getNextInstructionLine(): number {
@@ -135,6 +192,13 @@ export class TonX86DebugSession extends DebugSession {
             `  Line ${instr.line}: ${instr.mnemonic} ${instr.operands.join(", ")}`,
           );
         });
+
+        // Detect required LCD dimensions from code
+        const [lcdWidth, lcdHeight] = this.detectLCDDimensions(
+          this.instructions,
+        );
+        this.simulator = new Simulator(lcdWidth, lcdHeight);
+        console.error(`[TonX86] Detected LCD size: ${lcdWidth}x${lcdHeight}`);
 
         // Show labels in Debug Console to help with CALL/JMP debugging
         const labelList = Array.from(this.labels.entries())

@@ -6,46 +6,51 @@
 main:
     ; Draw top border (y=0, x=0-15)
     MOV ECX, 0
-draw_top:
+top_loop:
     MOV EAX, 0xF000
     ADD EAX, ECX
     MOV [EAX], 1
     INC ECX
     CMP ECX, 16
-    JNE draw_top
+    JNE top_loop
     
     ; Draw bottom border (y=15, x=0-15)
     MOV ECX, 0
-draw_bottom:
+    PUSH EBX
+bottom_loop:
     MOV EAX, 15
-    MOV EDX, 16
-    MUL EDX
+    XOR EDX, EDX
+    MOV EBX, 16
+    MUL EBX
     ADD EAX, ECX
     ADD EAX, 0xF000
     MOV [EAX], 1
     INC ECX
     CMP ECX, 16
-    JNE draw_bottom
+    JNE bottom_loop
+    POP EBX
     
     ; Draw left border (x=0, y=0-15)
     MOV ECX, 0
-draw_left:
     PUSH EBX
+left_loop:
     MOV EAX, ECX
+    XOR EDX, EDX
     MOV EBX, 16
     MUL EBX
     ADD EAX, 0xF000
     MOV [EAX], 1
     INC ECX
     CMP ECX, 16
-    JNE draw_left
+    JNE left_loop
     POP EBX
     
     ; Draw right border (x=15, y=0-15)
     MOV ECX, 0
-draw_right:
     PUSH EBX
+right_loop:
     MOV EAX, ECX
+    XOR EDX, EDX
     MOV EBX, 16
     MUL EBX
     ADD EAX, 15
@@ -53,27 +58,31 @@ draw_right:
     MOV [EAX], 1
     INC ECX
     CMP ECX, 16
-    JNE draw_right
+    JNE right_loop
     POP EBX
     
     ; Draw horizontal line (y=8, middle)
     MOV ECX, 0
-draw_h_cross:
+    PUSH EBX
+h_cross_loop:
     MOV EAX, 8
-    MOV EDX, 16
-    MUL EDX
+    XOR EDX, EDX
+    MOV EBX, 16
+    MUL EBX
     ADD EAX, ECX
     ADD EAX, 0xF000
     MOV [EAX], 1
     INC ECX
     CMP ECX, 16
-    JNE draw_h_cross
+    JNE h_cross_loop
+    POP EBX
     
     ; Draw vertical line (x=8, middle)
     MOV ECX, 0
-draw_v_cross:
     PUSH EBX
+v_cross_loop:
     MOV EAX, ECX
+    XOR EDX, EDX
     MOV EBX, 16
     MUL EBX
     ADD EAX, 8
@@ -81,7 +90,7 @@ draw_v_cross:
     MOV [EAX], 1
     INC ECX
     CMP ECX, 16
-    JNE draw_v_cross
+    JNE v_cross_loop
     POP EBX
     
     HLT

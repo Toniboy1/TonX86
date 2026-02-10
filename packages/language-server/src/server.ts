@@ -383,10 +383,14 @@ function validateDocument(document: TextDocument): void {
   // First pass: collect all labels
   lines.forEach((line) => {
     const trimmed = line.trim();
-    if (trimmed.endsWith(":")) {
-      const label = trimmed.slice(0, -1).trim();
-      if (label && !label.includes(" ")) {
-        labels.add(label);
+    if (trimmed.endsWith(":") || trimmed.includes(":")) {
+      // Extract label name (handle inline comments)
+      const colonIndex = trimmed.indexOf(":");
+      if (colonIndex > 0) {
+        const label = trimmed.substring(0, colonIndex).trim();
+        if (label && !label.includes(" ")) {
+          labels.add(label);
+        }
       }
     }
   });
@@ -528,7 +532,44 @@ function validateCallingConventions(
     "NOT",
   ];
 
-  // Parse functions
+  // First pass: identify which labels are actual functions (CALL targets + first label)
+  const functionLabels = new Set<string>();
+  let firstLabel: string | null = null;
+
+  for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+    const line = lines[lineIndex];
+    const trimmed = line.trim();
+
+    if (!trimmed || trimmed.startsWith(";")) {
+      continue;
+    }
+
+    // Check for label
+    if (trimmed.includes(":")) {
+      const colonIndex = trimmed.indexOf(":");
+      if (colonIndex > 0) {
+        const labelName = trimmed.substring(0, colonIndex).trim();
+        if (labelName && !labelName.includes(" ") && !firstLabel) {
+          firstLabel = labelName;
+          functionLabels.add(labelName);
+        }
+      }
+      continue;
+    }
+
+    // Check for CALL instructions
+    const tokens = trimmed.split(/[\s,]+/).filter((t) => !t.startsWith(";"));
+    if (tokens.length > 0 && tokens[0].toUpperCase() === "CALL") {
+      if (tokens.length > 1) {
+        const target = tokens[1];
+        if (labels.has(target)) {
+          functionLabels.add(target);
+        }
+      }
+    }
+  }
+
+  // Parse functions (only function labels)
   let currentFunction: FunctionInfo | null = null;
   let firstInstructionAfterLabel = true;
 
@@ -541,29 +582,40 @@ function validateCallingConventions(
       continue;
     }
 
-    // Check for function start (label)
-    if (trimmed.endsWith(":")) {
-      if (currentFunction) {
-        currentFunction.endLine = lineIndex - 1;
-        functions.push(currentFunction);
-      }
+    // Check for function start (label that is a function)
+    if (trimmed.includes(":")) {
+      const colonIndex = trimmed.indexOf(":");
+      if (colonIndex > 0) {
+        const labelName = trimmed.substring(0, colonIndex).trim();
 
-      const funcName = trimmed.slice(0, -1).trim();
-      currentFunction = {
-        name: funcName,
-        startLine: lineIndex,
-        endLine: -1,
-        prologuePushEBPLine: -1,
-        prologueMovEBPLine: -1,
-        epiloguePopEBPLine: -1,
-        pushCount: 0,
-        popCount: 0,
-        callInstructions: [],
-        retInstructions: [],
-        modifiesCalleeSavedRegs: new Set(),
-        savesCalleeSavedRegs: new Set(),
-      };
-      firstInstructionAfterLabel = true;
+        // Only process if this is a function label, not a loop label
+        if (
+          labelName &&
+          !labelName.includes(" ") &&
+          functionLabels.has(labelName)
+        ) {
+          if (currentFunction) {
+            currentFunction.endLine = lineIndex - 1;
+            functions.push(currentFunction);
+          }
+
+          currentFunction = {
+            name: labelName,
+            startLine: lineIndex,
+            endLine: -1,
+            prologuePushEBPLine: -1,
+            prologueMovEBPLine: -1,
+            epiloguePopEBPLine: -1,
+            pushCount: 0,
+            popCount: 0,
+            callInstructions: [],
+            retInstructions: [],
+            modifiesCalleeSavedRegs: new Set(),
+            savesCalleeSavedRegs: new Set(),
+          };
+          firstInstructionAfterLabel = true;
+        }
+      }
       continue;
     }
 
