@@ -9,5 +9,4 @@ out/
 
 # Packaging artifacts
 LICENSE
-debug-adapter-out/
 *.vsix

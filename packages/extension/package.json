@@ -2,8 +2,8 @@
   "name": "tonx86",
   "displayName": "TonX86",
   "description": "Educational x86-like assembly environment for VS Code",
-  "version": "0.0.1",
-  "publisher": "tonx86",
+  "version": "0.2.0",
+  "publisher": "Toniboy1",
   "author": {
     "name": "Anthony (Toniboy1)",
     "url": "https://github.com/Toniboy1"
@@ -28,7 +28,7 @@
   "activationEvents": [
     "onDebug"
   ],
-  "main": "out/extension.js",
+  "main": "./dist/extension.js",
   "contributes": {
     "commands": [
       {
@@ -158,7 +158,7 @@
       {
         "type": "tonx86",
         "label": "TonX86 Debugger",
-        "program": "./debug-adapter-out/debugAdapter.js",
+        "program": "./dist/debugAdapter.js",
         "runtime": "node",
         "configurationAttributes": {
           "launch": {
@@ -304,12 +304,17 @@
     ]
   },
   "scripts": {
-    "build": "tsc",
-    "watch": "tsc -w",
+    "vscode:prepublish": "npm run build",
+    "compile": "npm run check-types && node esbuild.js",
+    "check-types": "tsc --noEmit",
+    "watch": "npm-run-all -p watch:*",
+    "watch:esbuild": "node esbuild.js --watch",
+    "watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
+    "build": "npm run check-types && node esbuild.js --production && npm run copy-debug-adapter",
+    "package": "vsce package --no-dependencies",
+    "copy-debug-adapter": "node copy-debug-adapter.js",
     "lint": "eslint src",
-    "test": "echo no tests",
-    "prepackage": "npm run build && node -e \"const fs=require('fs'); const path=require('path'); const src='../debug-adapter/out'; const dest='./debug-adapter-out'; if(fs.existsSync(dest)) fs.rmSync(dest, {recursive:true}); fs.mkdirSync(dest, {recursive:true}); fs.readdirSync(src).forEach(f => fs.copyFileSync(path.join(src,f), path.join(dest,f)));\"",
-    "package": "vsce package --no-dependencies"
+    "test": "echo no tests"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
