@@ -1,1 +1,1 @@
-export { Simulator } from "./simulator";
+export { Simulator, CompatibilityMode } from "./simulator";

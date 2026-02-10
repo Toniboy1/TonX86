@@ -1638,3 +1638,126 @@ describe("Simulator - INT instruction", () => {
     });
   });
 });
+
+describe("Simulator - Compatibility Mode", () => {
+  describe("Educational mode (default)", () => {
+    test("defaults to educational mode", () => {
+      const sim = new Simulator();
+      expect(sim.getCompatibilityMode()).toBe("educational");
+    });
+
+    test("allows memory-to-memory MOV in educational mode", () => {
+      const sim = new Simulator(16, 16);
+      // Write to LCD pixel 0 from LCD pixel status (simulated)
+      sim.executeInstruction("MOV", ["0xF000", "0xF100"]);
+      // Should not throw in educational mode
+      expect(sim.getCompatibilityMode()).toBe("educational");
+    });
+
+    test("allows flexible memory access in educational mode", () => {
+      const sim = new Simulator(16, 16);
+      // This represents memory-to-memory operation
+      sim.executeInstruction("MOV", ["EAX", "0xF100"]);
+      sim.executeInstruction("MOV", ["0xF000", "EAX"]);
+      // Should work fine
+      expect(sim.getCompatibilityMode()).toBe("educational");
+    });
+  });
+
+  describe("Strict x86 mode", () => {
+    test("can be initialized with strict-x86 mode", () => {
+      const sim = new Simulator(8, 8, "strict-x86");
+      expect(sim.getCompatibilityMode()).toBe("strict-x86");
+    });
+
+    test("can switch to strict-x86 mode", () => {
+      const sim = new Simulator();
+      sim.setCompatibilityMode("strict-x86");
+      expect(sim.getCompatibilityMode()).toBe("strict-x86");
+    });
+
+    test("prevents memory-to-memory MOV in strict-x86 mode", () => {
+      const sim = new Simulator(16, 16, "strict-x86");
+      // Try to move from keyboard status to LCD pixel (memory-to-memory)
+      expect(() => {
+        sim.executeInstruction("MOV", ["0xF000", "0xF100"]);
+      }).toThrow("Memory-to-memory MOV not allowed in strict-x86 mode");
+    });
+
+    test("allows register-to-memory MOV in strict-x86 mode", () => {
+      const sim = new Simulator(16, 16, "strict-x86");
+      sim.executeInstruction("MOV", ["EAX", "42"]);
+      sim.executeInstruction("MOV", ["0xF000", "EAX"]);
+      // Should work - register to memory is allowed
+      const lcd = sim.getLCDDisplay();
+      expect(lcd[0]).toBe(1); // Non-zero value sets pixel to 1
+    });
+
+    test("allows memory-to-register MOV in strict-x86 mode", () => {
+      const sim = new Simulator(16, 16, "strict-x86");
+      sim.pushKeyboardEvent(65, true); // Push 'A' key
+      sim.executeInstruction("MOV", ["EAX", "0xF100"]);
+      // Should work - memory to register is allowed
+      const regs = sim.getRegisters();
+      expect(regs.EAX).toBe(1); // Status should be 1 (key available)
+    });
+
+    test("allows immediate-to-register MOV in strict-x86 mode", () => {
+      const sim = new Simulator(8, 8, "strict-x86");
+      sim.executeInstruction("MOV", ["EAX", "42"]);
+      const regs = sim.getRegisters();
+      expect(regs.EAX).toBe(42);
+    });
+
+    test("allows register-to-register MOV in strict-x86 mode", () => {
+      const sim = new Simulator(8, 8, "strict-x86");
+      sim.executeInstruction("MOV", ["EAX", "100"]);
+      sim.executeInstruction("MOV", ["EBX", "EAX"]);
+      const regs = sim.getRegisters();
+      expect(regs.EBX).toBe(100);
+    });
+
+    test("allows immediate-to-memory MOV in strict-x86 mode", () => {
+      const sim = new Simulator(16, 16, "strict-x86");
+      // MOV with literal immediate to memory should work (not memory-to-memory)
+      sim.executeInstruction("MOV", ["0xF000", "1"]);
+      const lcd = sim.getLCDDisplay();
+      expect(lcd[0]).toBe(1); // Pixel should be set
+    });
+  });
+
+  describe("Mode switching", () => {
+    test("can switch from educational to strict-x86 mode", () => {
+      const sim = new Simulator(16, 16);
+      expect(sim.getCompatibilityMode()).toBe("educational");
+
+      // This works in educational mode
+      sim.executeInstruction("MOV", ["0xF000", "0xF100"]);
+
+      // Switch to strict mode
+      sim.setCompatibilityMode("strict-x86");
+
+      // Now this should fail
+      expect(() => {
+        sim.executeInstruction("MOV", ["0xF001", "0xF100"]);
+      }).toThrow("Memory-to-memory MOV not allowed in strict-x86 mode");
+    });
+
+    test("can switch from strict-x86 to educational mode", () => {
+      const sim = new Simulator(16, 16, "strict-x86");
+
+      // This fails in strict mode
+      expect(() => {
+        sim.executeInstruction("MOV", ["0xF000", "0xF100"]);
+      }).toThrow("Memory-to-memory MOV not allowed in strict-x86 mode");
+
+      // Switch to educational mode
+      sim.setCompatibilityMode("educational");
+
+      // Now this should work
+      sim.executeInstruction("MOV", ["0xF000", "0xF100"]);
+      expect(sim.getCompatibilityMode()).toBe("educational");
+    });
+  });
+});
+
