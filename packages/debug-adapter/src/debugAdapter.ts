@@ -106,6 +106,20 @@ export class TonX86DebugSession extends DebugSession {
       LOG_FILE = ""; // Disable logging
     }
 
+    // Determine LCD dimensions based on program file
+    const filename = path.basename(this.programPath).toLowerCase();
+    let lcdWidth = 8;
+    let lcdHeight = 8;
+    if (filename.includes("18-lcd") || filename.includes("19-lcd")) {
+      lcdWidth = 16;
+      lcdHeight = 16;
+    }
+    // Recreate simulator with appropriate LCD size
+    this.simulator = new Simulator(lcdWidth, lcdHeight);
+    console.error(
+      `[TonX86] Initialized LCD to ${lcdWidth}x${lcdHeight} for ${filename}`,
+    );
+
     // Load source file
     if (this.programPath && fs.existsSync(this.programPath)) {
       try {
