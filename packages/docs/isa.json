@@ -64,12 +64,59 @@
     {
       "mnemonic": "OR",
       "opcode": "0x09",
-      "operands": ["reg", "reg"],
-      "description": "Bitwise OR two registers",
+      "operands": ["reg", "reg/imm"],
+      "description": "Bitwise OR two registers or register with immediate",
       "cycles": 1,
       "flags": ["Z", "S"],
       "examples": [
-        "OR EAX, ECX        ; EAX = EAX | ECX"
+        "OR EAX, ECX        ; EAX = EAX | ECX",
+        "OR EAX, 0x0F       ; EAX = EAX | 0x0F"
+      ]
+    },
+    {
+      "mnemonic": "XOR",
+      "opcode": "0x31",
+      "operands": ["reg", "reg/imm"],
+      "description": "Bitwise XOR two registers or register with immediate",
+      "cycles": 1,
+      "flags": ["Z", "S"],
+      "examples": [
+        "XOR EAX, ECX       ; EAX = EAX ^ ECX",
+        "XOR EAX, EAX       ; Clear EAX to 0"
+      ]
+    },
+    {
+      "mnemonic": "NOT",
+      "opcode": "0xF7",
+      "operands": ["reg"],
+      "description": "Bitwise NOT (one's complement)",
+      "cycles": 1,
+      "flags": [],
+      "examples": [
+        "NOT EAX            ; EAX = ~EAX"
+      ]
+    },
+    {
+      "mnemonic": "NEG",
+      "opcode": "0xF7",
+      "operands": ["reg"],
+      "description": "Two's complement negation",
+      "cycles": 1,
+      "flags": ["Z", "C", "O", "S"],
+      "examples": [
+        "NEG EAX            ; EAX = -EAX"
+      ]
+    },
+    {
+      "mnemonic": "TEST",
+      "opcode": "0x85",
+      "operands": ["reg", "reg/imm"],
+      "description": "Logical AND (affects flags only, doesn't store result)",
+      "cycles": 1,
+      "flags": ["Z", "S"],
+      "examples": [
+        "TEST EAX, 0xFF     ; Check if any bits set in lower byte",
+        "TEST EAX, ECX      ; Test bits"
       ]
     },
     {

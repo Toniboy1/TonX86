@@ -51,6 +51,21 @@
 - Flags: Z, C, O, S
 - Example: `CMP EAX, 0`
 
+**INC dest** - Increment
+- Cycles: 1
+- Flags: Z, C, O, S
+- Example: `INC EAX`
+
+**DEC dest** - Decrement
+- Cycles: 1
+- Flags: Z, C, O, S
+- Example: `DEC EAX`
+
+**NEG dest** - Two's complement negation
+- Cycles: 1
+- Flags: Z, C, O, S
+- Example: `NEG EAX`
+
 ### Logical
 
 **AND dest, src** - Bitwise AND
@@ -62,6 +77,21 @@
 - Cycles: 1
 - Flags: Z, S
 - Example: `OR EAX, ECX`
+
+**XOR dest, src** - Bitwise XOR
+- Cycles: 1
+- Flags: Z, S
+- Example: `XOR EAX, ECX`
+
+**NOT dest** - Bitwise NOT (one's complement)
+- Cycles: 1
+- Flags: None
+- Example: `NOT EAX`
+
+**TEST op1, op2** - Logical AND (affects flags only, doesn't store result)
+- Cycles: 1
+- Flags: Z, S
+- Example: `TEST EAX, 0xFF`
 
 ### Control Flow
 

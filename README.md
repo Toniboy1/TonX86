@@ -83,9 +83,13 @@ npm run build
 | `SUB` | reg, reg/imm | ZCOS | Subtract |
 | `INC` | reg | ZCOS | Increment |
 | `DEC` | reg | ZCOS | Decrement |
-| `AND` | reg, reg | ZS | Bitwise AND |
-| `OR` | reg, reg | ZS | Bitwise OR |
+| `NEG` | reg | ZCOS | Two's complement negation |
 | `CMP` | reg, reg/imm | ZCOS | Compare (SUB without storing) |
+| `AND` | reg, reg/imm | ZS | Bitwise AND |
+| `OR` | reg, reg/imm | ZS | Bitwise OR |
+| `XOR` | reg, reg/imm | ZS | Bitwise XOR |
+| `NOT` | reg | - | Bitwise NOT (one's complement) |
+| `TEST` | reg, reg/imm | ZS | Logical AND (flags only) |
 | `JMP` | label | - | Unconditional jump |
 | `JE/JZ` | label | - | Jump if zero |
 | `JNE/JNZ` | label | - | Jump if not zero |
