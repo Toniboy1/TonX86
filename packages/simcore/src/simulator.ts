@@ -593,7 +593,7 @@ export class Simulator {
           this.cpu.registers[2] = 0;
         } else {
           const dividend = this.cpu.registers[0] | 0;
-          this.cpu.registers[0] = Math.floor(dividend / divisor) >>> 0; // Quotient
+          this.cpu.registers[0] = Math.trunc(dividend / divisor) >>> 0; // Quotient
           this.cpu.registers[2] = (dividend % divisor) >>> 0; // Remainder
         }
         this.updateFlags(this.cpu.registers[0]);
@@ -683,7 +683,7 @@ export class Simulator {
 
         if (dest.type === "register") {
           this.cpu.registers[dest.value] =
-            (-(this.cpu.registers[dest.value] >>> 0)) & 0xffffffff;
+            (-this.cpu.registers[dest.value]) & 0xffffffff;
           this.updateFlags(this.cpu.registers[dest.value]);
         }
         break;
