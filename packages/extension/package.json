@@ -2,7 +2,7 @@
   "name": "tonx86",
   "displayName": "TonX86",
   "description": "Educational x86-like assembly environment for VS Code",
-  "version": "0.3.3",
+  "version": "0.3.4",
   "publisher": "Toniboy1",
   "author": {
     "name": "Anthony (Toniboy1)",
@@ -26,8 +26,7 @@
     "Education"
   ],
   "activationEvents": [
-    "onDebug",
-    "onLanguage:tonx86"
+    "onDebug"
   ],
   "main": "./dist/extension.js",
   "contributes": {
