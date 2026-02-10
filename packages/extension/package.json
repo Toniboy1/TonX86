@@ -2,7 +2,7 @@
   "name": "tonx86",
   "displayName": "TonX86",
   "description": "Educational x86-like assembly environment for VS Code",
-  "version": "0.2.0",
+  "version": "0.3.1",
   "publisher": "Toniboy1",
   "author": {
     "name": "Anthony (Toniboy1)",
@@ -320,7 +320,7 @@
     "@types/node": "^20.0.0",
     "@types/vscode": "^1.84.0",
     "@typescript-eslint/eslint-plugin": "^6.0.0",
-    "@typescript-eslint/parser": "^6.0.0",
+    "@typescript-eslint/parser": "^8.55.0",
     "eslint": "^8.0.0",
     "typescript": "^5.0.0"
   }
