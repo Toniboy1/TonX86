@@ -340,7 +340,21 @@ export class Simulator {
     offset?: number;
     byteOffset?: number;
   } {
-    operand = operand.trim().toUpperCase();
+    const rawOperand = operand.trim();
+
+    // Preserve case for character literals (e.g., 'e')
+    if (
+      rawOperand.startsWith("'") &&
+      rawOperand.endsWith("'") &&
+      rawOperand.length === 3
+    ) {
+      return {
+        type: "immediate",
+        value: rawOperand.charCodeAt(1),
+      };
+    }
+
+    operand = rawOperand.toUpperCase();
 
     // Check for memory addressing [REG] or [REG+offset] or [REG+REG]
     if (operand.startsWith("[") && operand.endsWith("]")) {
@@ -449,14 +463,7 @@ export class Simulator {
     // Parse as immediate value (decimal, hex 0x, binary 0b, or character literal)
     let value = 0;
 
-    // Check for character literal ('X')
-    if (
-      operand.startsWith("'") &&
-      operand.endsWith("'") &&
-      operand.length === 3
-    ) {
-      value = operand.charCodeAt(1);
-    } else if (operand.startsWith("0X")) {
+    if (operand.startsWith("0X")) {
       value = parseInt(operand.substring(2), 16);
     } else if (operand.startsWith("0B")) {
       value = parseInt(operand.substring(2), 2);

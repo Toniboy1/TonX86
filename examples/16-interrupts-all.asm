@@ -29,6 +29,10 @@ main:
     
     MOV DL, 'i'
     INT 0x21
+
+    ; Print newline
+    MOV DL, 10         ; '\n'
+    INT 0x21
     
     ; Terminate program
     INT 0x20           ; Program terminate
