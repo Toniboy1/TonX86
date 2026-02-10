@@ -1,28 +1,35 @@
 name: Auto-approve Dependabot
 
-on: pull_request
+on:
+  pull_request_target:
+    types: [ opened ]
 
 permissions:
   pull-requests: write
-  contents: read
+  contents: write
 
 jobs:
   auto-approve:
     runs-on: ubuntu-latest
-    
-    if: github.actor == 'dependabot[bot]' && (contains(github.event.pull_request.title, 'minor') || contains(github.event.pull_request.title, 'patch') || contains(github.event.pull_request.labels.*.name, 'dependencies'))
-    
+    if: github.actor == 'dependabot[bot]'
+
     steps:
-    - name: Approve Dependabot PR
-      run: |
-        gh pr review --approve "$PR_URL"
+    - name: Fetch Dependabot metadata
+      id: metadata
+      uses: dependabot/fetch-metadata@v2
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Approve patch and minor updates
+      if: steps.metadata.outputs.update-type != 'version-update:semver-major'
+      run: gh pr review --approve "$PR_URL"
       env:
         PR_URL: ${{ github.event.pull_request.html_url }}
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    
-    - name: Enable auto-merge
-      run: |
-        gh pr merge --auto --squash "$PR_URL"
+
+    - name: Enable auto-merge for patch and minor updates
+      if: steps.metadata.outputs.update-type != 'version-update:semver-major'
+      run: gh pr merge --auto --squash "$PR_URL"
       env:
         PR_URL: ${{ github.event.pull_request.html_url }}
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

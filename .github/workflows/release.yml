@@ -1,4 +1,4 @@
-name: Release on Version Change
+name: Release
 
 on:
   push:
@@ -6,32 +6,30 @@ on:
       - 'v*'
 
 jobs:
-  create-release:
+  release:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-    
+    env:
+      VSCE_PAT: ${{ secrets.VSCE_PAT }}
+
     steps:
     - uses: actions/checkout@v4
       with:
         fetch-depth: 0
-    
+
     - name: Get version from tag
       id: version
       run: |
-        # Get version from the tag (remove 'v' prefix)
         VERSION=${GITHUB_REF#refs/tags/v}
         echo "version=$VERSION" >> $GITHUB_OUTPUT
         echo "Release version: $VERSION"
-    
+
     - name: Extract changelog for this version
       id: changelog
       run: |
-        # Extract the section for this version from CHANGELOG.md
         if [ -f CHANGELOG.md ]; then
-          # Get content between this version and the next version marker
           CHANGELOG=$(sed -n "/## \[${VERSION}\]/,/## \[/p" CHANGELOG.md | sed '$d')
-          # Save to file for upload
           echo "$CHANGELOG" > release-notes.md
           echo "has_changelog=true" >> $GITHUB_OUTPUT
         else
@@ -39,21 +37,21 @@ jobs:
         fi
       env:
         VERSION: ${{ steps.version.outputs.version }}
-    
+
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
         node-version: 20.x
         cache: 'npm'
-    
+
     - name: Build and Package Extension
       run: |
         npm ci
         npm run package
         mv packages/extension/tonx86-*.vsix tonx86-${{ steps.version.outputs.version }}.vsix
-    
+
     - name: Create GitHub Release
-      uses: softprops/action-gh-release@v1
+      uses: softprops/action-gh-release@v2
       with:
         tag_name: v${{ steps.version.outputs.version }}
         name: Release ${{ steps.version.outputs.version }}
@@ -66,11 +64,9 @@ jobs:
         draft: false
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    
+
     - name: Publish to VS Code Marketplace
-      if: ${{ secrets.VSCE_PAT != '' }}
+      if: env.VSCE_PAT != ''
       run: |
         cd packages/extension
         npx @vscode/vsce publish --no-dependencies -p ${{ secrets.VSCE_PAT }}
-      env:
-        VSCE_PAT: ${{ secrets.VSCE_PAT }}
