@@ -85,6 +85,46 @@
 - Flags: None
 - Example: `HLT`
 
+### Stack Operations
+
+**PUSH reg** - Push register onto stack
+- Cycles: 1
+- Flags: None
+- Operation: Decrements ESP by 4, writes register value to memory
+- Example: `PUSH EAX`
+
+**POP reg** - Pop from stack into register
+- Cycles: 1
+- Flags: None
+- Operation: Reads value from memory, increments ESP by 4
+- Example: `POP EAX`
+
+**CALL label** - Call subroutine
+- Cycles: 2
+- Flags: None
+- Operation: Pushes return address, jumps to label
+- Example: `CALL my_function`
+
+**RET** - Return from subroutine
+- Cycles: 2
+- Flags: None
+- Operation: Pops return address, jumps to it
+- Example: `RET`
+
+### Interrupts
+
+**INT imm8** - Software interrupt
+- Cycles: 2
+- Flags: None
+- Operation: Executes interrupt handler for the specified number
+- Example: `INT 0x10`
+
+**IRET** - Return from interrupt
+- Cycles: 2
+- Flags: All restored from stack
+- Operation: Returns from interrupt handler
+- Example: `IRET`
+
 ## Memory-Mapped I/O
 
 ### LCD Display (0xF000-0xF0FF)
@@ -156,3 +196,29 @@ loop:
   MOV ECX, 0xF102   ; Read key state
   HLT
 ```
+
+### Function Call (cdecl)
+```asm
+; Call add(5, 3)
+PUSH 3
+PUSH 5
+CALL add
+ADD ESP, 8        ; Caller cleans stack
+
+add:
+  PUSH EBP
+  MOV EBP, ESP
+  MOV EAX, [EBP+8]
+  ADD EAX, [EBP+12]
+  POP EBP
+  RET
+```
+
+## Calling Conventions
+
+TonX86 supports standard x86 calling conventions. See [CALLING_CONVENTIONS.md](CALLING_CONVENTIONS.md) for detailed documentation on:
+- **cdecl** - C declaration (caller cleans stack)
+- **stdcall** - Standard call (callee cleans stack)
+- **fastcall** - Fast call (first 2 params in registers)
+
+Example programs demonstrating each convention are available in `/examples/calling-conventions/`.
