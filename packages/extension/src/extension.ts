@@ -549,8 +549,10 @@ class DocsViewProvider implements vscode.WebviewViewProvider {
 
 // Global state
 const registersProvider = new RegistersProvider();
-const memoryProviderA = new MemoryProvider(0x0000, 16);
-const memoryProviderB = new MemoryProvider(0x0000, 16);
+// Memory views show first 16 bytes of each bank
+const MEMORY_VIEW_SIZE = 16;
+const memoryProviderA = new MemoryProvider(0x0000, MEMORY_VIEW_SIZE);
+const memoryProviderB = new MemoryProvider(0x0000, MEMORY_VIEW_SIZE);
 let lcdProvider: LCDViewProvider;
 let currentDebugSession: vscode.DebugSession | undefined;
 let client: LanguageClient;
@@ -629,17 +631,18 @@ export function activate(context: vscode.ExtensionContext): void {
     ),
   );
 
-  // Listen for debug events to update LCD display
-  let lcdUpdateInterval: NodeJS.Timeout | undefined;
+  // Listen for debug events to update LCD display and memory views
+  let viewUpdateInterval: NodeJS.Timeout | undefined;
 
   context.subscriptions.push(
     vscode.debug.onDidStartDebugSession((session) => {
       if (session.type === "tonx86") {
-        console.log("TonX86 debug session started, polling LCD state");
+        console.log("TonX86 debug session started, polling view states");
         currentDebugSession = session; // Store current session for keyboard events
-        // Poll LCD state every 50ms while debugging (20 FPS)
-        lcdUpdateInterval = setInterval(async () => {
+        // Poll LCD and memory state every 50ms while debugging (20 FPS)
+        viewUpdateInterval = setInterval(async () => {
           await updateLCDDisplay(session);
+          await updateMemoryViews(session);
         }, 50);
       }
     }),
@@ -648,11 +651,11 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
     vscode.debug.onDidTerminateDebugSession((session) => {
       if (session.type === "tonx86") {
-        console.log("TonX86 debug session terminated, stopping LCD polling");
+        console.log("TonX86 debug session terminated, stopping view polling");
         currentDebugSession = undefined; // Clear session reference
-        if (lcdUpdateInterval) {
-          clearInterval(lcdUpdateInterval);
-          lcdUpdateInterval = undefined;
+        if (viewUpdateInterval) {
+          clearInterval(viewUpdateInterval);
+          viewUpdateInterval = undefined;
         }
       }
     }),
@@ -670,18 +673,36 @@ export function activate(context: vscode.ExtensionContext): void {
     }
   }
 
+  // Helper function to fetch and update memory views
+  async function updateMemoryViews(session: vscode.DebugSession) {
+    try {
+      const response = await session.customRequest("getMemoryState", {
+        start: 0,
+        length: MEMORY_VIEW_SIZE,
+      });
+      if (response && response.memoryA && response.memoryB) {
+        memoryProviderA.updateMemory(new Uint8Array(response.memoryA));
+        memoryProviderB.updateMemory(new Uint8Array(response.memoryB));
+      }
+    } catch (error) {
+      // Silently fail - session might not be ready yet
+    }
+  }
+
   // Monitor configuration changes
   context.subscriptions.push(
-    vscode.workspace.onDidChangeConfiguration((event) => {
-      if (event.affectsConfiguration("tonx86.lcd")) {
-        console.log("LCD configuration changed");
-        lcdProvider.updateLCDConfig();
-        // Reload the webview
-        vscode.window.showInformationMessage(
-          "LCD configuration updated. Reload the LCD view to apply changes.",
-        );
-      }
-    }),
+    vscode.workspace.onDidChangeConfiguration(
+      (event: vscode.ConfigurationChangeEvent) => {
+        if (event.affectsConfiguration("tonx86.lcd")) {
+          console.log("LCD configuration changed");
+          lcdProvider.updateLCDConfig();
+          // Reload the webview
+          vscode.window.showInformationMessage(
+            "LCD configuration updated. Reload the LCD view to apply changes.",
+          );
+        }
+      },
+    ),
   );
 
   // Register commands
