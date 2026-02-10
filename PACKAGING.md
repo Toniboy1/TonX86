@@ -1,15 +1,15 @@
 # Packaging TonX86 Extension
 
-This document describes how to package the TonX86 VS Code extension as a VSIX file for local installation.
+Guide for packaging the TonX86 VS Code extension as a VSIX file.
 
-## Bundling with esbuild
+## Overview
 
-The extension uses [esbuild](https://esbuild.github.io/) to bundle all TypeScript code into optimized JavaScript files. This approach:
+The extension uses [esbuild](https://esbuild.github.io/) to bundle TypeScript code into optimized JavaScript:
 
-- **Reduces extension size** by bundling dependencies
-- **Improves load time** by shipping fewer files
-- **Enables web compatibility** for platforms like github.dev and vscode.dev
-- **Follows VS Code best practices** for extension development
+- ✅ Reduces extension size by bundling dependencies
+- ✅ Improves load time with fewer files
+- ✅ Enables web compatibility (github.dev, vscode.dev)
+- ✅ Follows VS Code best practices
 
 ### Build Output
 
@@ -17,125 +17,99 @@ The extension uses [esbuild](https://esbuild.github.io/) to bundle all TypeScrip
 - Debug Adapter: `packages/debug-adapter/dist/debugAdapter.js`
 - Language Server: `packages/language-server/dist/server.js`
 
-## Prerequisites
+## Quick Start
 
-The `@vscode/vsce` and `esbuild` packages are installed as dev dependencies. They will be installed automatically when you run `npm install` in the project root.
-
-## Development Workflow
-
-### Building for Development
-
-```bash
-# Build all packages (development mode with source maps)
-npm run compile
-
-# Watch mode (recommended for development)
-npm run watch
-```
-
-Watch mode runs two processes in parallel:
-- Type checking with `tsc --noEmit`
-- Bundling with `esbuild --watch`
-
-### Building for Production
-
-```bash
-# Build all packages (production mode, minified)
-npm run build
-```
-
-## Creating a VSIX Package
-
-To create a VSIX package for distribution:
+### Create VSIX Package
 
 ```bash
 npm run package
 ```
 
-This command will:
-1. Build all workspace packages (simcore, debug-adapter, language-server, extension)
-2. Run type checks with TypeScript
-3. Bundle code with esbuild in production mode (minified, no source maps)
-4. Copy the debug adapter into the extension dist folder
-5. Create a VSIX file at `packages/extension/tonx86-0.0.1.vsix`
+This command:
+1. Builds all workspace packages (simcore, debug-adapter, language-server, extension)
+2. Runs type checks with TypeScript
+3. Bundles code with esbuild (production mode, minified)
+4. Copies debug adapter into extension dist folder
+5. Creates VSIX at `packages/extension/tonx86-<version>.vsix`
 
-## Installing the VSIX Locally
+### Install VSIX Locally
 
-Once the VSIX is created, you can install it in VS Code:
+**Option 1: VS Code UI**
+1. Open Extensions view (Ctrl+Shift+X / Cmd+Shift+X)
+2. Click `...` menu → "Install from VSIX..."
+3. Select `packages/extension/tonx86-<version>.vsix`
 
-### Option 1: Using VS Code UI
-1. Open VS Code
-2. Go to Extensions view (Ctrl+Shift+X / Cmd+Shift+X)
-3. Click the `...` menu at the top of the Extensions view
-4. Select "Install from VSIX..."
-5. Navigate to `packages/extension/tonx86-0.0.1.vsix` and select it
-
-### Option 2: Using Command Line
+**Option 2: Command Line**
 ```bash
-code --install-extension packages/extension/tonx86-0.0.1.vsix
+code --install-extension packages/extension/tonx86-<version>.vsix
 ```
+
+## Development Workflow
+
+### Building
+
+```bash
+# Development build (with source maps)
+npm run compile
+
+# Production build (minified)
+npm run build
+
+# Watch mode (recommended for development)
+npm run watch
+```
+
+Watch mode runs parallel processes:
+- Type checking: `tsc --noEmit`  
+- Bundling: `esbuild --watch`
 
 ## Package Contents
 
-The VSIX includes only the essential bundled files:
+**Included (~22KB compressed):**
+- Bundled extension code (`dist/extension.js`) - ~13KB
+- Bundled debug adapter (`dist/debugAdapter.js`) - ~47KB
+- Syntax highlighting (`syntaxes/tonx86.tmLanguage.json`)
+- Language configuration (`language-configuration.json`)
+- LICENSE and package.json
 
-- **Bundled extension code** (`dist/extension.js`) - ~13KB
-- **Bundled debug adapter** (`dist/debugAdapter.js`) - ~47KB  
-- **Syntax highlighting** (`syntaxes/tonx86.tmLanguage.json`)
-- **Language configuration** (`language-configuration.json`)
-- **LICENSE** file
-- **package.json** manifest
-
-**Total size:** ~22KB (compressed)
-
-### What's Excluded
-
-Source files and development artifacts are excluded via `.vscodeignore`:
+**Excluded (via `.vscodeignore`):**
 - TypeScript source files (`src/**`)
-- Build scripts (`esbuild.js`, `copy-debug-adapter.js`)
+- Build scripts (`*.js` build configs)
 - Configuration files (`tsconfig.json`, `.eslintrc.json`)
-- Node modules (bundled into dist files)
-- Source maps (only in production builds)
+- Node modules (bundled into dist)
+- Source maps (production only)
 
 ## Troubleshooting
 
 ### Type Errors
-
-If you encounter TypeScript errors during build:
 ```bash
-npm run check-types
+npm run check-types  # Show type errors without building
 ```
 
-This will show type errors without attempting to build.
-
 ### Extension Not Loading
+1. Verify successful build: `npm run build`
+2. Check debug adapter files were copied
+3. Verify VS Code compatibility (requires ^1.84.0)
+4. Check Developer Tools console (Help → Toggle Developer Tools)
 
-If the extension doesn't work after installation:
-1. Ensure all packages were built successfully (`npm run build`)
-2. Check that the debug adapter files were copied correctly
-3. Verify VS Code version compatibility (requires ^1.84.0)
-4. Check the VS Code Developer Tools console for errors (Help → Toggle Developer Tools)
-
-### Bundle Size Issues
-
-To analyze what's included in the bundle:
+### Analyze Bundle Contents
 ```bash
 cd packages/extension
 npx vsce ls --tree
 ```
 
-This shows all files that will be included in the VSIX.
-
 ## CI/CD Integration
 
-The GitHub Actions workflow automatically builds and packages the extension when the version in `package.json` changes. The workflow:
+GitHub Actions automatically builds and packages the extension on version tag pushes:
 
-1. Detects version changes
+1. Detects tag push (e.g., `v0.3.0`)
 2. Runs `npm run package`
-3. Creates a GitHub release with the VSIX attached
-4. Publishes to VS Code Marketplace (if secrets are configured)
+3. Creates GitHub release with VSIX attached
+4. Publishes to VS Code Marketplace (if VSCE_PAT secret configured)
 
-## Further Reading
+See [.github/workflows/release.yml](.github/workflows/release.yml) for details.
+
+## Resources
 
 - [VS Code Extension Bundling Guide](https://code.visualstudio.com/api/working-with-extensions/bundling-extension)
 - [esbuild Documentation](https://esbuild.github.io/)
