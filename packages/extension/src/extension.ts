@@ -205,6 +205,10 @@ class LCDViewProvider implements vscode.WebviewViewProvider {
       localResourceRoots: [],
     };
 
+    // Refresh config to ensure latest settings
+    this.updateLCDConfig();
+    this.keyboardConfig = getKeyboardConfig();
+
     webviewView.webview.html = this.getHtmlForWebview();
 
     // Handle messages from webview
@@ -260,8 +264,17 @@ class LCDViewProvider implements vscode.WebviewViewProvider {
 				<title>TonX86 LCD Display</title>
 				<style>
 					body { font-family: monospace; padding: 10px; }
-					#lcd { display: inline-block; border: 2px solid #333; padding: 10px; background: #f0f0f0; }
-					.pixel { display: inline-block; width: ${pixelSize}px; height: ${pixelSize}px; margin: 1px; background: #ddd; cursor: pointer; }
+					#lcd { 
+						display: grid; 
+						grid-template-columns: repeat(${width}, ${pixelSize}px);
+						grid-template-rows: repeat(${height}, ${pixelSize}px);
+						gap: 1px;
+						border: 2px solid #333; 
+						padding: 10px; 
+						background: #f0f0f0;
+						width: fit-content;
+					}
+					.pixel { width: ${pixelSize}px; height: ${pixelSize}px; background: #ddd; cursor: pointer; }
 					.pixel.on { background: #333; }
 					.info { font-size: 0.9em; color: #666; margin-top: 10px; }
 					.keyboard-status { font-size: 0.8em; color: ${keyboardEnabled ? "#007acc" : "#999"}; margin-top: 5px; }
@@ -287,7 +300,7 @@ class LCDViewProvider implements vscode.WebviewViewProvider {
 						'ArrowRight': 131
 					};
 					
-					// Create pixel grid
+					// Create pixel grid (no <br> tags needed with CSS Grid)
 					for (let y = 0; y < height; y++) {
 						for (let x = 0; x < width; x++) {
 							const pixel = document.createElement('div');
@@ -298,7 +311,6 @@ class LCDViewProvider implements vscode.WebviewViewProvider {
 							lcd.appendChild(pixel);
 							pixels.push(pixel);
 						}
-						lcd.appendChild(document.createElement('br'));
 					}
 					
 					// Keyboard event handling
@@ -411,6 +423,10 @@ class LCDViewProvider implements vscode.WebviewViewProvider {
       this.lcdPanel.reveal(vscode.ViewColumn.Beside);
       return;
     }
+
+    // Refresh config before creating pop-out to ensure latest settings
+    this.updateLCDConfig();
+    this.keyboardConfig = getKeyboardConfig();
 
     this.lcdPanel = vscode.window.createWebviewPanel(
       LCDViewProvider.panelViewType,
