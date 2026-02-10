@@ -627,6 +627,89 @@ export class Simulator {
         break;
       }
 
+      case "SHL": {
+        // SHL destination, count - Shift left
+        if (operands.length !== 2) break;
+        const dest = this.parseOperand(operands[0]);
+        const src = this.parseOperand(operands[1]);
+
+        if (dest.type === "register") {
+          const count =
+            src.type === "register" ? this.cpu.registers[src.value] : src.value;
+          this.cpu.registers[dest.value] =
+            (this.cpu.registers[dest.value] << count) & 0xffffffff;
+          this.updateFlags(this.cpu.registers[dest.value]);
+        }
+        break;
+      }
+
+      case "SHR": {
+        // SHR destination, count - Shift right (logical)
+        if (operands.length !== 2) break;
+        const dest = this.parseOperand(operands[0]);
+        const src = this.parseOperand(operands[1]);
+
+        if (dest.type === "register") {
+          const count =
+            src.type === "register" ? this.cpu.registers[src.value] : src.value;
+          this.cpu.registers[dest.value] =
+            (this.cpu.registers[dest.value] >>> count) & 0xffffffff;
+          this.updateFlags(this.cpu.registers[dest.value]);
+        }
+        break;
+      }
+
+      case "SAR": {
+        // SAR destination, count - Shift arithmetic right (preserves sign)
+        if (operands.length !== 2) break;
+        const dest = this.parseOperand(operands[0]);
+        const src = this.parseOperand(operands[1]);
+
+        if (dest.type === "register") {
+          const count =
+            src.type === "register" ? this.cpu.registers[src.value] : src.value;
+          // Convert to signed, shift, then back to unsigned
+          this.cpu.registers[dest.value] =
+            ((this.cpu.registers[dest.value] | 0) >> count) >>> 0;
+          this.updateFlags(this.cpu.registers[dest.value]);
+        }
+        break;
+      }
+
+      case "ROL": {
+        // ROL destination, count - Rotate left
+        if (operands.length !== 2) break;
+        const dest = this.parseOperand(operands[0]);
+        const src = this.parseOperand(operands[1]);
+
+        if (dest.type === "register") {
+          const count =
+            (src.type === "register" ? this.cpu.registers[src.value] : src.value) & 0x1f;
+          const value = this.cpu.registers[dest.value];
+          this.cpu.registers[dest.value] =
+            ((value << count) | (value >>> (32 - count))) & 0xffffffff;
+          this.updateFlags(this.cpu.registers[dest.value]);
+        }
+        break;
+      }
+
+      case "ROR": {
+        // ROR destination, count - Rotate right
+        if (operands.length !== 2) break;
+        const dest = this.parseOperand(operands[0]);
+        const src = this.parseOperand(operands[1]);
+
+        if (dest.type === "register") {
+          const count =
+            (src.type === "register" ? this.cpu.registers[src.value] : src.value) & 0x1f;
+          const value = this.cpu.registers[dest.value];
+          this.cpu.registers[dest.value] =
+            ((value >>> count) | (value << (32 - count))) & 0xffffffff;
+          this.updateFlags(this.cpu.registers[dest.value]);
+        }
+        break;
+      }
+
       case "JMP": {
         // JMP label (not implemented - labels need symbol table)
         break;

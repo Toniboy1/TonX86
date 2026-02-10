@@ -94,6 +94,11 @@ npm run build
 | `XOR` | reg, reg/imm | ZS | Bitwise XOR |
 | `NOT` | reg | - | Bitwise NOT (one's complement) |
 | `TEST` | reg, reg/imm | ZS | Logical AND (flags only) |
+| `SHL` | reg, imm/reg | ZS | Shift left |
+| `SHR` | reg, imm/reg | ZS | Shift right (logical) |
+| `SAR` | reg, imm/reg | ZS | Shift arithmetic right |
+| `ROL` | reg, imm/reg | ZS | Rotate left |
+| `ROR` | reg, imm/reg | ZS | Rotate right |
 | `JMP` | label | - | Unconditional jump |
 | `JE/JZ` | label | - | Jump if zero |
 | `JNE/JNZ` | label | - | Jump if not zero |

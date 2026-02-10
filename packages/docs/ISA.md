@@ -113,6 +113,33 @@
 - Flags: Z, S
 - Example: `TEST EAX, 0xFF`
 
+### Shifts and Rotates
+
+**SHL dest, count** - Shift left
+- Cycles: 1
+- Flags: Z, S
+- Example: `SHL EAX, 4`
+
+**SHR dest, count** - Shift right (logical, zero-fill)
+- Cycles: 1
+- Flags: Z, S
+- Example: `SHR EAX, 2`
+
+**SAR dest, count** - Shift arithmetic right (sign-extend)
+- Cycles: 1
+- Flags: Z, S
+- Example: `SAR EAX, 3`
+
+**ROL dest, count** - Rotate left
+- Cycles: 1
+- Flags: Z, S
+- Example: `ROL EAX, 8`
+
+**ROR dest, count** - Rotate right
+- Cycles: 1
+- Flags: Z, S
+- Example: `ROR EAX, 8`
+
 ### Control Flow
 
 **JMP label** - Unconditional jump

@@ -164,6 +164,61 @@
       ]
     },
     {
+      "mnemonic": "SHL",
+      "opcode": "0xC1",
+      "operands": ["reg", "imm/reg"],
+      "description": "Shift left",
+      "cycles": 1,
+      "flags": ["Z", "S"],
+      "examples": [
+        "SHL EAX, 4         ; Shift left by 4 positions"
+      ]
+    },
+    {
+      "mnemonic": "SHR",
+      "opcode": "0xC1",
+      "operands": ["reg", "imm/reg"],
+      "description": "Shift right (logical, zero-fill)",
+      "cycles": 1,
+      "flags": ["Z", "S"],
+      "examples": [
+        "SHR EAX, 2         ; Shift right by 2 positions"
+      ]
+    },
+    {
+      "mnemonic": "SAR",
+      "opcode": "0xC1",
+      "operands": ["reg", "imm/reg"],
+      "description": "Shift arithmetic right (sign-extend)",
+      "cycles": 1,
+      "flags": ["Z", "S"],
+      "examples": [
+        "SAR EAX, 3         ; Arithmetic shift right by 3"
+      ]
+    },
+    {
+      "mnemonic": "ROL",
+      "opcode": "0xC1",
+      "operands": ["reg", "imm/reg"],
+      "description": "Rotate left",
+      "cycles": 1,
+      "flags": ["Z", "S"],
+      "examples": [
+        "ROL EAX, 8         ; Rotate left by 8 positions"
+      ]
+    },
+    {
+      "mnemonic": "ROR",
+      "opcode": "0xC1",
+      "operands": ["reg", "imm/reg"],
+      "description": "Rotate right",
+      "cycles": 1,
+      "flags": ["Z", "S"],
+      "examples": [
+        "ROR EAX, 8         ; Rotate right by 8 positions"
+      ]
+    },
+    {
       "mnemonic": "CMP",
       "opcode": "0x39",
       "operands": ["reg", "reg"],

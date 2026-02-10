@@ -733,6 +733,125 @@ describe("Simulator - executeInstruction", () => {
     });
   });
 
+  describe("SHL instruction", () => {
+    test("shifts left by immediate count", () => {
+      sim.executeInstruction("MOV", ["EAX", "0b00000001"]);
+      sim.executeInstruction("SHL", ["EAX", "3"]);
+      const regs = sim.getRegisters();
+      expect(regs.EAX).toBe(0b00001000); // Shifted left 3 positions
+    });
+
+    test("shifts left by register count", () => {
+      sim.executeInstruction("MOV", ["EAX", "0xFF"]);
+      sim.executeInstruction("MOV", ["ECX", "8"]);
+      sim.executeInstruction("SHL", ["EAX", "ECX"]);
+      const regs = sim.getRegisters();
+      expect(regs.EAX).toBe(0xff00);
+    });
+
+    test("wraps around 32-bit boundary", () => {
+      sim.executeInstruction("MOV", ["EAX", "0x80000000"]);
+      sim.executeInstruction("SHL", ["EAX", "1"]);
+      const regs = sim.getRegisters();
+      expect(regs.EAX).toBe(0); // High bit shifted out
+    });
+  });
+
+  describe("SHR instruction", () => {
+    test("shifts right by immediate count (logical)", () => {
+      sim.executeInstruction("MOV", ["EAX", "0b00001000"]);
+      sim.executeInstruction("SHR", ["EAX", "3"]);
+      const regs = sim.getRegisters();
+      expect(regs.EAX).toBe(0b00000001);
+    });
+
+    test("shifts right by register count", () => {
+      sim.executeInstruction("MOV", ["EAX", "0x7F00"]);
+      sim.executeInstruction("MOV", ["ECX", "8"]);
+      sim.executeInstruction("SHR", ["EAX", "ECX"]);
+      const regs = sim.getRegisters();
+      expect(regs.EAX).toBe(0x7f);
+    });
+
+    test("logical shift fills with zeros", () => {
+      sim.executeInstruction("MOV", ["EAX", "0x80000000"]);
+      sim.executeInstruction("SHR", ["EAX", "1"]);
+      const regs = sim.getRegisters();
+      expect(regs.EAX).toBe(0x40000000); // Zero-filled from left
+    });
+  });
+
+  describe("SAR instruction", () => {
+    test("shifts right preserving sign for positive", () => {
+      sim.executeInstruction("MOV", ["EAX", "0x1000"]);
+      sim.executeInstruction("SAR", ["EAX", "4"]);
+      const regs = sim.getRegisters();
+      expect(regs.EAX).toBe(0x100);
+    });
+
+    test("shifts right preserving sign for negative", () => {
+      sim.executeInstruction("MOV", ["EAX", "0x80000000"]); // Most negative
+      sim.executeInstruction("SAR", ["EAX", "1"]);
+      const regs = sim.getRegisters();
+      expect(regs.EAX).toBe(0xc0000000); // Sign bit preserved (1-filled)
+    });
+
+    test("sign extends on arithmetic shift", () => {
+      sim.executeInstruction("MOV", ["EAX", "0xFFFFFFFF"]); // -1
+      sim.executeInstruction("SAR", ["EAX", "8"]);
+      const regs = sim.getRegisters();
+      expect(regs.EAX).toBe(0xffffffff); // Still -1
+    });
+  });
+
+  describe("ROL instruction", () => {
+    test("rotates left by immediate count", () => {
+      sim.executeInstruction("MOV", ["EAX", "0x5678"]);
+      sim.executeInstruction("ROL", ["EAX", "8"]);
+      const regs = sim.getRegisters();
+      expect(regs.EAX).toBe(0x567800);
+    });
+
+    test("rotates left by register count", () => {
+      sim.executeInstruction("MOV", ["EAX", "0x80000001"]);
+      sim.executeInstruction("MOV", ["ECX", "1"]);
+      sim.executeInstruction("ROL", ["EAX", "ECX"]);
+      const regs = sim.getRegisters();
+      expect(regs.EAX).toBe(0x00000003); // High bit rotated to low bit
+    });
+
+    test("full 32-bit rotation", () => {
+      sim.executeInstruction("MOV", ["EAX", "0xABCD"]);
+      sim.executeInstruction("ROL", ["EAX", "32"]); // Rotate by 32 = no change
+      const regs = sim.getRegisters();
+      expect(regs.EAX).toBe(0xabcd);
+    });
+  });
+
+  describe("ROR instruction", () => {
+    test("rotates right by immediate count", () => {
+      sim.executeInstruction("MOV", ["EAX", "0x5678"]);
+      sim.executeInstruction("ROR", ["EAX", "8"]);
+      const regs = sim.getRegisters();
+      expect(regs.EAX).toBe(0x78000056);
+    });
+
+    test("rotates right by register count", () => {
+      sim.executeInstruction("MOV", ["EAX", "0x80000001"]);
+      sim.executeInstruction("MOV", ["ECX", "1"]);
+      sim.executeInstruction("ROR", ["EAX", "ECX"]);
+      const regs = sim.getRegisters();
+      expect(regs.EAX).toBe(0xc0000000); // Low bit rotated to high bit
+    });
+
+    test("full 32-bit rotation", () => {
+      sim.executeInstruction("MOV", ["EAX", "0xABCD"]);
+      sim.executeInstruction("ROR", ["EAX", "32"]); // Rotate by 32 = no change
+      const regs = sim.getRegisters();
+      expect(regs.EAX).toBe(0xabcd);
+    });
+  });
+
   test("HLT instruction", () => {
     const stateBefore = sim.getState();
     expect(stateBefore.halted).toBe(false);
