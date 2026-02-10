@@ -26,7 +26,8 @@
     "Education"
   ],
   "activationEvents": [
-    "onDebug"
+    "onDebug",
+    "onLanguage:tonx86"
   ],
   "main": "./dist/extension.js",
   "contributes": {
@@ -323,5 +324,8 @@
     "@typescript-eslint/parser": "^8.55.0",
     "eslint": "^8.0.0",
     "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "vscode-languageclient": "^9.0.1"
   }
 }
