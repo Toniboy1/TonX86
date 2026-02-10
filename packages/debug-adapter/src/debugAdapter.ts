@@ -259,23 +259,8 @@ export class TonX86DebugSession extends DebugSession {
             const returnAddress = this.instructionPointer + 1;
             this.callStack.push(returnAddress);
 
-            // Also push to CPU stack via simulator
-            // Store return address in a temporary way
-            const registers = this.simulator.getRegisters();
-            const tempEAX = registers.EAX; // Save EAX
-
-            // Use EAX to push return address
-            this.simulator.executeInstruction("MOV", [
-              "EAX",
-              returnAddress.toString(),
-            ]);
-            this.simulator.executeInstruction("PUSH", ["EAX"]);
-
-            // Restore EAX
-            this.simulator.executeInstruction("MOV", [
-              "EAX",
-              tempEAX.toString(),
-            ]);
+            // Push return address onto CPU stack
+            this.simulator.pushStack(returnAddress);
 
             // Jump to target
             this.instructionPointer = targetIndex;
@@ -290,17 +275,8 @@ export class TonX86DebugSession extends DebugSession {
           if (this.callStack.length > 0) {
             const returnAddress = this.callStack.pop()!;
 
-            // Also pop from CPU stack (discard the value)
-            const registers = this.simulator.getRegisters();
-            const tempEAX = registers.EAX; // Save EAX
-
-            this.simulator.executeInstruction("POP", ["EAX"]); // Pop return address
-
-            // Restore EAX
-            this.simulator.executeInstruction("MOV", [
-              "EAX",
-              tempEAX.toString(),
-            ]);
+            // Pop return address from CPU stack
+            this.simulator.popStack();
 
             // Jump to return address
             this.instructionPointer = returnAddress;

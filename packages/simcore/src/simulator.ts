@@ -300,6 +300,27 @@ export class Simulator {
   }
 
   /**
+   * Push a 32-bit value onto the stack
+   */
+  pushStack(value: number): void {
+    // Decrement ESP by 4 (32-bit)
+    this.cpu.registers[4] = (this.cpu.registers[4] - 4) & 0xffff;
+    // Write value to stack
+    this.writeMemory32(this.cpu.registers[4], value);
+  }
+
+  /**
+   * Pop a 32-bit value from the stack
+   */
+  popStack(): number {
+    // Read value from stack
+    const value = this.readMemory32(this.cpu.registers[4]);
+    // Increment ESP by 4 (32-bit)
+    this.cpu.registers[4] = (this.cpu.registers[4] + 4) & 0xffff;
+    return value;
+  }
+
+  /**
    * Parse a register name or immediate value
    */
   private parseOperand(operand: string): {
@@ -468,10 +489,7 @@ export class Simulator {
 
         if (src.type === "register") {
           const value = this.cpu.registers[src.value];
-          // Decrement ESP by 4 (32-bit)
-          this.cpu.registers[4] = (this.cpu.registers[4] - 4) & 0xffff;
-          // Write value to stack
-          this.writeMemory32(this.cpu.registers[4], value);
+          this.pushStack(value);
         }
         break;
       }
@@ -482,33 +500,30 @@ export class Simulator {
         const dest = this.parseOperand(operands[0]);
 
         if (dest.type === "register") {
-          // Read value from stack
-          const value = this.readMemory32(this.cpu.registers[4]);
-          // Store in register
+          const value = this.popStack();
           this.cpu.registers[dest.value] = value;
-          // Increment ESP by 4 (32-bit)
-          this.cpu.registers[4] = (this.cpu.registers[4] + 4) & 0xffff;
         }
         break;
       }
 
       case "CALL": {
         // CALL label - Push return address, jump to label
-        // Note: This is a simplified implementation for the simulator
-        // The actual jump is handled by the debug adapter
-        // We only need to push the return address (next instruction pointer)
+        // Note: The actual jump is handled by the debug adapter for label resolution
+        // The simulator only manages the stack operation
         if (operands.length !== 1) break;
         
-        // This instruction is handled by the debug adapter for label resolution
-        // The simulator just needs to track the stack operation
+        // CALL is typically followed by pushing a return address
+        // However, since the debug adapter handles the control flow,
+        // this is a no-op in the simulator. The debug adapter will
+        // directly call pushStack() when needed.
         break;
       }
 
       case "RET": {
         // RET - Pop return address, jump to it
-        // Note: This is a simplified implementation for the simulator
-        // The actual jump is handled by the debug adapter
-        // We only need to pop the return address
+        // Note: The actual jump is handled by the debug adapter
+        // The simulator only manages the stack operation
+        // The debug adapter will directly call popStack() when needed.
         break;
       }
 
