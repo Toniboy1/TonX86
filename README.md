@@ -93,6 +93,12 @@ Students should start in **educational mode** to learn core concepts, then switc
 ### Registers
 `EAX` `ECX` `EDX` `EBX` `ESP` `EBP` `ESI` `EDI`
 
+### Architecture Note
+
+**Control Flow Instructions:** Jump instructions (JMP, JE/JZ, JNE/JNZ) and subroutine instructions (CALL, RET) are handled by the debug adapter rather than the simulator core. This is by design, as they require access to the label symbol table and instruction pointer management. These instructions work seamlessly during debugging but require the debug adapter context.
+
+**Data Instructions:** All other instructions (MOV, ADD, arithmetic, bitwise, etc.) are executed by the simulator core and work independently.
+
 ### Instructions
 
 | Mnemonic | Operands | Flags | Description |
