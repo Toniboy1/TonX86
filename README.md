@@ -3,7 +3,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![CI](https://github.com/Toniboy1/TonX86/workflows/CI/badge.svg)](https://github.com/Toniboy1/TonX86/actions)
 [![CodeQL](https://github.com/Toniboy1/TonX86/workflows/CodeQL/badge.svg)](https://github.com/Toniboy1/TonX86/security/code-scanning)
-[![Tests](https://img.shields.io/badge/tests-102%20passing-brightgreen)](https://github.com/Toniboy1/TonX86/actions)
+[![Tests](https://img.shields.io/badge/tests-155%20passing-brightgreen)](https://github.com/Toniboy1/TonX86/actions)
 [![Coverage](https://img.shields.io/badge/coverage-92%25-brightgreen)](https://github.com/Toniboy1/TonX86/actions)
 
 Educational x86-like assembly environment for VS Code with integrated debugging, memory visualization, LCD display, and keyboard input.
@@ -283,7 +283,7 @@ The project includes automated workflows:
   - Build verification (Node 18 & 20)
   - TypeScript compilation
   - Linting
-  - Test execution with coverage (102 tests)
+  - Test execution with coverage (155 tests)
   - Security audit
   - Coverage reports uploaded as artifacts
   - Coverage comments on PRs (free service)
@@ -308,7 +308,7 @@ The project includes automated workflows:
 
 All contributions must:
 - ✅ Pass TypeScript compilation
-- ✅ Pass all tests (102/102 currently)
+- ✅ Pass all tests (155/155 currently)
 - ✅ Maintain 80%+ code coverage
 - ✅ Pass ESLint checks
 - ✅ Include tests for new features
