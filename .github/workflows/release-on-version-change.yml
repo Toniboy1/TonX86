@@ -2,72 +2,43 @@ name: Release on Version Change
 
 on:
   push:
-    branches: [ main ]
-    paths:
-      - 'package.json'
+    tags:
+      - 'v*'
 
 jobs:
-  check-version:
-    runs-on: ubuntu-latest
-    outputs:
-      version: ${{ steps.version.outputs.version }}
-      changed: ${{ steps.version.outputs.changed }}
-    
-    steps:
-    - uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
-    
-    - name: Get current version
-      id: version
-      run: |
-        CURRENT_VERSION=$(jq -r '.version' package.json)
-        echo "version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
-        
-        # Sync version to extension package.json
-        node scripts/sync-version.js
-        
-        # Check if this version tag already exists
-        if git rev-parse "v$CURRENT_VERSION" >/dev/null 2>&1; then
-          echo "changed=false" >> $GITHUB_OUTPUT
-        else
-          echo "changed=true" >> $GITHUB_OUTPUT
-        fi
-
   create-release:
-    needs: check-version
-    if: needs.check-version.outputs.changed == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: write
     
     steps:
     - uses: actions/checkout@v4
-    
-    - name: Create Git Tag
-      run: |
-        git config --local user.email "action@github.com"
-        git config --local user.name "GitHub Action"
-        git tag v${{ needs.check-version.outputs.version }} -m "Release ${{ needs.check-version.outputs.version }}"
-        git tag -l
-    
-    - name: Push tags
-      run: git push origin v${{ needs.check-version.outputs.version }}
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    
-    - name: Create GitHub Release
-      uses: softprops/action-gh-release@v1
       with:
-        tag_name: v${{ needs.check-version.outputs.version }}
-        name: Release ${{ needs.check-version.outputs.version }}
-        generate_release_notes: true
-        files: |
-          LICENSE
-          README.md
-        draft: false
+        fetch-depth: 0
+    
+    - name: Get version from tag
+      id: version
+      run: |
+        # Get version from the tag (remove 'v' prefix)
+        VERSION=${GITHUB_REF#refs/tags/v}
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "Release version: $VERSION"
+    
+    - name: Extract changelog for this version
+      id: changelog
+      run: |
+        # Extract the section for this version from CHANGELOG.md
+        if [ -f CHANGELOG.md ]; then
+          # Get content between this version and the next version marker
+          CHANGELOG=$(sed -n "/## \[${VERSION}\]/,/## \[/p" CHANGELOG.md | sed '$d')
+          # Save to file for upload
+          echo "$CHANGELOG" > release-notes.md
+          echo "has_changelog=true" >> $GITHUB_OUTPUT
+        else
+          echo "has_changelog=false" >> $GITHUB_OUTPUT
+        fi
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        VERSION: ${{ steps.version.outputs.version }}
     
     - name: Setup Node.js
       uses: actions/setup-node@v4
@@ -79,19 +50,27 @@ jobs:
       run: |
         npm ci
         npm run package
-        mv packages/extension/tonx86-*.vsix tonx86-${{ needs.check-version.outputs.version }}.vsix
+        mv packages/extension/tonx86-*.vsix tonx86-${{ steps.version.outputs.version }}.vsix
     
-    - name: Upload Extension to Release
+    - name: Create GitHub Release
       uses: softprops/action-gh-release@v1
       with:
-        tag_name: v${{ needs.check-version.outputs.version }}
-        files: tonx86-*.vsix
+        tag_name: v${{ steps.version.outputs.version }}
+        name: Release ${{ steps.version.outputs.version }}
+        body_path: ${{ steps.changelog.outputs.has_changelog == 'true' && 'release-notes.md' || '' }}
+        generate_release_notes: ${{ steps.changelog.outputs.has_changelog != 'true' }}
+        files: |
+          tonx86-*.vsix
+          LICENSE
+          README.md
+        draft: false
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     
     - name: Publish to VS Code Marketplace
+      if: ${{ secrets.VSCE_PAT != '' }}
       run: |
         cd packages/extension
         npx @vscode/vsce publish --no-dependencies -p ${{ secrets.VSCE_PAT }}
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        VSCE_PAT: ${{ secrets.VSCE_PAT }}

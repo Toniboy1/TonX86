@@ -134,13 +134,61 @@ This reads the version from root `package.json` and updates `packages/extension/
 
 ## Automatic CI/CD Flow
 
-The GitHub Actions workflow (`release-on-version-change.yml`) automatically:
+The updated workflow now works seamlessly with `standard-version`:
 
-1. Detects when `package.json` version changes
-2. Syncs version to extension package.json
-3. Checks if the version tag already exists
-4. If new, creates a release with the VSIX file
-5. Publishes to VS Code Marketplace
+### Complete Flow
+
+```
+1. Developer commits with conventional format
+   ↓
+2. Run: npm run release
+   ├─ Analyzes commits
+   ├─ Bumps version in both package.json files
+   ├─ Updates CHANGELOG.md
+   ├─ Creates git commit
+   └─ Creates git tag (v0.2.0)
+   ↓
+3. Push: git push --follow-tags
+   ↓
+4. GitHub Actions detects tag push
+   ├─ Extracts version from tag
+   ├─ Extracts changelog for this version
+   ├─ Builds and packages extension
+   ├─ Creates GitHub Release with VSIX
+   │  └─ Uses CHANGELOG content as release notes
+   └─ Publishes to VS Code Marketplace
+```
+
+### Workflow Trigger
+
+The workflow now triggers on **tag pushes** (not package.json changes):
+
+```yaml
+on:
+  push:
+    tags:
+      - 'v*'
+```
+
+This means:
+- ✅ Tag is created by `standard-version` (single source of truth)
+- ✅ No duplicate tags or conflicts
+- ✅ CHANGELOG is included in the release
+- ✅ Version is consistent across all files
+
+### What Changed
+
+**Before:**
+- Workflow triggered on package.json changes
+- Manually created tags in the workflow
+- Generated release notes automatically
+- Could create duplicate tags
+
+**After:**
+- Workflow triggers on tag push (created by standard-version)
+- Uses existing tag from standard-version
+- Uses CHANGELOG content for release notes
+- Single source of truth for versions and tags
 
 ## Commit Message Guidelines
 
@@ -281,3 +329,82 @@ Version management is configured in `.versionrc.json`:
 ✅ **Synchronized** - Both package.json files are updated together
 ✅ **Traceable** - Clear connection between commits and releases
 ✅ **Less Errors** - No manual version editing required
+
+## Quick Reference
+
+### Daily Development Workflow
+
+```bash
+# 1. Create feature branch
+git checkout -b feature/my-feature
+
+# 2. Make changes and commit (use conventional commits!)
+git add .
+git commit -m "feat: add new feature"
+git commit -m "fix: resolve bug"
+
+# 3. Push and create PR
+git push -u origin feature/my-feature
+# Create PR on GitHub, get it reviewed and merged
+```
+
+### Creating a Release (on main branch)
+
+```bash
+# 1. Make sure you're on main and up to date
+git checkout main
+git pull
+
+# 2. Run automatic release (analyzes commits and bumps version)
+npm run release
+
+# 3. Push the release (includes tag)
+git push --follow-tags
+
+# 4. GitHub Actions automatically:
+#    ✓ Builds extension
+#    ✓ Creates GitHub Release
+#    ✓ Uploads VSIX file
+#    ✓ Publishes to marketplace
+```
+
+### Common Commands
+
+```bash
+# Automatic version (recommended)
+npm run release
+
+# Force specific version
+npm run release:patch   # 0.1.10 → 0.1.11
+npm run release:minor   # 0.1.10 → 0.2.0
+npm run release:major   # 0.1.10 → 1.0.0
+
+# Preview what would happen
+npx standard-version --dry-run
+
+# First release (no bump)
+npm run release:first
+```
+
+### Commit Message Templates
+
+```bash
+# Features (minor bump)
+git commit -m "feat: add keyboard input support"
+git commit -m "feat(lcd): add color display mode"
+
+# Bug fixes (patch bump)
+git commit -m "fix: resolve crash on startup"
+git commit -m "fix(debugger): handle null pointer exception"
+
+# Breaking changes (major bump)
+git commit -m "feat!: redesign extension API"
+git commit -m "feat: change config format
+
+BREAKING CHANGE: Config file format has changed."
+
+# No version bump
+git commit -m "docs: update README"
+git commit -m "chore: update dependencies"
+git commit -m "style: format code"
+```
