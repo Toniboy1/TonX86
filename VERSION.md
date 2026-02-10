@@ -140,13 +140,13 @@ The updated workflow now works seamlessly with `standard-version`:
    ↓
 3. Push: git push --follow-tags
    ↓
-4. GitHub Actions detects tag push
+4. GitHub Actions (release.yml) detects tag push
    ├─ Extracts version from tag
    ├─ Extracts changelog for this version
    ├─ Builds and packages extension
    ├─ Creates GitHub Release with VSIX
    │  └─ Uses CHANGELOG content as release notes
-   └─ Publishes to VS Code Marketplace
+   └─ Publishes to VS Code Marketplace (if VSCE_PAT secret is set)
 ```
 
 ### Workflow Trigger
@@ -310,8 +310,7 @@ Version management is configured in `.versionrc.json`:
 | `npm run release:minor` | Force minor version (0.X.0) |
 
 **Note:** Version syncing between root and extension package.json is handled automatically by `standard-version` via `.versionrc.json` configuration.
-| `npm run sync-version` | Sync version from root to extension |
-| `node scripts/get-version.js` | Get current extension version |
+
 
 ## Benefits of Automatic Versioning
 
