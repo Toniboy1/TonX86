@@ -85,3 +85,7 @@ updates:
     labels:
       - "dependencies"
       - "github-actions"
+    ignore:
+      # Pin upload-artifact to v4 (v5+ has breaking changes)
+      - dependency-name: "actions/upload-artifact"
+        update-types: ["version-update:semver-major"]
