@@ -471,8 +471,8 @@ export class Simulator {
       value = parseInt(operand, 10);
     }
 
-    // If value is in I/O range (0xF000-0xFFFF), treat as memory address instead of immediate
-    if (value >= 0xf000 && value <= 0xffff) {
+    // If value is in I/O range (0xF000-0xF1FF), treat as memory address instead of immediate
+    if (value >= 0xf000 && value <= 0xf1ff) {
       return {
         type: "memory",
         value: 0,
@@ -542,7 +542,7 @@ export class Simulator {
           const isSrcMemory =
             (src.type === "immediate" &&
               src.value >= 0xf000 &&
-              src.value <= 0xffff) ||
+              src.value <= 0xf1ff) ||
             src.type === "memory";
 
           if (isDestMemory && isSrcMemory) {
@@ -566,15 +566,15 @@ export class Simulator {
             addr = (this.cpu.registers[src.base!] + (src.offset || 0)) & 0xffff;
           }
 
-          if (addr >= 0xf000 && addr <= 0xffff) {
+          if (addr >= 0xf000 && addr <= 0xf1ff) {
             srcValue = this.readIO(addr);
           } else {
             srcValue = this.readMemory32(addr);
           }
         } else {
           // src.type === "immediate"
-          // Check if source is an I/O memory address (0xF000-0xFFFF)
-          if (src.value >= 0xf000 && src.value <= 0xffff) {
+          // Check if source is an I/O memory address (0xF000-0xF1FF)
+          if (src.value >= 0xf000 && src.value <= 0xf1ff) {
             srcValue = this.readIO(src.value);
           } else {
             // Literal immediate value (e.g., MOV EAX, 42)
@@ -596,7 +596,7 @@ export class Simulator {
               (this.cpu.registers[dest.base!] + (dest.offset || 0)) & 0xffff;
           }
 
-          if (addr >= 0xf000 && addr <= 0xffff) {
+          if (addr >= 0xf000 && addr <= 0xf1ff) {
             this.writeIO(addr, srcValue);
           } else {
             this.writeMemory32(addr, srcValue);
