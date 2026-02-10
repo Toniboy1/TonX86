@@ -1,6 +1,6 @@
 # Contributing to TonX86
 
-Thank you for your interest in contributing to TonX86! This document provides guidelines for contributing to the project.
+Thank you for your interest in contributing to TonX86! This guide will help you get started.
 
 ## Getting Started
 
@@ -12,32 +12,26 @@ Thank you for your interest in contributing to TonX86! This document provides gu
 
 ## Important Requirements
 
-### Commit Signing (Required)
+### Commit Signing
 
-**All commits must be signed with GPG or SSH keys.**
+**All commits must be signed with GPG or SSH keys** to ensure authenticity and display a "Verified" badge on GitHub.
 
-- ✅ Creates "Verified" badge on GitHub
-- ✅ Ensures commit authenticity
-- ✅ Required for merging to `main` branch
-
-**Setup Guide:** See [.github/COMMIT_SIGNING.md](https://github.com/Toniboy1/TonX86/blob/main/.github/COMMIT_SIGNING.md)
-
-Quick setup:
+**Quick setup:**
 ```bash
 # Generate GPG key
 gpg --full-generate-key
 
-# Configure Git
+# Configure Git to sign commits
 git config --global user.signingkey YOUR_KEY_ID
 git config --global commit.gpgsign true
 ```
+
+For detailed instructions, see [GitHub's guide on commit signing](https://docs.github.com/en/authentication/managing-commit-signature-verification/signing-commits).
 
 ### Branch Protection
 
 - **Repository Owner**: Can push directly to `main` (commits must be signed)
 - **External Contributors**: Must submit pull requests with signed commits
-
-See [.github/BRANCH_PROTECTION.md](https://github.com/Toniboy1/TonX86/blob/main/.github/BRANCH_PROTECTION.md) for details.
 
 ## Project Structure
 
@@ -75,20 +69,25 @@ packages/
 
 ### Commit Messages
 
-Follow conventional commit format:
-- `feat: add new instruction XYZ`
-- `fix: correct breakpoint handling in loops`
-- `docs: update README with keyboard I/O`
-- `test: add tests for LCD display`
-- `refactor: simplify instruction parser`
-- `perf: optimize execution loop`
+Follow [Conventional Commits](https://www.conventionalcommits.org/) format:
+
+- `feat: add new instruction XYZ` - New feature
+- `fix: correct breakpoint handling in loops` - Bug fix
+- `docs: update README with keyboard I/O` - Documentation
+- `test: add tests for LCD display` - Tests
+- `refactor: simplify instruction parser` - Refactoring
+- `perf: optimize execution loop` - Performance improvement
+
+See [VERSION.md](VERSION.md) for complete guidelines.
 
 ### Testing
 
 - Write tests for bug fixes and new features
 - Place tests in `*.test.ts` files alongside code
 - Run tests with `npm test`
-- Aim for high test coverage on critical paths
+- Aim for 80%+ test coverage on critical paths
+
+**Current Coverage:** 92% statements, 84% branches, 95% functions, 94% lines
 
 ### Documentation
 
@@ -112,10 +111,11 @@ Update relevant documentation:
 - Update documentation as needed
 - Ensure CI passes (build, test, lint)
 - Link related issues with "Fixes #123"
+- All commits must be signed
 
 ## Areas for Contribution
 
-### Easy Wins (Good First Issues)
+### Good First Issues
 - Documentation improvements
 - Example assembly programs
 - Test coverage improvements
@@ -131,6 +131,17 @@ Update relevant documentation:
 - CI/CD improvements
 - Testing framework enhancements
 - Build process optimization
+
+## Quality Standards
+
+All contributions must:
+- ✅ Pass TypeScript compilation
+- ✅ Pass all tests (102/102 currently)
+- ✅ Maintain 80%+ code coverage
+- ✅ Pass ESLint checks
+- ✅ Include tests for new features
+- ✅ Update relevant documentation
+- ✅ Use signed commits
 
 ## Getting Help
 
@@ -148,7 +159,3 @@ Update relevant documentation:
 ## License
 
 By contributing to TonX86, you agree that your contributions will be licensed under the MIT License.
-
-## Questions?
-
-Feel free to open a discussion or reach out to the maintainers!
