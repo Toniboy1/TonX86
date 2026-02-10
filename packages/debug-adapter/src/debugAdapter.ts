@@ -47,6 +47,63 @@ export class TonX86DebugSession extends DebugSession {
   }
 
   /**
+   * Detect required LCD dimensions by scanning for LCD I/O addresses
+   */
+  private detectLCDDimensions(instructions: Instruction[]): [number, number] {
+    let maxAddress = 0;
+    let foundLCDAccess = false;
+
+    // Scan all instructions for LCD I/O operations
+    for (const instr of instructions) {
+      // Look for any operand containing 0xF000-0xF0FF addresses
+      for (const operand of instr.operands) {
+        if (typeof operand === "string") {
+          const opUpper = operand.toUpperCase();
+
+          // Check for direct memory access [0xFxxx]
+          if (opUpper.startsWith("[") && opUpper.includes("0XF")) {
+            const addressStr = opUpper.slice(1, -1).replace(/[[\]]/g, "");
+            if (addressStr.startsWith("0XF")) {
+              const address = parseInt(addressStr, 16);
+              if (address >= 0xf000 && address <= 0xf0ff) {
+                maxAddress = Math.max(maxAddress, address);
+                foundLCDAccess = true;
+              }
+            }
+          }
+
+          // Check for 0xF000 base constant (indicates computed LCD addressing)
+          if (opUpper.includes("0XF0")) {
+            const match = opUpper.match(/0X(F0[0-9A-F][0-9A-F])/);
+            if (match) {
+              const address = parseInt(match[0], 16);
+              if (address >= 0xf000 && address <= 0xf0ff) {
+                maxAddress = Math.max(maxAddress, address);
+                foundLCDAccess = true;
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // If we found LCD access, default to 16x16 for better compatibility
+    // (16x16 can display 8x8 content, but computed addresses might not be visible during static analysis)
+    if (foundLCDAccess) {
+      const offset = maxAddress - 0xf000;
+      if (offset >= 64) {
+        // Found addresses beyond 8x8 range, definitely use 16x16
+        return [16, 16];
+      }
+      // Default to 16x16 when LCD is used (safer choice for computed addresses)
+      return [16, 16];
+    }
+
+    // No LCD access detected, use 8x8
+    return [8, 8];
+  }
+
+  /**
    * Get the next instruction line number
    */
   private getNextInstructionLine(): number {
@@ -136,6 +193,24 @@ export class TonX86DebugSession extends DebugSession {
           );
         });
 
+        // Detect required LCD dimensions from code
+        const [lcdWidth, lcdHeight] = this.detectLCDDimensions(
+          this.instructions,
+        );
+        this.simulator = new Simulator(lcdWidth, lcdHeight);
+        console.error(`[TonX86] Detected LCD size: ${lcdWidth}x${lcdHeight}`);
+
+        // Show labels in Debug Console to help with CALL/JMP debugging
+        const labelList = Array.from(this.labels.entries())
+          .map(([name, index]) => `${name} -> ${index}`)
+          .join(", ");
+        this.sendEvent(
+          new OutputEvent(
+            `Labels: ${labelList.length > 0 ? labelList : "(none)"}\n`,
+            "stdout",
+          ),
+        );
+
         // Start at first instruction
         if (this.instructions.length > 0) {
           this.currentLine = this.instructions[0].line;
@@ -165,6 +240,12 @@ export class TonX86DebugSession extends DebugSession {
       console.error(
         "[TonX86] Stopping at first instruction at line",
         this.currentLine,
+      );
+      this.sendEvent(
+        new OutputEvent(
+          `\n=== TonX86 Debug Session Started ===\nProgram: ${path.basename(this.programPath)}\nInstructions: ${this.instructions.length}\n`,
+          "console",
+        ),
       );
       setTimeout(() => {
         this.sendEvent(new StoppedEvent("entry", 1));
@@ -198,6 +279,18 @@ export class TonX86DebugSession extends DebugSession {
     // Add a max iterations limit to prevent infinite loops from hanging the debugger
     const maxIterations = 100000;
     let iterationCount = 0;
+    let firstIteration = true; // Skip breakpoint check on first instruction
+
+    console.error(
+      "[TonX86] Starting continue execution from instruction pointer:",
+      this.instructionPointer,
+    );
+    console.error("[TonX86] Active breakpoints:", Array.from(this.breakpoints));
+
+    // Output to Debug Console
+    this.sendEvent(
+      new OutputEvent(`\n=== Continuing execution ===\n`, "console"),
+    );
 
     while (
       this.instructionPointer < this.instructions.length &&
@@ -206,6 +299,27 @@ export class TonX86DebugSession extends DebugSession {
       iterationCount++;
 
       const currentInstr = this.instructions[this.instructionPointer];
+
+      // Check for breakpoint BEFORE executing the instruction
+      // But skip the check on first iteration (we're continuing from that line)
+      console.error(
+        `[TonX86] Checking line ${currentInstr.line}, firstIteration=${firstIteration}, hasBreakpoint=${this.breakpoints.has(currentInstr.line)}`,
+      );
+
+      if (!firstIteration && this.breakpoints.has(currentInstr.line)) {
+        this.currentLine = currentInstr.line;
+        console.error("[TonX86] Hit breakpoint at line", this.currentLine);
+        this.sendEvent(
+          new OutputEvent(
+            `\n*** Breakpoint hit at line ${this.currentLine} ***\n`,
+            "console",
+          ),
+        );
+        // Send stopped event at breakpoint
+        this.sendEvent(new StoppedEvent("breakpoint", 1));
+        return;
+      }
+      firstIteration = false;
 
       // Add delay based on CPU speed (lower speed = longer delay)
       // At 100%, delay is 0ms. At 50%, delay is ~1ms. At 1%, delay is ~50ms.
@@ -219,6 +333,11 @@ export class TonX86DebugSession extends DebugSession {
       console.error(
         `[TonX86] Executing: ${currentInstr.mnemonic} ${currentInstr.operands.join(", ")}`,
       );
+
+      // Send execution step to Debug Console
+      const stepMsg = `[Line ${currentInstr.line}] ${currentInstr.mnemonic} ${currentInstr.operands.join(", ")}\n`;
+      this.sendEvent(new OutputEvent(stepMsg, "console"));
+
       try {
         this.simulator.executeInstruction(
           currentInstr.mnemonic,
@@ -228,6 +347,12 @@ export class TonX86DebugSession extends DebugSession {
         this.emitConsoleOutput();
       } catch (err) {
         console.error(`[TonX86] ERROR at line ${currentInstr.line}:`, err);
+        this.sendEvent(
+          new OutputEvent(
+            `ERROR at line ${currentInstr.line}: ${err}\n`,
+            "stderr",
+          ),
+        );
         this.sendEvent(new TerminatedEvent());
         return;
       }
@@ -239,6 +364,12 @@ export class TonX86DebugSession extends DebugSession {
         console.error(
           "[TonX86] Program halted at HLT instruction at line",
           currentInstr.line,
+        );
+        this.sendEvent(
+          new OutputEvent(
+            `\n=== Program halted at line ${currentInstr.line} ===\n`,
+            "console",
+          ),
         );
 
         // Terminate the debug session
@@ -257,6 +388,13 @@ export class TonX86DebugSession extends DebugSession {
           const targetLabel = currentInstr.operands[0];
           const targetIndex = this.labels.get(targetLabel);
 
+          this.sendEvent(
+            new OutputEvent(
+              `[CALL] target="${targetLabel}", resolvedIndex=${targetIndex}\n`,
+              "stdout",
+            ),
+          );
+
           if (targetIndex !== undefined) {
             // Push return address onto call stack
             const returnAddress = this.instructionPointer + 1;
@@ -267,9 +405,21 @@ export class TonX86DebugSession extends DebugSession {
 
             // Jump to target
             this.instructionPointer = targetIndex;
+            this.sendEvent(
+              new OutputEvent(
+                `[CALL] jumping to instruction index ${targetIndex}, return=${returnAddress}\n`,
+                "stdout",
+              ),
+            );
           } else {
             console.error(
               `[TonX86] CALL target "${targetLabel}" not found in labels`,
+            );
+            this.sendEvent(
+              new OutputEvent(
+                `[CALL] ERROR: label "${targetLabel}" not found\n`,
+                "stderr",
+              ),
             );
             this.instructionPointer++;
           }
@@ -315,18 +465,6 @@ export class TonX86DebugSession extends DebugSession {
         }
       } else {
         this.instructionPointer++;
-      }
-
-      // Check if we hit a breakpoint at the new position (after moving)
-      if (
-        this.instructionPointer < this.instructions.length &&
-        this.breakpoints.has(this.instructions[this.instructionPointer].line)
-      ) {
-        this.currentLine = this.instructions[this.instructionPointer].line;
-        console.error("[TonX86] Hit breakpoint at line", this.currentLine);
-        // Send stopped event at breakpoint
-        this.sendEvent(new StoppedEvent("breakpoint", 1));
-        return;
       }
     }
 
@@ -541,6 +679,9 @@ export class TonX86DebugSession extends DebugSession {
     response: DebugProtocol.ContinueResponse,
     args: DebugProtocol.ContinueArguments,
   ): void {
+    console.error("======================================");
+    console.error("[TonX86] *** CONTINUE REQUEST (F5) ***");
+    console.error("======================================");
     console.error("[TonX86] Continue request for thread:", args.threadId);
     console.error(
       "[TonX86] Current state: instructionPointer=",
@@ -558,6 +699,9 @@ export class TonX86DebugSession extends DebugSession {
     response: DebugProtocol.NextResponse,
     args: DebugProtocol.NextArguments,
   ): void {
+    console.error("======================================");
+    console.error("[TonX86] *** NEXT REQUEST (F10 Step Over) ***");
+    console.error("======================================");
     console.error(
       "[TonX86] Next request for thread:",
       args.threadId,
@@ -574,6 +718,10 @@ export class TonX86DebugSession extends DebugSession {
       console.error(
         `[TonX86] Executing (next): ${currentInstr.mnemonic} ${currentInstr.operands.join(", ")}`,
       );
+
+      // Send execution step to Debug Console
+      const stepMsg = `[Line ${currentInstr.line}] ${currentInstr.mnemonic} ${currentInstr.operands.join(", ")}\n`;
+      this.sendEvent(new OutputEvent(stepMsg, "console"));
 
       // Execute the instruction
       try {
@@ -593,6 +741,12 @@ export class TonX86DebugSession extends DebugSession {
           }),
         );
         console.error(`[TonX86] ERROR during instruction execution:`, err);
+        this.sendEvent(
+          new OutputEvent(
+            `ERROR at line ${currentInstr.line}: ${err}\n`,
+            "stderr",
+          ),
+        );
         this.sendEvent(new TerminatedEvent());
         return;
       }
@@ -693,7 +847,7 @@ export class TonX86DebugSession extends DebugSession {
 
     this.sendResponse(response);
 
-    // Execute current instruction, then stop (same as next for our flat program)
+    // Execute current instruction, then stop
     if (this.instructionPointer < this.instructions.length) {
       const currentInstr = this.instructions[this.instructionPointer];
 
@@ -701,7 +855,7 @@ export class TonX86DebugSession extends DebugSession {
         `[TonX86] Executing (stepIn): ${currentInstr.mnemonic} ${currentInstr.operands.join(", ")}`,
       );
 
-      // Execute the instruction
+      // Execute the instruction (CALL/RET are handled below)
       this.simulator.executeInstruction(
         currentInstr.mnemonic,
         currentInstr.operands,
@@ -723,35 +877,65 @@ export class TonX86DebugSession extends DebugSession {
         return;
       }
 
-      // Handle jump instructions
-      if (["JMP", "JE", "JZ", "JNE", "JNZ"].includes(currentInstr.mnemonic)) {
-        const targetLabel = currentInstr.operands[0];
-        const targetIndex = this.labels.get(targetLabel);
+      // Handle jump/call/ret instructions
+      if (
+        ["JMP", "JE", "JZ", "JNE", "JNZ", "CALL", "RET"].includes(
+          currentInstr.mnemonic,
+        )
+      ) {
+        if (currentInstr.mnemonic === "CALL") {
+          const targetLabel = currentInstr.operands[0];
+          const targetIndex = this.labels.get(targetLabel);
 
-        if (targetIndex !== undefined) {
-          const shouldJump =
-            currentInstr.mnemonic === "JMP" ||
-            (["JE", "JZ"].includes(currentInstr.mnemonic) &&
-              this.isZeroFlagSet()) ||
-            (["JNE", "JNZ"].includes(currentInstr.mnemonic) &&
-              !this.isZeroFlagSet());
-
-          if (shouldJump) {
-            console.error(
-              `[TonX86] Jump taken to label "${targetLabel}" at instruction index ${targetIndex}`,
-            );
+          if (targetIndex !== undefined) {
+            const returnAddress = this.instructionPointer + 1;
+            this.callStack.push(returnAddress);
+            this.simulator.pushStack(returnAddress);
             this.instructionPointer = targetIndex;
           } else {
             console.error(
-              `[TonX86] Conditional jump not taken (label: ${targetLabel})`,
+              `[TonX86] CALL target "${targetLabel}" not found in labels`,
             );
             this.instructionPointer++;
           }
+        } else if (currentInstr.mnemonic === "RET") {
+          if (this.callStack.length > 0) {
+            const returnAddress = this.callStack.pop()!;
+            this.simulator.popStack();
+            this.instructionPointer = returnAddress;
+          } else {
+            console.error("[TonX86] RET called with empty call stack");
+            this.instructionPointer++;
+          }
         } else {
-          console.error(
-            `[TonX86] Jump target "${targetLabel}" not found in labels`,
-          );
-          this.instructionPointer++;
+          const targetLabel = currentInstr.operands[0];
+          const targetIndex = this.labels.get(targetLabel);
+
+          if (targetIndex !== undefined) {
+            const shouldJump =
+              currentInstr.mnemonic === "JMP" ||
+              (["JE", "JZ"].includes(currentInstr.mnemonic) &&
+                this.isZeroFlagSet()) ||
+              (["JNE", "JNZ"].includes(currentInstr.mnemonic) &&
+                !this.isZeroFlagSet());
+
+            if (shouldJump) {
+              console.error(
+                `[TonX86] Jump taken to label "${targetLabel}" at instruction index ${targetIndex}`,
+              );
+              this.instructionPointer = targetIndex;
+            } else {
+              console.error(
+                `[TonX86] Conditional jump not taken (label: ${targetLabel})`,
+              );
+              this.instructionPointer++;
+            }
+          } else {
+            console.error(
+              `[TonX86] Jump target "${targetLabel}" not found in labels`,
+            );
+            this.instructionPointer++;
+          }
         }
       } else {
         // Move to next instruction for non-jump instructions

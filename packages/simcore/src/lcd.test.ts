@@ -25,11 +25,12 @@ describe("LCD Memory-mapped I/O", () => {
     expect(display[8]).toBe(1);
   });
 
-  test("out of bounds LCD write throws an error", () => {
+  test("out of bounds LCD write is silently ignored (graceful degradation)", () => {
     // For 8x8 LCD, valid addresses are 0xF000 .. 0xF000+63
     const outOfBoundsAddr = (0xf000 + 8 * 8).toString(16); // 0xf040
+    // Should not throw - graceful degradation
     expect(() => {
       sim.executeInstruction("MOV", [`0x${outOfBoundsAddr}`, "1"]);
-    }).toThrow();
+    }).not.toThrow();
   });
 });

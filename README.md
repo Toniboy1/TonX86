@@ -17,6 +17,7 @@ Educational x86-like assembly environment for VS Code with integrated debugging,
 - **Keyboard Input** - Real-time key press/release capture with event queue
 - **Register/Memory Views** - Live inspection of CPU state
 - **CPU Speed Control** - 1-200% execution speed for debugging/visualization
+- **Output Panel** - Mirrors Debug Console output to VS Code Output (TonX86)
 - **Language Server** - Syntax highlighting, diagnostics, code completion
 
 ## Architecture
@@ -93,6 +94,14 @@ Students should start in **educational mode** to learn core concepts, then switc
 ### Registers
 `EAX` `ECX` `EDX` `EBX` `ESP` `EBP` `ESI` `EDI`
 
+8-bit aliases: `AL`/`AH`, `BL`/`BH`, `CL`/`CH`, `DL`/`DH` (low/high bytes of EAX, EBX, ECX, EDX)
+
+### Architecture Note
+
+**Control Flow Instructions:** Jump instructions (JMP, JE/JZ, JNE/JNZ) and subroutine instructions (CALL, RET) are handled by the debug adapter rather than the simulator core. This is by design, as they require access to the label symbol table and instruction pointer management. These instructions work seamlessly during debugging but require the debug adapter context.
+
+**Data Instructions:** All other instructions (MOV, ADD, arithmetic, bitwise, etc.) are executed by the simulator core and work independently.
+
 ### Instructions
 
 | Mnemonic | Operands | Flags | Description |
@@ -102,8 +111,8 @@ Students should start in **educational mode** to learn core concepts, then switc
 | `LEA` | reg, imm | - | Load effective address |
 | `MOVZX` | reg, reg/imm | - | Move with zero extend |
 | `MOVSX` | reg, reg/imm | - | Move with sign extend |
-| `ADD` | reg, reg/imm | ZCOS | Add |
-| `SUB` | reg, reg/imm | ZCOS | Subtract |
+| `ADD` | reg, reg/imm/mem | ZCOS | Add |
+| `SUB` | reg, reg/imm/mem | ZCOS | Subtract |
 | `INC` | reg | ZCOS | Increment |
 | `DEC` | reg | ZCOS | Decrement |
 | `NEG` | reg | ZCOS | Two's complement negation |
@@ -127,7 +136,7 @@ Students should start in **educational mode** to learn core concepts, then switc
 | `JNE/JNZ` | label | - | Jump if not zero |
 | `CALL` | label | - | Push return address, jump to label |
 | `RET` | - | - | Pop return address, jump to it |
-| `PUSH` | reg | - | Push register onto stack |
+| `PUSH` | reg/imm/mem | - | Push register/immediate/memory onto stack |
 | `POP` | reg | - | Pop from stack into register |
 | `INT` | imm8 | - | Software interrupt (syscall) |
 | `IRET` | - | All | Return from interrupt |
@@ -139,10 +148,26 @@ Students should start in **educational mode** to learn core concepts, then switc
 **Stack Growth:** Downward (from high to low memory addresses)  
 **Stack Width:** 32-bit (4 bytes per push/pop)
 
-- `PUSH reg` - Decrements ESP by 4, writes register value to memory
+- `PUSH reg/imm` - Decrements ESP by 4, writes value to memory
 - `POP reg` - Reads value from memory, increments ESP by 4
 - `CALL label` - Pushes return address, jumps to label
 - `RET` - Pops return address, jumps to it
+
+### Memory Addressing
+
+Supports indirect memory access with register-based addressing:
+- `[REG]` - Direct memory access via register (e.g., `MOV EAX, [ESP]`)
+- `[REG+offset]` - Register with positive offset (e.g., `MOV EAX, [EBP+8]`)
+- `[REG-offset]` - Register with negative offset (e.g., `MOV EAX, [EBP-4]`)
+- `[REG+REG]` - Register with register offset (e.g., `MOV EAX, [EBX+ECX]`)
+
+Examples:
+```asm
+MOV EAX, [EBP+8]      ; Load from stack (parameter access)
+MOV [ESP], EBX        ; Store to stack
+PUSH [EBP+12]         ; Push memory value onto stack
+ADD EAX, [ESI+4]      ; Add memory value to register
+```
 
 ### Calling Conventions
 
@@ -169,6 +194,10 @@ Software interrupts enable system calls and I/O operations similar to DOS/BIOS.
 **INT num** - Software interrupt
 - Executes interrupt handler for the specified number
 - Output appears in VS Code Debug Console
+
+Notes:
+- `AL`/`AH` are used for INT 0x10 (teletype output)
+- `DL`/`AH` are used for INT 0x21 (DOS-style output)
 
 **Supported Interrupts:**
 - `INT 0x10` - Video services

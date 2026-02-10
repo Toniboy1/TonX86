@@ -13,7 +13,10 @@
         "MOV EAX, 42        ; Load immediate",
         "MOV EAX, ECX       ; Register to register",
         "MOV EAX, 0xF100    ; Read from I/O",
-        "MOV 0xF000, 1      ; Write to I/O"
+        "MOV 0xF000, 1      ; Write to I/O",
+        "MOV AL, 'H'        ; Move character to low byte of EAX",
+        "MOV AH, 0x0E       ; Move to high byte of EAX",
+        "MOV DL, 65         ; Move to low byte of EDX"
       ]
     },
     {
@@ -232,7 +235,10 @@
       "operands": ["reg"],
       "description": "Increment register by 1",
       "cycles": 1,
-      "flags": ["Z", "O", "S"]
+      "flags": ["Z", "O", "S"],
+      "examples": [
+        "INC EAX            ; EAX = EAX + 1"
+      ]
     },
     {
       "mnemonic": "DEC",
@@ -240,7 +246,10 @@
       "operands": ["reg"],
       "description": "Decrement register by 1",
       "cycles": 1,
-      "flags": ["Z", "O", "S"]
+      "flags": ["Z", "O", "S"],
+      "examples": [
+        "DEC ECX            ; ECX = ECX - 1"
+      ]
     },
     {
       "mnemonic": "MUL",
@@ -339,6 +348,51 @@
       "flags": [],
       "examples": [
         "JNZ loop_start     ; Jump if Z flag is clear"
+      ]
+    },
+    {
+      "mnemonic": "PUSH",
+      "opcode": "0x50",
+      "operands": ["reg/imm"],
+      "description": "Push register or immediate value onto stack",
+      "cycles": 1,
+      "flags": [],
+      "examples": [
+        "PUSH EAX           ; Push EAX onto stack (ESP -= 4)",
+        "PUSH 42            ; Push immediate value onto stack"
+      ]
+    },
+    {
+      "mnemonic": "POP",
+      "opcode": "0x58",
+      "operands": ["reg"],
+      "description": "Pop from stack into register",
+      "cycles": 1,
+      "flags": [],
+      "examples": [
+        "POP EAX            ; Pop from stack into EAX (ESP += 4)"
+      ]
+    },
+    {
+      "mnemonic": "CALL",
+      "opcode": "0xE8",
+      "operands": ["label"],
+      "description": "Call subroutine - pushes return address and jumps to label",
+      "cycles": 2,
+      "flags": [],
+      "examples": [
+        "CALL my_function   ; Push return address, jump to function"
+      ]
+    },
+    {
+      "mnemonic": "RET",
+      "opcode": "0xC3",
+      "operands": [],
+      "description": "Return from subroutine - pops return address and jumps to it",
+      "cycles": 2,
+      "flags": [],
+      "examples": [
+        "RET                ; Pop return address and jump"
       ]
     },
     {
