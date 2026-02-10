@@ -8,7 +8,7 @@ import { DebugProtocol } from "vscode-debugprotocol";
 import * as fs from "fs";
 import * as path from "path";
 import { Simulator } from "@tonx86/simcore";
-import { parseAssembly, Instruction, ParseResult } from "./parser";
+import { parseAssembly, Instruction } from "./parser";
 
 // File-based logger for debugging - will be set after launch
 let LOG_FILE = "";

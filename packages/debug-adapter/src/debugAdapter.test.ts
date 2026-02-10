@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach } from '@jest/globals';
-import { parseAssembly, Instruction, ParseResult } from './parser';
+import { describe, it, expect } from '@jest/globals';
+import { parseAssembly } from './parser';
 
 /**
  * Tests for DAP Assembly Parser and Control Flow
