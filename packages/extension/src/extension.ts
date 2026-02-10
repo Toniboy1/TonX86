@@ -629,16 +629,18 @@ export function activate(context: vscode.ExtensionContext): void {
 
   // Monitor configuration changes
   context.subscriptions.push(
-    vscode.workspace.onDidChangeConfiguration((event) => {
-      if (event.affectsConfiguration("tonx86.lcd")) {
-        console.log("LCD configuration changed");
-        lcdProvider.updateLCDConfig();
-        // Reload the webview
-        vscode.window.showInformationMessage(
-          "LCD configuration updated. Reload the LCD view to apply changes.",
-        );
-      }
-    }),
+    vscode.workspace.onDidChangeConfiguration(
+      (event: vscode.ConfigurationChangeEvent) => {
+        if (event.affectsConfiguration("tonx86.lcd")) {
+          console.log("LCD configuration changed");
+          lcdProvider.updateLCDConfig();
+          // Reload the webview
+          vscode.window.showInformationMessage(
+            "LCD configuration updated. Reload the LCD view to apply changes.",
+          );
+        }
+      },
+    ),
   );
 
   // Register commands
