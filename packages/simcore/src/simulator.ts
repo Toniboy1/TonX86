@@ -538,8 +538,11 @@ export class Simulator {
         if (this.compatibilityMode === "strict-x86") {
           const isDestMemory =
             dest.type === "immediate" || dest.type === "memory";
-          const isSrcMemory = src.type === "memory" || 
-            (src.type === "immediate" && src.value >= 0xf000 && src.value <= 0xf1ff);
+          const isSrcMemory =
+            src.type === "memory" ||
+            (src.type === "immediate" &&
+              src.value >= 0xf000 &&
+              src.value <= 0xf1ff);
 
           if (isDestMemory && isSrcMemory) {
             throw new Error(
