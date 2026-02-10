@@ -3,7 +3,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![CI](https://github.com/Toniboy1/TonX86/workflows/CI/badge.svg)](https://github.com/Toniboy1/TonX86/actions)
 [![CodeQL](https://github.com/Toniboy1/TonX86/workflows/CodeQL/badge.svg)](https://github.com/Toniboy1/TonX86/security/code-scanning)
-[![Tests](https://img.shields.io/badge/tests-102%20passing-brightgreen)](https://github.com/Toniboy1/TonX86/actions)
+[![Tests](https://img.shields.io/badge/tests-156%20passing-brightgreen)](https://github.com/Toniboy1/TonX86/actions)
 [![Coverage](https://img.shields.io/badge/coverage-92%25-brightgreen)](https://github.com/Toniboy1/TonX86/actions)
 
 Educational x86-like assembly environment for VS Code with integrated debugging, memory visualization, LCD display, and keyboard input.
@@ -54,6 +54,25 @@ npm run build
 | `tonx86.lcd.pixelSize` | `"auto"` | Pixel size: "auto" or 2-500 |
 | `tonx86.keyboard.enabled` | `true` | Enable keyboard input capture |
 | `tonx86.cpu.speed` | `100` | CPU speed 1-200% (100=normal) |
+| `tonx86.compatibility.mode` | `"educational"` | Compatibility mode: "educational" or "strict-x86" |
+
+### Compatibility Modes
+
+**Educational Mode** (default):
+- Simplified instruction behavior for learning
+- Flexible memory access (memory-to-memory operations allowed)
+- Memory-mapped I/O support
+- Ideal for beginners learning assembly concepts
+
+**Strict x86 Mode**:
+- Enforces realistic x86 constraints
+- No memory-to-memory MOV instructions (use register as intermediate)
+- More realistic flag behavior (planned)
+- Segment register requirements (planned)
+- Proper instruction constraints matching real x86 architecture
+- Recommended for students transitioning to real x86 assembly
+
+Students should start in **educational mode** to learn core concepts, then switch to **strict-x86 mode** when ready to practice real x86 assembly patterns.
 
 ### Launch Configuration
 
@@ -279,7 +298,7 @@ The project includes automated workflows:
   - Build verification (Node 18 & 20)
   - TypeScript compilation
   - Linting
-  - Test execution with coverage (102 tests)
+  - Test execution with coverage (156 tests)
   - Security audit
   - Coverage reports uploaded as artifacts
   - Coverage comments on PRs (free service)
@@ -304,7 +323,7 @@ The project includes automated workflows:
 
 All contributions must:
 - ✅ Pass TypeScript compilation
-- ✅ Pass all tests (102/102 currently)
+- ✅ Pass all tests (156/156 currently)
 - ✅ Maintain 80%+ code coverage
 - ✅ Pass ESLint checks
 - ✅ Include tests for new features

@@ -189,6 +189,11 @@ export class Keyboard {
 }
 
 /**
+ * Compatibility mode for x86 behavior
+ */
+export type CompatibilityMode = "educational" | "strict-x86";
+
+/**
  * TonX86 Simulator - main execution engine
  */
 export class Simulator {
@@ -198,6 +203,7 @@ export class Simulator {
   private keyboard: Keyboard;
   private code: Uint8Array = new Uint8Array();
   private consoleOutput: string = ""; // Buffer for console output from INT 0x10 and INT 0x21
+  private compatibilityMode: CompatibilityMode = "educational";
 
   // Map of mnemonics to register names
   private registerMap: { [key: string]: number } = {
@@ -211,11 +217,12 @@ export class Simulator {
     EDI: 7,
   };
 
-  constructor(lcdWidth: number = 8, lcdHeight: number = 8) {
+  constructor(lcdWidth: number = 8, lcdHeight: number = 8, compatibilityMode: CompatibilityMode = "educational") {
     this.cpu = new CPUState();
     this.memory = new Memory();
     this.lcd = new LCDDisplay(lcdWidth, lcdHeight);
     this.keyboard = new Keyboard();
+    this.compatibilityMode = compatibilityMode;
     // Initialize ESP to top of stack
     this.cpu.registers[4] = 0xffff;
   }
@@ -367,15 +374,33 @@ export class Simulator {
         const dest = this.parseOperand(operands[0]);
         const src = this.parseOperand(operands[1]);
 
+        // In strict-x86 mode, memory-to-memory MOV is not allowed
+        if (this.compatibilityMode === "strict-x86") {
+          // Check if both operands are memory addresses:
+          // - dest.type === "immediate" means destination is a memory address (will call writeIO)
+          // - src.type === "immediate" && src.value >= 0xf000 means source is a memory address (will call readIO)
+          // This combination represents memory-to-memory MOV, which is not allowed in strict x86
+          const isDestMemory = dest.type === "immediate";
+          const isSrcMemory = src.type === "immediate" && src.value >= 0xf000;
+
+          if (isDestMemory && isSrcMemory) {
+            throw new Error(
+              "Memory-to-memory MOV not allowed in strict-x86 mode. Use a register as intermediate.",
+            );
+          }
+        }
+
         // Get source value
         let srcValue: number;
         if (src.type === "register") {
           srcValue = this.cpu.registers[src.value];
         } else {
-          // Check if source is an I/O address (0xF000+)
+          // src.type === "immediate"
+          // Check if source is an I/O memory address (0xF000+)
           if (src.value >= 0xf000) {
             srcValue = this.readIO(src.value);
           } else {
+            // Literal immediate value (e.g., MOV EAX, 42)
             srcValue = src.value;
           }
         }
@@ -384,7 +409,7 @@ export class Simulator {
         if (dest.type === "register") {
           this.cpu.registers[dest.value] = srcValue;
         } else if (dest.type === "immediate") {
-          // destination is an I/O address
+          // Destination is a memory address (I/O write)
           this.writeIO(dest.value, srcValue);
         }
         break;
@@ -726,5 +751,19 @@ export class Simulator {
 
   removeBreakpoint(address: number): void {
     this.cpu.removeBreakpoint(address);
+  }
+
+  /**
+   * Get the current compatibility mode
+   */
+  getCompatibilityMode(): CompatibilityMode {
+    return this.compatibilityMode;
+  }
+
+  /**
+   * Set the compatibility mode
+   */
+  setCompatibilityMode(mode: CompatibilityMode): void {
+    this.compatibilityMode = mode;
   }
 }
