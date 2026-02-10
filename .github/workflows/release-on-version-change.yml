@@ -24,6 +24,9 @@ jobs:
         CURRENT_VERSION=$(jq -r '.version' package.json)
         echo "version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
         
+        # Sync version to extension package.json
+        node scripts/sync-version.js
+        
         # Check if this version tag already exists
         if git rev-parse "v$CURRENT_VERSION" >/dev/null 2>&1; then
           echo "changed=false" >> $GITHUB_OUTPUT
