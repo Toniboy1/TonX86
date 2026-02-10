@@ -69,6 +69,22 @@ const INSTRUCTIONS = [
     example: "OR EAX, EBX  ; EAX = EAX | EBX",
   },
   {
+    name: "XOR",
+    description: "Bitwise XOR two registers",
+    syntax: "XOR destination, source",
+    cycles: 1,
+    flags: ["Z", "S"],
+    example: "XOR EAX, EBX  ; EAX = EAX ^ EBX",
+  },
+  {
+    name: "NOT",
+    description: "Bitwise NOT (one's complement) of register",
+    syntax: "NOT register",
+    cycles: 1,
+    flags: [],
+    example: "NOT EAX  ; EAX = ~EAX",
+  },
+  {
     name: "CMP",
     description: "Compare two values (SUB without storing result)",
     syntax: "CMP destination, source",
