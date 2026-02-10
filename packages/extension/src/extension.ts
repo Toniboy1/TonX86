@@ -646,11 +646,11 @@ export function activate(context: vscode.ExtensionContext): void {
         currentDebugSession = session; // Store current session for keyboard events
         outputChannel.appendLine("=== Program Output ===");
         outputChannel.show(true);
-        // Poll LCD and memory state every 50ms while debugging (20 FPS)
+        // Poll LCD and memory state every 10ms while debugging (100 FPS) to capture fast programs
         viewUpdateInterval = setInterval(async () => {
           await updateLCDDisplay(session);
           await updateMemoryViews(session);
-        }, 50);
+        }, 10);
       }
     }),
   );
