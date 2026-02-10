@@ -402,7 +402,7 @@ export class Simulator {
         const offsetStr = minusMatch[2];
 
         if (Object.prototype.hasOwnProperty.call(this.registerMap, baseReg)) {
-          let offset = parseInt(offsetStr, 10);
+          const offset = parseInt(offsetStr, 10);
           return {
             type: "memory",
             value: 0,
