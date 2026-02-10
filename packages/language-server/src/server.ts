@@ -342,9 +342,9 @@ function validateCallingConventions(
     name: string;
     startLine: number;
     endLine: number;
-    hasProloguePushEBP: boolean;
-    hasPrologueMovEBP: boolean;
-    hasEpiloguePopEBP: boolean;
+    prologuePushEBPLine: number;
+    prologueMovEBPLine: number;
+    epiloguePopEBPLine: number;
     pushCount: number;
     popCount: number;
     callInstructions: number[];
@@ -355,9 +355,18 @@ function validateCallingConventions(
 
   const functions: FunctionInfo[] = [];
   const calleeSavedRegs = new Set(["EBX", "ESI", "EDI", "EBP"]);
+  const controlFlowInstructions = ["JMP", "JE", "JZ", "JNE", "JNZ", "RET", "HLT"];
+  
+  // Instructions that can modify a destination register
+  const modifyingInstructions = [
+    "ADD", "SUB", "INC", "DEC", "AND", "OR", "XOR",
+    "SHL", "SHR", "MOV", "MUL", "DIV", "IMUL", "IDIV",
+    "NEG", "NOT"
+  ];
 
   // Parse functions
   let currentFunction: FunctionInfo | null = null;
+  let firstInstructionAfterLabel = true;
   
   for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
     const line = lines[lineIndex];
@@ -380,9 +389,9 @@ function validateCallingConventions(
         name: funcName,
         startLine: lineIndex,
         endLine: -1,
-        hasProloguePushEBP: false,
-        hasPrologueMovEBP: false,
-        hasEpiloguePopEBP: false,
+        prologuePushEBPLine: -1,
+        prologueMovEBPLine: -1,
+        epiloguePopEBPLine: -1,
         pushCount: 0,
         popCount: 0,
         callInstructions: [],
@@ -390,6 +399,7 @@ function validateCallingConventions(
         modifiesCalleeSavedRegs: new Set(),
         savesCalleeSavedRegs: new Set(),
       };
+      firstInstructionAfterLabel = true;
       continue;
     }
 
@@ -410,8 +420,8 @@ function validateCallingConventions(
       currentFunction.pushCount++;
       if (tokens.length > 1) {
         const reg = tokens[1].toUpperCase();
-        if (reg === "EBP" && lineIndex === currentFunction.startLine + 1) {
-          currentFunction.hasProloguePushEBP = true;
+        if (reg === "EBP" && firstInstructionAfterLabel) {
+          currentFunction.prologuePushEBPLine = lineIndex;
         }
         if (calleeSavedRegs.has(reg)) {
           currentFunction.savesCalleeSavedRegs.add(reg);
@@ -422,7 +432,7 @@ function validateCallingConventions(
       if (tokens.length > 1) {
         const reg = tokens[1].toUpperCase();
         if (reg === "EBP") {
-          currentFunction.hasEpiloguePopEBP = true;
+          currentFunction.epiloguePopEBPLine = lineIndex;
         }
       }
     } else if (instruction === "MOV") {
@@ -430,9 +440,9 @@ function validateCallingConventions(
         const dest = tokens[1].toUpperCase();
         const src = tokens[2].toUpperCase();
         
-        // Check for prologue: MOV EBP, ESP
-        if (dest === "EBP" && src === "ESP" && lineIndex === currentFunction.startLine + 2) {
-          currentFunction.hasPrologueMovEBP = true;
+        // Check for prologue: MOV EBP, ESP (should follow PUSH EBP)
+        if (dest === "EBP" && src === "ESP" && currentFunction.prologuePushEBPLine !== -1) {
+          currentFunction.prologueMovEBPLine = lineIndex;
         }
         
         // Track modifications to callee-saved registers
@@ -444,7 +454,7 @@ function validateCallingConventions(
       currentFunction.callInstructions.push(lineIndex);
     } else if (instruction === "RET") {
       currentFunction.retInstructions.push(lineIndex);
-    } else if (["ADD", "SUB", "INC", "DEC", "AND", "OR"].includes(instruction)) {
+    } else if (modifyingInstructions.includes(instruction)) {
       // Track modifications to callee-saved registers
       if (tokens.length > 1) {
         const dest = tokens[1].toUpperCase();
@@ -453,6 +463,8 @@ function validateCallingConventions(
         }
       }
     }
+    
+    firstInstructionAfterLabel = false;
   }
 
   // Add last function
@@ -470,7 +482,7 @@ function validateCallingConventions(
 
     // Check for standard function prologue
     if (func.callInstructions.length > 0 || func.retInstructions.length > 0) {
-      if (!func.hasProloguePushEBP) {
+      if (func.prologuePushEBPLine === -1) {
         diagnostics.push({
           severity: DiagnosticSeverity.Information,
           range: {
@@ -482,19 +494,19 @@ function validateCallingConventions(
         });
       }
 
-      if (func.hasProloguePushEBP && !func.hasPrologueMovEBP) {
+      if (func.prologuePushEBPLine !== -1 && func.prologueMovEBPLine === -1) {
         diagnostics.push({
           severity: DiagnosticSeverity.Information,
           range: {
-            start: { line: func.startLine + 1, character: 0 },
-            end: { line: func.startLine + 1, character: lines[func.startLine + 1]?.length || 0 },
+            start: { line: func.prologuePushEBPLine, character: 0 },
+            end: { line: func.prologuePushEBPLine, character: lines[func.prologuePushEBPLine]?.length || 0 },
           },
           message: `Function '${func.name}' should follow 'PUSH EBP' with 'MOV EBP, ESP' (standard prologue)`,
           source: "tonx86-convention",
         });
       }
 
-      if (!func.hasEpiloguePopEBP && func.hasProloguePushEBP) {
+      if (func.epiloguePopEBPLine === -1 && func.prologuePushEBPLine !== -1) {
         diagnostics.push({
           severity: DiagnosticSeverity.Warning,
           range: {
@@ -606,7 +618,7 @@ function validateCallingConventions(
         }
         // Stop if we hit a label or control flow
         if (futureTrimmed.endsWith(":") || 
-            ["JMP", "JE", "JZ", "JNE", "JNZ", "RET", "HLT"].includes(futureTokens[0]?.toUpperCase())) {
+            controlFlowInstructions.includes(futureTokens[0]?.toUpperCase())) {
           break;
         }
       }
