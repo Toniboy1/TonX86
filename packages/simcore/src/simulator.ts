@@ -46,6 +46,7 @@ export class CPUState {
   reset(): void {
     this.pc = 0;
     this.registers.fill(0);
+    this.registers[4] = 0xffff; // Initialize ESP to top of stack
     this.flags = 0;
     this.running = false;
     this.halted = false;
@@ -214,6 +215,8 @@ export class Simulator {
     this.memory = new Memory();
     this.lcd = new LCDDisplay(lcdWidth, lcdHeight);
     this.keyboard = new Keyboard();
+    // Initialize ESP to top of stack
+    this.cpu.registers[4] = 0xffff;
   }
 
   /**
@@ -273,6 +276,48 @@ export class Simulator {
     } else {
       throw new Error(`Unknown I/O address: 0x${address.toString(16)}`);
     }
+  }
+
+  /**
+   * Read a 32-bit value from memory (little-endian)
+   */
+  private readMemory32(address: number): number {
+    const byte0 = this.memory.readA(address);
+    const byte1 = this.memory.readA(address + 1);
+    const byte2 = this.memory.readA(address + 2);
+    const byte3 = this.memory.readA(address + 3);
+    return (byte0 | (byte1 << 8) | (byte2 << 16) | (byte3 << 24)) >>> 0;
+  }
+
+  /**
+   * Write a 32-bit value to memory (little-endian)
+   */
+  private writeMemory32(address: number, value: number): void {
+    this.memory.writeA(address, value & 0xff);
+    this.memory.writeA(address + 1, (value >> 8) & 0xff);
+    this.memory.writeA(address + 2, (value >> 16) & 0xff);
+    this.memory.writeA(address + 3, (value >> 24) & 0xff);
+  }
+
+  /**
+   * Push a 32-bit value onto the stack
+   */
+  pushStack(value: number): void {
+    // Decrement ESP by 4 (32-bit)
+    this.cpu.registers[4] = (this.cpu.registers[4] - 4) & 0xffff;
+    // Write value to stack
+    this.writeMemory32(this.cpu.registers[4], value);
+  }
+
+  /**
+   * Pop a 32-bit value from the stack
+   */
+  popStack(): number {
+    // Read value from stack
+    const value = this.readMemory32(this.cpu.registers[4]);
+    // Increment ESP by 4 (32-bit)
+    this.cpu.registers[4] = (this.cpu.registers[4] + 4) & 0xffff;
+    return value;
   }
 
   /**
@@ -434,6 +479,39 @@ export class Simulator {
       case "JNZ": {
         // JNE/JNZ label (jump if not equal/not zero)
         // Requires symbol table - skip for now
+        break;
+      }
+
+      case "PUSH": {
+        // PUSH reg - Push register onto stack
+        if (operands.length !== 1) break;
+        const src = this.parseOperand(operands[0]);
+
+        if (src.type === "register") {
+          const value = this.cpu.registers[src.value];
+          this.pushStack(value);
+        }
+        break;
+      }
+
+      case "POP": {
+        // POP reg - Pop from stack into register
+        if (operands.length !== 1) break;
+        const dest = this.parseOperand(operands[0]);
+
+        if (dest.type === "register") {
+          const value = this.popStack();
+          this.cpu.registers[dest.value] = value;
+        }
+        break;
+      }
+
+      case "CALL":
+      case "RET": {
+        // CALL/RET are handled by the debug adapter
+        // The debug adapter manages both control flow (jumping to labels/return addresses)
+        // and stack operations (via pushStack/popStack methods)
+        // These cases are intentionally no-ops in executeInstruction
         break;
       }
 

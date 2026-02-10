@@ -8,7 +8,7 @@ import { DebugProtocol } from "vscode-debugprotocol";
 import * as fs from "fs";
 import * as path from "path";
 import { Simulator } from "@tonx86/simcore";
-import { parseAssembly, Instruction, ParseResult } from "./parser";
+import { parseAssembly, Instruction } from "./parser";
 
 // File-based logger for debugging - will be set after launch
 let LOG_FILE = "";
@@ -37,6 +37,7 @@ export class TonX86DebugSession extends DebugSession {
   private shouldAutoStart = false; // Track if we should auto-start after config
   private simulator: Simulator; // CPU simulator instance
   private cpuSpeed: number = 100; // CPU speed percentage (1-200)
+  private callStack: number[] = []; // Call stack for tracking return addresses
 
   public constructor() {
     super();
@@ -242,30 +243,72 @@ export class TonX86DebugSession extends DebugSession {
         return;
       }
 
-      // Handle jump instructions
-      if (["JMP", "JE", "JZ", "JNE", "JNZ"].includes(currentInstr.mnemonic)) {
-        const targetLabel = currentInstr.operands[0];
-        const targetIndex = this.labels.get(targetLabel);
+      // Handle jump instructions (including CALL and RET)
+      if (
+        ["JMP", "JE", "JZ", "JNE", "JNZ", "CALL", "RET"].includes(
+          currentInstr.mnemonic,
+        )
+      ) {
+        if (currentInstr.mnemonic === "CALL") {
+          // CALL: Push return address (next instruction) and jump to label
+          const targetLabel = currentInstr.operands[0];
+          const targetIndex = this.labels.get(targetLabel);
 
-        if (targetIndex !== undefined) {
-          // For conditional jumps, check the Zero flag
-          const shouldJump =
-            currentInstr.mnemonic === "JMP" ||
-            (["JE", "JZ"].includes(currentInstr.mnemonic) &&
-              this.isZeroFlagSet()) ||
-            (["JNE", "JNZ"].includes(currentInstr.mnemonic) &&
-              !this.isZeroFlagSet());
+          if (targetIndex !== undefined) {
+            // Push return address onto call stack
+            const returnAddress = this.instructionPointer + 1;
+            this.callStack.push(returnAddress);
 
-          if (shouldJump) {
+            // Push return address onto CPU stack
+            this.simulator.pushStack(returnAddress);
+
+            // Jump to target
             this.instructionPointer = targetIndex;
           } else {
+            console.error(
+              `[TonX86] CALL target "${targetLabel}" not found in labels`,
+            );
+            this.instructionPointer++;
+          }
+        } else if (currentInstr.mnemonic === "RET") {
+          // RET: Pop return address and jump to it
+          if (this.callStack.length > 0) {
+            const returnAddress = this.callStack.pop()!;
+
+            // Pop return address from CPU stack
+            this.simulator.popStack();
+
+            // Jump to return address
+            this.instructionPointer = returnAddress;
+          } else {
+            console.error("[TonX86] RET called with empty call stack");
             this.instructionPointer++;
           }
         } else {
-          console.error(
-            `[TonX86] Jump target "${targetLabel}" not found in labels`,
-          );
-          this.instructionPointer++;
+          // Handle other jump instructions
+          const targetLabel = currentInstr.operands[0];
+          const targetIndex = this.labels.get(targetLabel);
+
+          if (targetIndex !== undefined) {
+            // For conditional jumps, check the Zero flag
+            const shouldJump =
+              currentInstr.mnemonic === "JMP" ||
+              (["JE", "JZ"].includes(currentInstr.mnemonic) &&
+                this.isZeroFlagSet()) ||
+              (["JNE", "JNZ"].includes(currentInstr.mnemonic) &&
+                !this.isZeroFlagSet());
+
+            if (shouldJump) {
+              this.instructionPointer = targetIndex;
+            } else {
+              this.instructionPointer++;
+            }
+          } else {
+            console.error(
+              `[TonX86] Jump target "${targetLabel}" not found in labels`,
+            );
+            this.instructionPointer++;
+          }
         }
       } else {
         this.instructionPointer++;

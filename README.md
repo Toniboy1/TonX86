@@ -79,15 +79,32 @@ npm run build
 | Mnemonic | Operands | Flags | Description |
 |----------|----------|-------|-------------|
 | `MOV` | reg/mem, reg/imm | - | Move data |
-| `ADD` | reg, reg | ZCOS | Add |
-| `SUB` | reg, reg | ZCOS | Subtract |
+| `ADD` | reg, reg/imm | ZCOS | Add |
+| `SUB` | reg, reg/imm | ZCOS | Subtract |
+| `INC` | reg | ZCOS | Increment |
+| `DEC` | reg | ZCOS | Decrement |
 | `AND` | reg, reg | ZS | Bitwise AND |
 | `OR` | reg, reg | ZS | Bitwise OR |
-| `CMP` | reg, reg | ZCOS | Compare (SUB without storing) |
+| `CMP` | reg, reg/imm | ZCOS | Compare (SUB without storing) |
 | `JMP` | label | - | Unconditional jump |
 | `JE/JZ` | label | - | Jump if zero |
 | `JNE/JNZ` | label | - | Jump if not zero |
+| `CALL` | label | - | Push return address, jump to label |
+| `RET` | - | - | Pop return address, jump to it |
+| `PUSH` | reg | - | Push register onto stack |
+| `POP` | reg | - | Pop from stack into register |
 | `HLT` | - | - | Halt execution |
+
+### Stack Operations
+
+**Stack Pointer:** `ESP` is initialized to `0xFFFF` (top of memory)  
+**Stack Growth:** Downward (from high to low memory addresses)  
+**Stack Width:** 32-bit (4 bytes per push/pop)
+
+- `PUSH reg` - Decrements ESP by 4, writes register value to memory
+- `POP reg` - Reads value from memory, increments ESP by 4
+- `CALL label` - Pushes return address, jumps to label
+- `RET` - Pops return address, jumps to it
 
 ### Flags
 **Z** (Zero) | **C** (Carry) | **O** (Overflow) | **S** (Sign)
@@ -109,7 +126,41 @@ npm run build
 - Arrows: Up=128, Down=129, Left=130, Right=131
 - Special: Space=32, Enter=13, Esc=27, Tab=9, Backspace=8
 
-## Example Program
+## Example Programs
+
+### Basic Subroutine with CALL/RET
+
+```asm
+; Multiply EAX by 2 using a subroutine
+main:
+    MOV EAX, 5             ; Load value
+    CALL multiply_by_2     ; Call subroutine
+    HLT                    ; Result in EAX (10)
+
+multiply_by_2:
+    ADD EAX, EAX           ; Double the value
+    RET                    ; Return to caller
+```
+
+### Stack Operations
+
+```asm
+; Save and restore registers
+main:
+    MOV EAX, 10
+    MOV EBX, 20
+    PUSH EAX               ; Save EAX
+    PUSH EBX               ; Save EBX
+    
+    MOV EAX, 99            ; Modify registers
+    MOV EBX, 88
+    
+    POP EBX                ; Restore EBX (20)
+    POP EAX                ; Restore EAX (10)
+    HLT
+```
+
+### Keyboard-Controlled Pixel
 
 ```asm
 ; Keyboard-controlled pixel

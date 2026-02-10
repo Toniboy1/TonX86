@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach } from '@jest/globals';
-import { parseAssembly, Instruction, ParseResult } from './parser';
+import { describe, it, expect } from '@jest/globals';
+import { parseAssembly } from './parser';
 
 /**
  * Tests for DAP Assembly Parser and Control Flow
@@ -213,6 +213,71 @@ describe('DAP Control Flow', () => {
       }
       
       expect(ip).toBe(4);
+    });
+  });
+
+  describe('CALL and RET instructions', () => {
+    it('should parse CALL instruction', () => {
+      const lines = [
+        'CALL multiply_by_2'
+      ];
+      const result = parseAssembly(lines);
+      
+      expect(result.instructions).toHaveLength(1);
+      expect(result.instructions[0].mnemonic).toBe('CALL');
+      expect(result.instructions[0].operands).toEqual(['multiply_by_2']);
+    });
+
+    it('should parse RET instruction', () => {
+      const lines = [
+        'RET'
+      ];
+      const result = parseAssembly(lines);
+      
+      expect(result.instructions).toHaveLength(1);
+      expect(result.instructions[0].mnemonic).toBe('RET');
+      expect(result.instructions[0].operands).toEqual([]);
+    });
+
+    it('should parse PUSH instruction', () => {
+      const lines = [
+        'PUSH EAX'
+      ];
+      const result = parseAssembly(lines);
+      
+      expect(result.instructions).toHaveLength(1);
+      expect(result.instructions[0].mnemonic).toBe('PUSH');
+      expect(result.instructions[0].operands).toEqual(['EAX']);
+    });
+
+    it('should parse POP instruction', () => {
+      const lines = [
+        'POP EBX'
+      ];
+      const result = parseAssembly(lines);
+      
+      expect(result.instructions).toHaveLength(1);
+      expect(result.instructions[0].mnemonic).toBe('POP');
+      expect(result.instructions[0].operands).toEqual(['EBX']);
+    });
+
+    it('should parse complete subroutine with CALL/RET', () => {
+      const lines = [
+        'main:',
+        '  MOV EAX, 5',
+        '  CALL multiply_by_2',
+        '  HLT',
+        'multiply_by_2:',
+        '  ADD EAX, EAX',
+        '  RET'
+      ];
+      const result = parseAssembly(lines);
+      
+      expect(result.instructions).toHaveLength(5);
+      expect(result.labels.get('main')).toBe(0);
+      expect(result.labels.get('multiply_by_2')).toBe(3);
+      expect(result.instructions[1].mnemonic).toBe('CALL');
+      expect(result.instructions[4].mnemonic).toBe('RET');
     });
   });
 });

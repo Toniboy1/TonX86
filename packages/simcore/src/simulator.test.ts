@@ -453,6 +453,131 @@ describe("Simulator - executeInstruction", () => {
     expect(stateAfter.halted).toBe(true);
   });
 
+  describe("Stack instructions", () => {
+    describe("PUSH instruction", () => {
+      test("pushes register value onto stack", () => {
+        sim.executeInstruction("MOV", ["EAX", "42"]);
+        const espBefore = sim.getRegisters().ESP;
+        sim.executeInstruction("PUSH", ["EAX"]);
+        const espAfter = sim.getRegisters().ESP;
+
+        // ESP should be decremented by 4
+        expect(espAfter).toBe((espBefore - 4) & 0xffff);
+
+        // Read value from stack
+        const stackValue =
+          sim.getMemoryA(espAfter, 1)[0] |
+          (sim.getMemoryA(espAfter + 1, 1)[0] << 8) |
+          (sim.getMemoryA(espAfter + 2, 1)[0] << 16) |
+          (sim.getMemoryA(espAfter + 3, 1)[0] << 24);
+        expect(stackValue >>> 0).toBe(42);
+      });
+
+      test("pushes multiple values onto stack", () => {
+        sim.executeInstruction("MOV", ["EAX", "10"]);
+        sim.executeInstruction("MOV", ["EBX", "20"]);
+        sim.executeInstruction("MOV", ["ECX", "30"]);
+
+        sim.executeInstruction("PUSH", ["EAX"]);
+        sim.executeInstruction("PUSH", ["EBX"]);
+        sim.executeInstruction("PUSH", ["ECX"]);
+
+        const regs = sim.getRegisters();
+        // ESP should be decremented by 12 (3 * 4 bytes)
+        expect(regs.ESP).toBe((0xffff - 12) & 0xffff);
+      });
+
+      test("doesn't affect register value", () => {
+        sim.executeInstruction("MOV", ["EAX", "100"]);
+        sim.executeInstruction("PUSH", ["EAX"]);
+        const regs = sim.getRegisters();
+        expect(regs.EAX).toBe(100);
+      });
+    });
+
+    describe("POP instruction", () => {
+      test("pops value from stack into register", () => {
+        sim.executeInstruction("MOV", ["EAX", "42"]);
+        sim.executeInstruction("PUSH", ["EAX"]);
+        sim.executeInstruction("MOV", ["EAX", "0"]); // Clear EAX
+        sim.executeInstruction("POP", ["EBX"]);
+
+        const regs = sim.getRegisters();
+        expect(regs.EBX).toBe(42);
+      });
+
+      test("restores ESP after pop", () => {
+        const espBefore = sim.getRegisters().ESP;
+        sim.executeInstruction("MOV", ["EAX", "42"]);
+        sim.executeInstruction("PUSH", ["EAX"]);
+        sim.executeInstruction("POP", ["EBX"]);
+
+        const espAfter = sim.getRegisters().ESP;
+        expect(espAfter).toBe(espBefore);
+      });
+
+      test("pops multiple values in LIFO order", () => {
+        sim.executeInstruction("MOV", ["EAX", "10"]);
+        sim.executeInstruction("MOV", ["EBX", "20"]);
+        sim.executeInstruction("MOV", ["ECX", "30"]);
+
+        sim.executeInstruction("PUSH", ["EAX"]);
+        sim.executeInstruction("PUSH", ["EBX"]);
+        sim.executeInstruction("PUSH", ["ECX"]);
+
+        sim.executeInstruction("POP", ["EDX"]); // Should get 30
+        sim.executeInstruction("POP", ["ESI"]); // Should get 20
+        sim.executeInstruction("POP", ["EDI"]); // Should get 10
+
+        const regs = sim.getRegisters();
+        expect(regs.EDX).toBe(30);
+        expect(regs.ESI).toBe(20);
+        expect(regs.EDI).toBe(10);
+      });
+    });
+
+    describe("Stack pointer initialization", () => {
+      test("ESP initialized to 0xFFFF", () => {
+        const regs = sim.getRegisters();
+        expect(regs.ESP).toBe(0xffff);
+      });
+
+      test("ESP reset to 0xFFFF after reset", () => {
+        sim.executeInstruction("MOV", ["ESP", "0x1000"]);
+        sim.reset();
+        const regs = sim.getRegisters();
+        expect(regs.ESP).toBe(0xffff);
+      });
+    });
+
+    describe("PUSH/POP with different registers", () => {
+      test("works with ESP", () => {
+        const espValue = sim.getRegisters().ESP;
+        sim.executeInstruction("PUSH", ["ESP"]);
+        sim.executeInstruction("POP", ["EAX"]);
+        const regs = sim.getRegisters();
+        // When we PUSH ESP, we push the value before decrementing
+        expect(regs.EAX).toBe(espValue);
+      });
+
+      test("works with all registers", () => {
+        const registerNames = ["EAX", "ECX", "EDX", "EBX", "EBP", "ESI", "EDI"];
+        registerNames.forEach((reg, index) => {
+          sim.executeInstruction("MOV", [reg, (index * 10).toString()]);
+          sim.executeInstruction("PUSH", [reg]);
+        });
+
+        // Pop in reverse order
+        registerNames.reverse().forEach((reg, index) => {
+          sim.executeInstruction("POP", [reg]);
+          const regs = sim.getRegisters();
+          const originalIndex = registerNames.length - 1 - index;
+          expect(regs[reg as keyof typeof regs]).toBe(originalIndex * 10);
+        });
+      });
+    });
+  });
+
   describe("error handling", () => {
     test("silently ignores unknown instruction", () => {
       // Unknown instructions don't throw - they're silently ignored (switch default)
@@ -482,7 +607,7 @@ describe("Simulator - public API", () => {
     expect(state.pc).toBe(0);
     expect(state.running).toBe(false);
     expect(state.halted).toBe(false);
-    expect(state.registers).toEqual([0, 0, 0, 0, 0, 0, 0, 0]);
+    expect(state.registers).toEqual([0, 0, 0, 0, 0xffff, 0, 0, 0]); // ESP initialized to 0xFFFF
   });
 
   test("run() sets running state", () => {
