@@ -198,6 +198,7 @@ export class TonX86DebugSession extends DebugSession {
     // Add a max iterations limit to prevent infinite loops from hanging the debugger
     const maxIterations = 100000;
     let iterationCount = 0;
+    let firstIteration = true; // Skip breakpoint check on first instruction
 
     while (
       this.instructionPointer < this.instructions.length &&
@@ -208,13 +209,15 @@ export class TonX86DebugSession extends DebugSession {
       const currentInstr = this.instructions[this.instructionPointer];
 
       // Check for breakpoint BEFORE executing the instruction
-      if (this.breakpoints.has(currentInstr.line)) {
+      // But skip the check on first iteration (we're continuing from that line)
+      if (!firstIteration && this.breakpoints.has(currentInstr.line)) {
         this.currentLine = currentInstr.line;
         console.error("[TonX86] Hit breakpoint at line", this.currentLine);
         // Send stopped event at breakpoint
         this.sendEvent(new StoppedEvent("breakpoint", 1));
         return;
       }
+      firstIteration = false;
 
       // Add delay based on CPU speed (lower speed = longer delay)
       // At 100%, delay is 0ms. At 50%, delay is ~1ms. At 1%, delay is ~50ms.
