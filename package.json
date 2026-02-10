@@ -1,6 +1,6 @@
 {
   "name": "tonx86",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Educational x86-like assembly environment for VS Code",
   "private": true,
   "author": {
