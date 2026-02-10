@@ -474,10 +474,10 @@ function validateCallingConventions(
   }
 
   // Analyze each function for calling convention issues
-  functions.forEach((func) => {
+  for (const func of functions) {
     // Skip main/entry point functions
     if (func.name === "main" || func.name === "start" || func.name === "_start") {
-      return;
+      continue;
     }
 
     // Check for standard function prologue
@@ -533,7 +533,7 @@ function validateCallingConventions(
     }
 
     // Check for callee-saved register violations
-    func.modifiesCalleeSavedRegs.forEach((reg) => {
+    for (const reg of func.modifiesCalleeSavedRegs) {
       if (!func.savesCalleeSavedRegs.has(reg)) {
         diagnostics.push({
           severity: DiagnosticSeverity.Warning,
@@ -545,19 +545,20 @@ function validateCallingConventions(
           source: "tonx86-convention",
         });
       }
-    });
-  });
+    }
+  }
 
   // Analyze CALL sites for potential calling convention issues
-  lines.forEach((line, lineIndex) => {
+  for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+    const line = lines[lineIndex];
     const trimmed = line.trim();
     if (!trimmed || trimmed.startsWith(";")) {
-      return;
+      continue;
     }
 
     const tokens = trimmed.split(/[\s,]+/).filter((t) => !t.startsWith(";"));
     if (tokens.length === 0) {
-      return;
+      continue;
     }
 
     const instruction = tokens[0].toUpperCase();
@@ -636,7 +637,7 @@ function validateCallingConventions(
         });
       }
     }
-  });
+  }
 }
 
 // Document change handler
