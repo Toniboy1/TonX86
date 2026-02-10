@@ -329,13 +329,71 @@ export class Simulator {
   }
 
   /**
-   * Parse a register name or immediate value
+   * Parse a register name, immediate value, or memory address
    */
   private parseOperand(operand: string): {
-    type: "register" | "immediate";
+    type: "register" | "immediate" | "memory";
     value: number;
+    base?: number;
+    offset?: number;
   } {
     operand = operand.trim().toUpperCase();
+
+    // Check for memory addressing [REG] or [REG+offset] or [REG+REG]
+    if (operand.startsWith("[") && operand.endsWith("]")) {
+      const memExpr = operand.slice(1, -1).trim();
+      
+      // Handle [REG+offset] or [REG-offset]
+      const plusMatch = memExpr.match(/^([A-Z]+)\s*\+\s*(.+)$/);
+      const minusMatch = memExpr.match(/^([A-Z]+)\s*-\s*(.+)$/);
+      
+      if (plusMatch) {
+        const baseReg = plusMatch[1];
+        const offsetStr = plusMatch[2];
+        
+        if (Object.prototype.hasOwnProperty.call(this.registerMap, baseReg)) {
+          // Parse offset (could be number or another register)
+          let offset = 0;
+          if (Object.prototype.hasOwnProperty.call(this.registerMap, offsetStr)) {
+            // [REG+REG] - use register value as offset
+            offset = this.cpu.registers[this.registerMap[offsetStr]];
+          } else {
+            // [REG+immediate]
+            offset = parseInt(offsetStr, 10);
+          }
+          
+          return {
+            type: "memory",
+            value: 0,
+            base: this.registerMap[baseReg],
+            offset: offset,
+          };
+        }
+      } else if (minusMatch) {
+        const baseReg = minusMatch[1];
+        const offsetStr = minusMatch[2];
+        
+        if (Object.prototype.hasOwnProperty.call(this.registerMap, baseReg)) {
+          let offset = parseInt(offsetStr, 10);
+          return {
+            type: "memory",
+            value: 0,
+            base: this.registerMap[baseReg],
+            offset: -offset,
+          };
+        }
+      } else {
+        // Handle simple [REG]
+        if (Object.prototype.hasOwnProperty.call(this.registerMap, memExpr)) {
+          return {
+            type: "memory",
+            value: 0,
+            base: this.registerMap[memExpr],
+            offset: 0,
+          };
+        }
+      }
+    }
 
     // Check if it's a register
     if (Object.prototype.hasOwnProperty.call(this.registerMap, operand)) {
@@ -376,12 +434,8 @@ export class Simulator {
 
         // In strict-x86 mode, memory-to-memory MOV is not allowed
         if (this.compatibilityMode === "strict-x86") {
-          // Check if both operands are memory addresses:
-          // - dest.type === "immediate" means destination is a memory address (will call writeIO)
-          // - src.type === "immediate" && src.value >= 0xf000 means source is a memory address (will call readIO)
-          // This combination represents memory-to-memory MOV, which is not allowed in strict x86
-          const isDestMemory = dest.type === "immediate";
-          const isSrcMemory = src.type === "immediate" && src.value >= 0xf000;
+          const isDestMemory = dest.type === "immediate" || dest.type === "memory";
+          const isSrcMemory = (src.type === "immediate" && src.value >= 0xf000) || src.type === "memory";
 
           if (isDestMemory && isSrcMemory) {
             throw new Error(
@@ -394,6 +448,10 @@ export class Simulator {
         let srcValue: number;
         if (src.type === "register") {
           srcValue = this.cpu.registers[src.value];
+        } else if (src.type === "memory") {
+          // Read from memory address [base+offset]
+          const addr = (this.cpu.registers[src.base!] + (src.offset || 0)) & 0xffff;
+          srcValue = this.readMemory32(addr);
         } else {
           // src.type === "immediate"
           // Check if source is an I/O memory address (0xF000+)
@@ -408,6 +466,10 @@ export class Simulator {
         // Handle destination
         if (dest.type === "register") {
           this.cpu.registers[dest.value] = srcValue;
+        } else if (dest.type === "memory") {
+          // Write to memory address [base+offset]
+          const addr = (this.cpu.registers[dest.base!] + (dest.offset || 0)) & 0xffff;
+          this.writeMemory32(addr, srcValue);
         } else if (dest.type === "immediate") {
           // Destination is a memory address (I/O write)
           this.writeIO(dest.value, srcValue);
@@ -496,8 +558,15 @@ export class Simulator {
         const src = this.parseOperand(operands[1]);
 
         if (dest.type === "register") {
-          const srcValue =
-            src.type === "register" ? this.cpu.registers[src.value] : src.value;
+          let srcValue: number;
+          if (src.type === "register") {
+            srcValue = this.cpu.registers[src.value];
+          } else if (src.type === "memory") {
+            const addr = (this.cpu.registers[src.base!] + (src.offset || 0)) & 0xffff;
+            srcValue = this.readMemory32(addr);
+          } else {
+            srcValue = src.value;
+          }
           this.cpu.registers[dest.value] =
             (this.cpu.registers[dest.value] + srcValue) & 0xffffffff;
           this.updateFlags(this.cpu.registers[dest.value]);
@@ -512,8 +581,15 @@ export class Simulator {
         const src = this.parseOperand(operands[1]);
 
         if (dest.type === "register") {
-          const srcValue =
-            src.type === "register" ? this.cpu.registers[src.value] : src.value;
+          let srcValue: number;
+          if (src.type === "register") {
+            srcValue = this.cpu.registers[src.value];
+          } else if (src.type === "memory") {
+            const addr = (this.cpu.registers[src.base!] + (src.offset || 0)) & 0xffff;
+            srcValue = this.readMemory32(addr);
+          } else {
+            srcValue = src.value;
+          }
           this.cpu.registers[dest.value] =
             (this.cpu.registers[dest.value] - srcValue) & 0xffffffff;
           this.updateFlags(this.cpu.registers[dest.value]);
@@ -833,14 +909,23 @@ export class Simulator {
       }
 
       case "PUSH": {
-        // PUSH reg - Push register onto stack
+        // PUSH reg/imm - Push register or immediate value onto stack
         if (operands.length !== 1) break;
         const src = this.parseOperand(operands[0]);
 
+        let value: number;
         if (src.type === "register") {
-          const value = this.cpu.registers[src.value];
-          this.pushStack(value);
+          value = this.cpu.registers[src.value];
+        } else if (src.type === "immediate") {
+          value = src.value;
+        } else if (src.type === "memory") {
+          const addr = (this.cpu.registers[src.base!] + (src.offset || 0)) & 0xffff;
+          value = this.readMemory32(addr);
+        } else {
+          break;
         }
+        
+        this.pushStack(value);
         break;
       }
 

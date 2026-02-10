@@ -3,13 +3,10 @@
 
 main:
     ; cdecl call pattern - should show hints
-    MOV EAX, 3
-    MOV EBX, 5
-    PUSH EAX
-    PUSH EBX
+    PUSH 3
+    PUSH 5
     CALL add
-    POP ECX            ; Should detect cdecl pattern (caller cleanup)
-    POP ECX
+    ADD ESP, 8         ; Should detect cdecl pattern
     
     ; Call without proper prologue/epilogue
     CALL bad_function
@@ -21,10 +18,8 @@ add:
     PUSH EBP           ; Proper prologue
     MOV EBP, ESP
     
-    ; Simplified: use passed values directly
-    ; In real implementation would access [EBP+8] and [EBP+12]
-    MOV EAX, 3
-    ADD EAX, 5
+    MOV EAX, [EBP+8]
+    ADD EAX, [EBP+12]
     
     POP EBP            ; Proper epilogue
     RET
