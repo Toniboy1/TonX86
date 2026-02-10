@@ -376,8 +376,14 @@ export class Simulator {
 
         // In strict-x86 mode, memory-to-memory MOV is not allowed
         if (this.compatibilityMode === "strict-x86") {
-          // Both operands are immediate (memory addresses), which is not allowed in strict x86
-          if (dest.type === "immediate" && src.type === "immediate" && src.value >= 0xf000) {
+          // Check if both operands are memory addresses:
+          // - dest.type === "immediate" means destination is a memory address (will call writeIO)
+          // - src.type === "immediate" && src.value >= 0xf000 means source is a memory address (will call readIO)
+          // This combination represents memory-to-memory MOV, which is not allowed in strict x86
+          const isDestMemory = dest.type === "immediate";
+          const isSrcMemory = src.type === "immediate" && src.value >= 0xf000;
+
+          if (isDestMemory && isSrcMemory) {
             throw new Error(
               "Memory-to-memory MOV not allowed in strict-x86 mode. Use a register as intermediate.",
             );
@@ -389,10 +395,12 @@ export class Simulator {
         if (src.type === "register") {
           srcValue = this.cpu.registers[src.value];
         } else {
-          // Check if source is an I/O address (0xF000+)
+          // src.type === "immediate"
+          // Check if source is an I/O memory address (0xF000+)
           if (src.value >= 0xf000) {
             srcValue = this.readIO(src.value);
           } else {
+            // Literal immediate value (e.g., MOV EAX, 42)
             srcValue = src.value;
           }
         }
@@ -401,7 +409,7 @@ export class Simulator {
         if (dest.type === "register") {
           this.cpu.registers[dest.value] = srcValue;
         } else if (dest.type === "immediate") {
-          // destination is an I/O address
+          // Destination is a memory address (I/O write)
           this.writeIO(dest.value, srcValue);
         }
         break;

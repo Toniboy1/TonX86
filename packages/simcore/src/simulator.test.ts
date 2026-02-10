@@ -1206,6 +1206,14 @@ describe("Simulator - Compatibility Mode", () => {
       const regs = sim.getRegisters();
       expect(regs.EBX).toBe(100);
     });
+
+    test("allows immediate-to-memory MOV in strict-x86 mode", () => {
+      const sim = new Simulator(16, 16, "strict-x86");
+      // MOV with literal immediate to memory should work (not memory-to-memory)
+      sim.executeInstruction("MOV", ["0xF000", "1"]);
+      const lcd = sim.getLCDDisplay();
+      expect(lcd[0]).toBe(1); // Pixel should be set
+    });
   });
 
   describe("Mode switching", () => {
