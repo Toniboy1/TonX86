@@ -87,7 +87,7 @@
       "patterns": [
         {
           "name": "keyword.mnemonic.tonx86",
-          "match": "\\b(MOV|ADD|SUB|AND|OR|XOR|NOT|SHL|SHR|JMP|JZ|JNZ|JE|JNE|JL|JLE|JG|JGE|CMP|CALL|RET|PUSH|POP|INC|DEC|NEG|MUL|DIV|IMUL|IDIV|HLT|NOP|INT|IRET)\\b"
+          "match": "\\b(MOV|ADD|SUB|AND|OR|XOR|NOT|SHL|SHR|SAR|ROL|ROR|JMP|JZ|JNZ|JE|JNE|JL|JLE|JG|JGE|CMP|CALL|RET|PUSH|POP|INC|DEC|NEG|MUL|DIV|IMUL|IDIV|HLT|NOP|INT|IRET)\\b"
         }
       ]
     },

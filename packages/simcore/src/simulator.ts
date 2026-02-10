@@ -397,6 +397,23 @@ export class Simulator {
             offset: 0,
           };
         }
+        
+        // Handle [immediate] like [0xF000]
+        let addr = 0;
+        if (memExpr.startsWith("0X")) {
+          addr = parseInt(memExpr.substring(2), 16);
+        } else if (memExpr.startsWith("0B")) {
+          addr = parseInt(memExpr.substring(2), 2);
+        } else {
+          addr = parseInt(memExpr, 10);
+        }
+        
+        return {
+          type: "memory",
+          value: 0,
+          base: -1, // Special marker for absolute address
+          offset: addr,
+        };
       }
     }
 
@@ -447,8 +464,8 @@ export class Simulator {
       value = parseInt(operand, 10);
     }
 
-    // If value is in I/O range (0xF000+), treat as memory address instead of immediate
-    if (value >= 0xf000) {
+    // If value is in I/O range (0xF000-0xFFFF), treat as memory address instead of immediate
+    if (value >= 0xf000 && value <= 0xffff) {
       return {
         type: "memory",
         value: 0,
@@ -516,7 +533,7 @@ export class Simulator {
           const isDestMemory =
             dest.type === "immediate" || dest.type === "memory";
           const isSrcMemory =
-            (src.type === "immediate" && src.value >= 0xf000) ||
+            (src.type === "immediate" && src.value >= 0xf000 && src.value <= 0xffff) ||
             src.type === "memory";
 
           if (isDestMemory && isSrcMemory) {
@@ -540,15 +557,15 @@ export class Simulator {
             addr = (this.cpu.registers[src.base!] + (src.offset || 0)) & 0xffff;
           }
 
-          if (addr >= 0xf000) {
+          if (addr >= 0xf000 && addr <= 0xffff) {
             srcValue = this.readIO(addr);
           } else {
             srcValue = this.readMemory32(addr);
           }
         } else {
           // src.type === "immediate"
-          // Check if source is an I/O memory address (0xF000+)
-          if (src.value >= 0xf000) {
+          // Check if source is an I/O memory address (0xF000-0xFFFF)
+          if (src.value >= 0xf000 && src.value <= 0xffff) {
             srcValue = this.readIO(src.value);
           } else {
             // Literal immediate value (e.g., MOV EAX, 42)
@@ -570,7 +587,7 @@ export class Simulator {
               (this.cpu.registers[dest.base!] + (dest.offset || 0)) & 0xffff;
           }
 
-          if (addr >= 0xf000) {
+          if (addr >= 0xf000 && addr <= 0xffff) {
             this.writeIO(addr, srcValue);
           } else {
             this.writeMemory32(addr, srcValue);
