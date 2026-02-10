@@ -5,7 +5,7 @@
       "mnemonic": "MOV",
       "opcode": "0x89",
       "operands": ["reg", "reg"],
-      "description": "Move data between registers",
+      "description": "Move data between registers or memory",
       "cycles": 1,
       "flags": []
     },
@@ -42,10 +42,34 @@
       "flags": ["Z", "S"]
     },
     {
+      "mnemonic": "CMP",
+      "opcode": "0x39",
+      "operands": ["reg", "reg"],
+      "description": "Compare two values (SUB without storing result)",
+      "cycles": 1,
+      "flags": ["Z", "C", "O", "S"]
+    },
+    {
+      "mnemonic": "INC",
+      "opcode": "0xFF",
+      "operands": ["reg"],
+      "description": "Increment register by 1",
+      "cycles": 1,
+      "flags": ["Z", "O", "S"]
+    },
+    {
+      "mnemonic": "DEC",
+      "opcode": "0xFF",
+      "operands": ["reg"],
+      "description": "Decrement register by 1",
+      "cycles": 1,
+      "flags": ["Z", "O", "S"]
+    },
+    {
       "mnemonic": "JMP",
       "opcode": "0xE9",
       "operands": ["addr"],
-      "description": "Unconditional jump to address",
+      "description": "Unconditional jump to address or label",
       "cycles": 1,
       "flags": []
     },
@@ -53,7 +77,31 @@
       "mnemonic": "JZ",
       "opcode": "0x74",
       "operands": ["addr"],
-      "description": "Jump if zero flag is set",
+      "description": "Jump if zero flag is set (equal)",
+      "cycles": 1,
+      "flags": []
+    },
+    {
+      "mnemonic": "JE",
+      "opcode": "0x74",
+      "operands": ["addr"],
+      "description": "Jump if equal (alias for JZ)",
+      "cycles": 1,
+      "flags": []
+    },
+    {
+      "mnemonic": "JNZ",
+      "opcode": "0x75",
+      "operands": ["addr"],
+      "description": "Jump if not zero (not equal)",
+      "cycles": 1,
+      "flags": []
+    },
+    {
+      "mnemonic": "JNE",
+      "opcode": "0x75",
+      "operands": ["addr"],
+      "description": "Jump if not equal (alias for JNZ)",
       "cycles": 1,
       "flags": []
     },
