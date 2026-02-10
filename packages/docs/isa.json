@@ -17,6 +17,50 @@
       ]
     },
     {
+      "mnemonic": "XCHG",
+      "opcode": "0x87",
+      "operands": ["reg", "reg"],
+      "description": "Exchange values between two registers",
+      "cycles": 1,
+      "flags": [],
+      "examples": [
+        "XCHG EAX, ECX      ; Swap EAX and ECX"
+      ]
+    },
+    {
+      "mnemonic": "LEA",
+      "opcode": "0x8D",
+      "operands": ["reg", "imm"],
+      "description": "Load effective address",
+      "cycles": 1,
+      "flags": [],
+      "examples": [
+        "LEA EAX, 0x1000    ; Load address into EAX"
+      ]
+    },
+    {
+      "mnemonic": "MOVZX",
+      "opcode": "0x0FB6",
+      "operands": ["reg", "reg/imm"],
+      "description": "Move with zero extend (8-bit to 32-bit)",
+      "cycles": 1,
+      "flags": [],
+      "examples": [
+        "MOVZX EAX, ECX     ; Move low byte of ECX to EAX, zero-extend"
+      ]
+    },
+    {
+      "mnemonic": "MOVSX",
+      "opcode": "0x0FBE",
+      "operands": ["reg", "reg/imm"],
+      "description": "Move with sign extend (8-bit to 32-bit)",
+      "cycles": 1,
+      "flags": [],
+      "examples": [
+        "MOVSX EAX, ECX     ; Move low byte of ECX to EAX, sign-extend"
+      ]
+    },
+    {
       "mnemonic": "ADD",
       "opcode": "0x01",
       "operands": ["reg", "reg"],
@@ -64,12 +108,114 @@
     {
       "mnemonic": "OR",
       "opcode": "0x09",
-      "operands": ["reg", "reg"],
-      "description": "Bitwise OR two registers",
+      "operands": ["reg", "reg/imm"],
+      "description": "Bitwise OR two registers or register with immediate",
       "cycles": 1,
       "flags": ["Z", "S"],
       "examples": [
-        "OR EAX, ECX        ; EAX = EAX | ECX"
+        "OR EAX, ECX        ; EAX = EAX | ECX",
+        "OR EAX, 0x0F       ; EAX = EAX | 0x0F"
+      ]
+    },
+    {
+      "mnemonic": "XOR",
+      "opcode": "0x31",
+      "operands": ["reg", "reg/imm"],
+      "description": "Bitwise XOR two registers or register with immediate",
+      "cycles": 1,
+      "flags": ["Z", "S"],
+      "examples": [
+        "XOR EAX, ECX       ; EAX = EAX ^ ECX",
+        "XOR EAX, EAX       ; Clear EAX to 0"
+      ]
+    },
+    {
+      "mnemonic": "NOT",
+      "opcode": "0xF7",
+      "operands": ["reg"],
+      "description": "Bitwise NOT (one's complement)",
+      "cycles": 1,
+      "flags": [],
+      "examples": [
+        "NOT EAX            ; EAX = ~EAX"
+      ]
+    },
+    {
+      "mnemonic": "NEG",
+      "opcode": "0xF7",
+      "operands": ["reg"],
+      "description": "Two's complement negation",
+      "cycles": 1,
+      "flags": ["Z", "C", "O", "S"],
+      "examples": [
+        "NEG EAX            ; EAX = -EAX"
+      ]
+    },
+    {
+      "mnemonic": "TEST",
+      "opcode": "0x85",
+      "operands": ["reg", "reg/imm"],
+      "description": "Logical AND (affects flags only, doesn't store result)",
+      "cycles": 1,
+      "flags": ["Z", "S"],
+      "examples": [
+        "TEST EAX, 0xFF     ; Check if any bits set in lower byte",
+        "TEST EAX, ECX      ; Test bits"
+      ]
+    },
+    {
+      "mnemonic": "SHL",
+      "opcode": "0xC1",
+      "operands": ["reg", "imm/reg"],
+      "description": "Shift left",
+      "cycles": 1,
+      "flags": ["Z", "S"],
+      "examples": [
+        "SHL EAX, 4         ; Shift left by 4 positions"
+      ]
+    },
+    {
+      "mnemonic": "SHR",
+      "opcode": "0xC1",
+      "operands": ["reg", "imm/reg"],
+      "description": "Shift right (logical, zero-fill)",
+      "cycles": 1,
+      "flags": ["Z", "S"],
+      "examples": [
+        "SHR EAX, 2         ; Shift right by 2 positions"
+      ]
+    },
+    {
+      "mnemonic": "SAR",
+      "opcode": "0xC1",
+      "operands": ["reg", "imm/reg"],
+      "description": "Shift arithmetic right (sign-extend)",
+      "cycles": 1,
+      "flags": ["Z", "S"],
+      "examples": [
+        "SAR EAX, 3         ; Arithmetic shift right by 3"
+      ]
+    },
+    {
+      "mnemonic": "ROL",
+      "opcode": "0xC1",
+      "operands": ["reg", "imm/reg"],
+      "description": "Rotate left",
+      "cycles": 1,
+      "flags": ["Z", "S"],
+      "examples": [
+        "ROL EAX, 8         ; Rotate left by 8 positions"
+      ]
+    },
+    {
+      "mnemonic": "ROR",
+      "opcode": "0xC1",
+      "operands": ["reg", "imm/reg"],
+      "description": "Rotate right",
+      "cycles": 1,
+      "flags": ["Z", "S"],
+      "examples": [
+        "ROR EAX, 8         ; Rotate right by 8 positions"
       ]
     },
     {
@@ -95,6 +241,50 @@
       "description": "Decrement register by 1",
       "cycles": 1,
       "flags": ["Z", "O", "S"]
+    },
+    {
+      "mnemonic": "MUL",
+      "opcode": "0xF7",
+      "operands": ["reg/imm"],
+      "description": "Unsigned multiply (EAX * src -> EDX:EAX)",
+      "cycles": 1,
+      "flags": ["Z", "S"],
+      "examples": [
+        "MUL ECX            ; EAX = EAX * ECX, overflow in EDX"
+      ]
+    },
+    {
+      "mnemonic": "IMUL",
+      "opcode": "0xF7",
+      "operands": ["reg/imm"],
+      "description": "Signed multiply (EAX * src -> EAX)",
+      "cycles": 1,
+      "flags": ["Z", "S"],
+      "examples": [
+        "IMUL ECX           ; EAX = EAX * ECX (signed)"
+      ]
+    },
+    {
+      "mnemonic": "DIV",
+      "opcode": "0xF7",
+      "operands": ["reg/imm"],
+      "description": "Unsigned divide (EAX / src -> quotient in EAX, remainder in EDX)",
+      "cycles": 1,
+      "flags": ["Z", "S"],
+      "examples": [
+        "DIV ECX            ; EAX = EAX / ECX, EDX = remainder"
+      ]
+    },
+    {
+      "mnemonic": "IDIV",
+      "opcode": "0xF7",
+      "operands": ["reg/imm"],
+      "description": "Signed divide (EAX / src -> quotient in EAX, remainder in EDX)",
+      "cycles": 1,
+      "flags": ["Z", "S"],
+      "examples": [
+        "IDIV ECX           ; EAX = EAX / ECX (signed), EDX = remainder"
+      ]
     },
     {
       "mnemonic": "JMP",

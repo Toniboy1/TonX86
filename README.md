@@ -98,13 +98,30 @@ Students should start in **educational mode** to learn core concepts, then switc
 | Mnemonic | Operands | Flags | Description |
 |----------|----------|-------|-------------|
 | `MOV` | reg/mem, reg/imm | - | Move data |
+| `XCHG` | reg, reg | - | Exchange values |
+| `LEA` | reg, imm | - | Load effective address |
+| `MOVZX` | reg, reg/imm | - | Move with zero extend |
+| `MOVSX` | reg, reg/imm | - | Move with sign extend |
 | `ADD` | reg, reg/imm | ZCOS | Add |
 | `SUB` | reg, reg/imm | ZCOS | Subtract |
 | `INC` | reg | ZCOS | Increment |
 | `DEC` | reg | ZCOS | Decrement |
-| `AND` | reg, reg | ZS | Bitwise AND |
-| `OR` | reg, reg | ZS | Bitwise OR |
+| `NEG` | reg | ZCOS | Two's complement negation |
+| `MUL` | reg/imm | ZS | Unsigned multiply |
+| `IMUL` | reg/imm | ZS | Signed multiply |
+| `DIV` | reg/imm | ZS | Unsigned divide |
+| `IDIV` | reg/imm | ZS | Signed divide |
 | `CMP` | reg, reg/imm | ZCOS | Compare (SUB without storing) |
+| `AND` | reg, reg/imm | ZS | Bitwise AND |
+| `OR` | reg, reg/imm | ZS | Bitwise OR |
+| `XOR` | reg, reg/imm | ZS | Bitwise XOR |
+| `NOT` | reg | - | Bitwise NOT (one's complement) |
+| `TEST` | reg, reg/imm | ZS | Logical AND (flags only) |
+| `SHL` | reg, imm/reg | ZS | Shift left |
+| `SHR` | reg, imm/reg | ZS | Shift right (logical) |
+| `SAR` | reg, imm/reg | ZS | Shift arithmetic right |
+| `ROL` | reg, imm/reg | ZS | Rotate left |
+| `ROR` | reg, imm/reg | ZS | Rotate right |
 | `JMP` | label | - | Unconditional jump |
 | `JE/JZ` | label | - | Jump if zero |
 | `JNE/JNZ` | label | - | Jump if not zero |

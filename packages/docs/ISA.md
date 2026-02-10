@@ -34,6 +34,26 @@
   MOV 0xF000, 1      ; Write to I/O
   ```
 
+**XCHG dest, src** - Exchange values
+- Cycles: 1
+- Flags: None
+- Example: `XCHG EAX, ECX`
+
+**LEA dest, src** - Load effective address
+- Cycles: 1
+- Flags: None
+- Example: `LEA EAX, 0x1000`
+
+**MOVZX dest, src** - Move with zero extend
+- Cycles: 1
+- Flags: None
+- Example: `MOVZX EAX, ECX` (moves low byte of ECX to EAX, zero-extending)
+
+**MOVSX dest, src** - Move with sign extend
+- Cycles: 1
+- Flags: None
+- Example: `MOVSX EAX, ECX` (moves low byte of ECX to EAX, sign-extending)
+
 ### Arithmetic
 
 **ADD dest, src** - Add
@@ -51,6 +71,41 @@
 - Flags: Z, C, O, S
 - Example: `CMP EAX, 0`
 
+**INC dest** - Increment
+- Cycles: 1
+- Flags: Z, C, O, S
+- Example: `INC EAX`
+
+**DEC dest** - Decrement
+- Cycles: 1
+- Flags: Z, C, O, S
+- Example: `DEC EAX`
+
+**NEG dest** - Two's complement negation
+- Cycles: 1
+- Flags: Z, C, O, S
+- Example: `NEG EAX`
+
+**MUL src** - Unsigned multiply (EAX * src -> EDX:EAX)
+- Cycles: 1
+- Flags: Z, S
+- Example: `MUL ECX`
+
+**IMUL src** - Signed multiply (EAX * src -> EAX)
+- Cycles: 1
+- Flags: Z, S
+- Example: `IMUL ECX`
+
+**DIV src** - Unsigned divide (EAX / src -> quotient in EAX, remainder in EDX)
+- Cycles: 1
+- Flags: Z, S
+- Example: `DIV ECX`
+
+**IDIV src** - Signed divide (EAX / src -> quotient in EAX, remainder in EDX)
+- Cycles: 1
+- Flags: Z, S
+- Example: `IDIV ECX`
+
 ### Logical
 
 **AND dest, src** - Bitwise AND
@@ -62,6 +117,48 @@
 - Cycles: 1
 - Flags: Z, S
 - Example: `OR EAX, ECX`
+
+**XOR dest, src** - Bitwise XOR
+- Cycles: 1
+- Flags: Z, S
+- Example: `XOR EAX, ECX`
+
+**NOT dest** - Bitwise NOT (one's complement)
+- Cycles: 1
+- Flags: None
+- Example: `NOT EAX`
+
+**TEST op1, op2** - Logical AND (affects flags only, doesn't store result)
+- Cycles: 1
+- Flags: Z, S
+- Example: `TEST EAX, 0xFF`
+
+### Shifts and Rotates
+
+**SHL dest, count** - Shift left
+- Cycles: 1
+- Flags: Z, S
+- Example: `SHL EAX, 4`
+
+**SHR dest, count** - Shift right (logical, zero-fill)
+- Cycles: 1
+- Flags: Z, S
+- Example: `SHR EAX, 2`
+
+**SAR dest, count** - Shift arithmetic right (sign-extend)
+- Cycles: 1
+- Flags: Z, S
+- Example: `SAR EAX, 3`
+
+**ROL dest, count** - Rotate left
+- Cycles: 1
+- Flags: Z, S
+- Example: `ROL EAX, 8`
+
+**ROR dest, count** - Rotate right
+- Cycles: 1
+- Flags: Z, S
+- Example: `ROR EAX, 8`
 
 ### Control Flow
 

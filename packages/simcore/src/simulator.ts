@@ -415,6 +415,80 @@ export class Simulator {
         break;
       }
 
+      case "XCHG": {
+        // XCHG destination, source - Exchange values
+        if (operands.length !== 2) break;
+        const dest = this.parseOperand(operands[0]);
+        const src = this.parseOperand(operands[1]);
+
+        if (dest.type === "register" && src.type === "register") {
+          const temp = this.cpu.registers[dest.value];
+          this.cpu.registers[dest.value] = this.cpu.registers[src.value];
+          this.cpu.registers[src.value] = temp;
+        }
+        break;
+      }
+
+      case "LEA": {
+        // LEA destination, source - Load effective address
+        // In simplified form, just load the immediate value (address) into register
+        if (operands.length !== 2) break;
+        const dest = this.parseOperand(operands[0]);
+        const src = this.parseOperand(operands[1]);
+
+        if (dest.type === "register" && src.type === "immediate") {
+          this.cpu.registers[dest.value] = src.value;
+        }
+        break;
+      }
+
+      case "MOVZX": {
+        // MOVZX destination, source - Move with zero extension
+        // Moves 8 or 16-bit value into 32-bit register, zero-extending
+        if (operands.length !== 2) break;
+        const dest = this.parseOperand(operands[0]);
+        const src = this.parseOperand(operands[1]);
+
+        if (dest.type === "register") {
+          let srcValue: number;
+          if (src.type === "register") {
+            // Treat source as 8-bit (low byte)
+            srcValue = this.cpu.registers[src.value] & 0xff;
+          } else {
+            srcValue = src.value & 0xff;
+          }
+          this.cpu.registers[dest.value] = srcValue; // Already zero-extended
+        }
+        break;
+      }
+
+      case "MOVSX": {
+        // MOVSX destination, source - Move with sign extension
+        // Moves 8 or 16-bit value into 32-bit register, sign-extending
+        if (operands.length !== 2) break;
+        const dest = this.parseOperand(operands[0]);
+        const src = this.parseOperand(operands[1]);
+
+        if (dest.type === "register") {
+          let srcValue: number;
+          if (src.type === "register") {
+            // Treat source as 8-bit (low byte)
+            srcValue = this.cpu.registers[src.value] & 0xff;
+          } else {
+            srcValue = src.value & 0xff;
+          }
+          // Sign extend from 8-bit to 32-bit
+          if (srcValue & 0x80) {
+            // Negative (bit 7 set)
+            this.cpu.registers[dest.value] = srcValue | 0xffffff00;
+          } else {
+            // Positive
+            this.cpu.registers[dest.value] = srcValue;
+          }
+        }
+        break;
+      }
+
       case "ADD": {
         // ADD destination, source
         if (operands.length !== 2) break;
@@ -473,6 +547,84 @@ export class Simulator {
         break;
       }
 
+      case "MUL": {
+        // MUL source - Unsigned multiply (EAX * source -> EDX:EAX)
+        // Simplified: result in EAX only (lower 32 bits)
+        if (operands.length !== 1) break;
+        const src = this.parseOperand(operands[0]);
+
+        const srcValue =
+          src.type === "register" ? this.cpu.registers[src.value] : src.value;
+        const result = (this.cpu.registers[0] >>> 0) * (srcValue >>> 0);
+        // Store lower 32 bits in EAX, upper 32 bits in EDX
+        this.cpu.registers[0] = (result & 0xffffffff) >>> 0;
+        this.cpu.registers[2] = ((result / 0x100000000) & 0xffffffff) >>> 0; // EDX
+        this.updateFlags(this.cpu.registers[0]);
+        break;
+      }
+
+      case "IMUL": {
+        // IMUL source - Signed multiply
+        // Simplified: single operand form, result in EAX
+        if (operands.length !== 1) break;
+        const src = this.parseOperand(operands[0]);
+
+        const srcValue =
+          src.type === "register" ? this.cpu.registers[src.value] : src.value;
+        // Convert to signed 32-bit, multiply, convert back
+        const eaxSigned = this.cpu.registers[0] | 0;
+        const srcSigned = srcValue | 0;
+        const result = eaxSigned * srcSigned;
+        this.cpu.registers[0] = (result & 0xffffffff) >>> 0;
+        this.updateFlags(this.cpu.registers[0]);
+        break;
+      }
+
+      case "DIV": {
+        // DIV source - Unsigned divide (EDX:EAX / source -> quotient in EAX, remainder in EDX)
+        // Simplified: EAX / source -> quotient in EAX, remainder in EDX
+        if (operands.length !== 1) break;
+        const src = this.parseOperand(operands[0]);
+
+        const srcValue =
+          src.type === "register" ? this.cpu.registers[src.value] : src.value;
+        if (srcValue === 0) {
+          // Division by zero - in real x86 this would trigger an exception
+          // For simplicity, we'll just set result to 0
+          this.cpu.registers[0] = 0;
+          this.cpu.registers[2] = 0;
+        } else {
+          const dividend = this.cpu.registers[0] >>> 0;
+          const divisor = srcValue >>> 0;
+          this.cpu.registers[0] = Math.floor(dividend / divisor) >>> 0; // Quotient
+          this.cpu.registers[2] = (dividend % divisor) >>> 0; // Remainder
+        }
+        this.updateFlags(this.cpu.registers[0]);
+        break;
+      }
+
+      case "IDIV": {
+        // IDIV source - Signed divide
+        if (operands.length !== 1) break;
+        const src = this.parseOperand(operands[0]);
+
+        const srcValue =
+          src.type === "register" ? this.cpu.registers[src.value] : src.value;
+        const divisor = srcValue | 0;
+        
+        if (divisor === 0) {
+          // Division by zero
+          this.cpu.registers[0] = 0;
+          this.cpu.registers[2] = 0;
+        } else {
+          const dividend = this.cpu.registers[0] | 0;
+          this.cpu.registers[0] = Math.trunc(dividend / divisor) >>> 0; // Quotient
+          this.cpu.registers[2] = (dividend % divisor) >>> 0; // Remainder
+        }
+        this.updateFlags(this.cpu.registers[0]);
+        break;
+      }
+
       case "CMP": {
         // CMP destination, source
         if (operands.length !== 2) break;
@@ -485,6 +637,178 @@ export class Simulator {
             src.type === "register" ? this.cpu.registers[src.value] : src.value;
           const result = (destValue - srcValue) & 0xffffffff;
           this.updateFlags(result);
+        }
+        break;
+      }
+
+      case "AND": {
+        // AND destination, source
+        if (operands.length !== 2) break;
+        const dest = this.parseOperand(operands[0]);
+        const src = this.parseOperand(operands[1]);
+
+        if (dest.type === "register") {
+          const srcValue =
+            src.type === "register" ? this.cpu.registers[src.value] : src.value;
+          this.cpu.registers[dest.value] =
+            (this.cpu.registers[dest.value] & srcValue) & 0xffffffff;
+          this.updateFlags(this.cpu.registers[dest.value]);
+        }
+        break;
+      }
+
+      case "OR": {
+        // OR destination, source
+        if (operands.length !== 2) break;
+        const dest = this.parseOperand(operands[0]);
+        const src = this.parseOperand(operands[1]);
+
+        if (dest.type === "register") {
+          const srcValue =
+            src.type === "register" ? this.cpu.registers[src.value] : src.value;
+          this.cpu.registers[dest.value] =
+            (this.cpu.registers[dest.value] | srcValue) & 0xffffffff;
+          this.updateFlags(this.cpu.registers[dest.value]);
+        }
+        break;
+      }
+
+      case "XOR": {
+        // XOR destination, source
+        if (operands.length !== 2) break;
+        const dest = this.parseOperand(operands[0]);
+        const src = this.parseOperand(operands[1]);
+
+        if (dest.type === "register") {
+          const srcValue =
+            src.type === "register" ? this.cpu.registers[src.value] : src.value;
+          this.cpu.registers[dest.value] =
+            (this.cpu.registers[dest.value] ^ srcValue) & 0xffffffff;
+          this.updateFlags(this.cpu.registers[dest.value]);
+        }
+        break;
+      }
+
+      case "NOT": {
+        // NOT destination - Bitwise NOT (one's complement)
+        if (operands.length !== 1) break;
+        const dest = this.parseOperand(operands[0]);
+
+        if (dest.type === "register") {
+          this.cpu.registers[dest.value] = (~this.cpu.registers[dest.value]) & 0xffffffff;
+          // NOT does not affect flags in x86
+        }
+        break;
+      }
+
+      case "NEG": {
+        // NEG destination - Two's complement negation
+        if (operands.length !== 1) break;
+        const dest = this.parseOperand(operands[0]);
+
+        if (dest.type === "register") {
+          this.cpu.registers[dest.value] =
+            (-this.cpu.registers[dest.value]) & 0xffffffff;
+          this.updateFlags(this.cpu.registers[dest.value]);
+        }
+        break;
+      }
+
+      case "TEST": {
+        // TEST destination, source - Logical AND (affects flags only)
+        if (operands.length !== 2) break;
+        const dest = this.parseOperand(operands[0]);
+        const src = this.parseOperand(operands[1]);
+
+        if (dest.type === "register") {
+          const destValue = this.cpu.registers[dest.value];
+          const srcValue =
+            src.type === "register" ? this.cpu.registers[src.value] : src.value;
+          const result = (destValue & srcValue) & 0xffffffff;
+          this.updateFlags(result);
+        }
+        break;
+      }
+
+      case "SHL": {
+        // SHL destination, count - Shift left
+        if (operands.length !== 2) break;
+        const dest = this.parseOperand(operands[0]);
+        const src = this.parseOperand(operands[1]);
+
+        if (dest.type === "register") {
+          const count =
+            src.type === "register" ? this.cpu.registers[src.value] : src.value;
+          this.cpu.registers[dest.value] =
+            (this.cpu.registers[dest.value] << count) & 0xffffffff;
+          this.updateFlags(this.cpu.registers[dest.value]);
+        }
+        break;
+      }
+
+      case "SHR": {
+        // SHR destination, count - Shift right (logical)
+        if (operands.length !== 2) break;
+        const dest = this.parseOperand(operands[0]);
+        const src = this.parseOperand(operands[1]);
+
+        if (dest.type === "register") {
+          const count =
+            src.type === "register" ? this.cpu.registers[src.value] : src.value;
+          this.cpu.registers[dest.value] =
+            (this.cpu.registers[dest.value] >>> count) & 0xffffffff;
+          this.updateFlags(this.cpu.registers[dest.value]);
+        }
+        break;
+      }
+
+      case "SAR": {
+        // SAR destination, count - Shift arithmetic right (preserves sign)
+        if (operands.length !== 2) break;
+        const dest = this.parseOperand(operands[0]);
+        const src = this.parseOperand(operands[1]);
+
+        if (dest.type === "register") {
+          const count =
+            src.type === "register" ? this.cpu.registers[src.value] : src.value;
+          // Convert to signed, shift, then back to unsigned
+          this.cpu.registers[dest.value] =
+            ((this.cpu.registers[dest.value] | 0) >> count) >>> 0;
+          this.updateFlags(this.cpu.registers[dest.value]);
+        }
+        break;
+      }
+
+      case "ROL": {
+        // ROL destination, count - Rotate left
+        if (operands.length !== 2) break;
+        const dest = this.parseOperand(operands[0]);
+        const src = this.parseOperand(operands[1]);
+
+        if (dest.type === "register") {
+          const count =
+            (src.type === "register" ? this.cpu.registers[src.value] : src.value) & 0x1f;
+          const value = this.cpu.registers[dest.value];
+          this.cpu.registers[dest.value] =
+            ((value << count) | (value >>> (32 - count))) & 0xffffffff;
+          this.updateFlags(this.cpu.registers[dest.value]);
+        }
+        break;
+      }
+
+      case "ROR": {
+        // ROR destination, count - Rotate right
+        if (operands.length !== 2) break;
+        const dest = this.parseOperand(operands[0]);
+        const src = this.parseOperand(operands[1]);
+
+        if (dest.type === "register") {
+          const count =
+            (src.type === "register" ? this.cpu.registers[src.value] : src.value) & 0x1f;
+          const value = this.cpu.registers[dest.value];
+          this.cpu.registers[dest.value] =
+            ((value >>> count) | (value << (32 - count))) & 0xffffffff;
+          this.updateFlags(this.cpu.registers[dest.value]);
         }
         break;
       }
