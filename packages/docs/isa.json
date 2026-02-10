@@ -1,13 +1,20 @@
 {
   "version": "1.0",
+  "note": "Some instructions are aliases with identical opcodes: JE/JZ (0x74), JNE/JNZ (0x75)",
   "instructions": [
     {
       "mnemonic": "MOV",
       "opcode": "0x89",
-      "operands": ["reg", "reg"],
-      "description": "Move data between registers",
+      "operands": ["reg/mem", "reg/imm"],
+      "description": "Move data",
       "cycles": 1,
-      "flags": []
+      "flags": [],
+      "examples": [
+        "MOV EAX, 42        ; Load immediate",
+        "MOV EAX, ECX       ; Register to register",
+        "MOV EAX, 0xF100    ; Read from I/O",
+        "MOV 0xF000, 1      ; Write to I/O"
+      ]
     },
     {
       "mnemonic": "ADD",
@@ -15,7 +22,10 @@
       "operands": ["reg", "reg"],
       "description": "Add two registers and store result",
       "cycles": 1,
-      "flags": ["Z", "C", "O", "S"]
+      "flags": ["Z", "C", "O", "S"],
+      "examples": [
+        "ADD EAX, ECX       ; EAX = EAX + ECX"
+      ]
     },
     {
       "mnemonic": "SUB",
@@ -23,7 +33,22 @@
       "operands": ["reg", "reg"],
       "description": "Subtract two registers",
       "cycles": 1,
-      "flags": ["Z", "C", "O", "S"]
+      "flags": ["Z", "C", "O", "S"],
+      "examples": [
+        "SUB EAX, ECX       ; EAX = EAX - ECX"
+      ]
+    },
+    {
+      "mnemonic": "CMP",
+      "opcode": "0x39",
+      "operands": ["reg", "reg/imm"],
+      "description": "Compare (SUB without storing result)",
+      "cycles": 1,
+      "flags": ["Z", "C", "O", "S"],
+      "examples": [
+        "CMP EAX, 0         ; Compare EAX with 0",
+        "CMP EAX, ECX       ; Compare EAX with ECX"
+      ]
     },
     {
       "mnemonic": "AND",
@@ -31,7 +56,10 @@
       "operands": ["reg", "reg"],
       "description": "Bitwise AND two registers",
       "cycles": 1,
-      "flags": ["Z", "S"]
+      "flags": ["Z", "S"],
+      "examples": [
+        "AND EAX, ECX       ; EAX = EAX & ECX"
+      ]
     },
     {
       "mnemonic": "OR",
@@ -39,23 +67,65 @@
       "operands": ["reg", "reg"],
       "description": "Bitwise OR two registers",
       "cycles": 1,
-      "flags": ["Z", "S"]
+      "flags": ["Z", "S"],
+      "examples": [
+        "OR EAX, ECX        ; EAX = EAX | ECX"
+      ]
     },
     {
       "mnemonic": "JMP",
       "opcode": "0xE9",
-      "operands": ["addr"],
+      "operands": ["label"],
       "description": "Unconditional jump to address",
       "cycles": 1,
-      "flags": []
+      "flags": [],
+      "examples": [
+        "JMP loop_start     ; Jump to label"
+      ]
+    },
+    {
+      "mnemonic": "JE",
+      "opcode": "0x74",
+      "operands": ["label"],
+      "description": "Jump if equal (zero flag set)",
+      "cycles": 1,
+      "flags": [],
+      "examples": [
+        "JE end_loop        ; Jump if Z flag is set"
+      ]
     },
     {
       "mnemonic": "JZ",
       "opcode": "0x74",
-      "operands": ["addr"],
-      "description": "Jump if zero flag is set",
+      "operands": ["label"],
+      "description": "Jump if zero (zero flag set)",
       "cycles": 1,
-      "flags": []
+      "flags": [],
+      "examples": [
+        "JZ is_zero         ; Jump if Z flag is set"
+      ]
+    },
+    {
+      "mnemonic": "JNE",
+      "opcode": "0x75",
+      "operands": ["label"],
+      "description": "Jump if not equal (zero flag clear)",
+      "cycles": 1,
+      "flags": [],
+      "examples": [
+        "JNE loop_start     ; Jump if Z flag is clear"
+      ]
+    },
+    {
+      "mnemonic": "JNZ",
+      "opcode": "0x75",
+      "operands": ["label"],
+      "description": "Jump if not zero (zero flag clear)",
+      "cycles": 1,
+      "flags": [],
+      "examples": [
+        "JNZ loop_start     ; Jump if Z flag is clear"
+      ]
     },
     {
       "mnemonic": "HLT",
@@ -63,7 +133,10 @@
       "operands": [],
       "description": "Halt execution",
       "cycles": 1,
-      "flags": []
+      "flags": [],
+      "examples": [
+        "HLT                ; Stop execution"
+      ]
     }
   ]
 }
