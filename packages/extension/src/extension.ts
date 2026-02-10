@@ -542,8 +542,10 @@ class DocsViewProvider implements vscode.WebviewViewProvider {
 
 // Global state
 const registersProvider = new RegistersProvider();
-const memoryProviderA = new MemoryProvider(0x0000, 16);
-const memoryProviderB = new MemoryProvider(0x0000, 16);
+// Memory views show first 16 bytes of each bank
+const MEMORY_VIEW_SIZE = 16;
+const memoryProviderA = new MemoryProvider(0x0000, MEMORY_VIEW_SIZE);
+const memoryProviderB = new MemoryProvider(0x0000, MEMORY_VIEW_SIZE);
 let lcdProvider: LCDViewProvider;
 let currentDebugSession: vscode.DebugSession | undefined;
 
@@ -633,7 +635,7 @@ export function activate(context: vscode.ExtensionContext): void {
     try {
       const response = await session.customRequest("getMemoryState", {
         start: 0,
-        length: 16,
+        length: MEMORY_VIEW_SIZE,
       });
       if (response && response.memoryA && response.memoryB) {
         memoryProviderA.updateMemory(new Uint8Array(response.memoryA));

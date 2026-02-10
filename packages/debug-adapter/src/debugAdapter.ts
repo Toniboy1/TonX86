@@ -839,7 +839,9 @@ export class TonX86DebugSession extends DebugSession {
       this.sendResponse(response);
     } else if (command === "getMemoryState") {
       // Get memory state for both memory banks
-      const { start = 0, length = 16 } = args || {};
+      // Default to showing first 16 bytes if not specified
+      const DEFAULT_MEMORY_VIEW_SIZE = 16;
+      const { start = 0, length = DEFAULT_MEMORY_VIEW_SIZE } = args || {};
       const memoryA = this.simulator.getMemoryA(start, length);
       const memoryB = this.simulator.getMemoryB(start, length);
       response.body = {
