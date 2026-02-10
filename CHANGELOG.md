@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.3.3](https://github.com/Toniboy1/TonX86/compare/v0.3.2...v0.3.3) (2026-02-10)
+
+
+### Features
+
+* add future enhancement issues from x86 realism feedback ([2ddc9c6](https://github.com/Toniboy1/TonX86/commit/2ddc9c68d551e4bd3e335edffe411efde39f084f)), closes [#1](https://github.com/Toniboy1/TonX86/issues/1) [#2](https://github.com/Toniboy1/TonX86/issues/2) [#3](https://github.com/Toniboy1/TonX86/issues/3) [#4](https://github.com/Toniboy1/TonX86/issues/4) [#5](https://github.com/Toniboy1/TonX86/issues/5) [#6](https://github.com/Toniboy1/TonX86/issues/6)
+
 ### [0.3.2](https://github.com/Toniboy1/TonX86/compare/v0.3.1...v0.3.2) (2026-02-10)
 
 ### [0.3.1](https://github.com/Toniboy1/TonX86/compare/v0.3.0...v0.3.1) (2026-02-10)
