@@ -66,7 +66,7 @@ export class CPUState {
 }
 
 /**
- * TonX86 LCD Display - supports 2x4 to 16x16 grids
+ * TonX86 LCD Display - supports 2x2 to 256x256 grids
  */
 export class LCDDisplay {
   private width: number;
@@ -74,8 +74,8 @@ export class LCDDisplay {
   private pixels: Uint8Array;
 
   constructor(width: number = 8, height: number = 8) {
-    if (width < 2 || width > 16 || height < 2 || height > 16) {
-      throw new Error("LCD dimensions must be between 2x2 and 16x16");
+    if (width < 2 || width > 256 || height < 2 || height > 256) {
+      throw new Error("LCD dimensions must be between 2x2 and 256x256");
     }
     this.width = width;
     this.height = height;
@@ -839,6 +839,30 @@ export class Simulator {
         break;
       }
 
+      case "MOD": {
+        // MOD dest, src - Modulo operation (dest = dest % src)
+        // Educational instruction for easier modulo calculations
+        if (operands.length !== 2) break;
+        const dest = this.parseOperand(operands[0]);
+        const src = this.parseOperand(operands[1]);
+
+        if (dest.type !== "register") break;
+
+        const srcValue =
+          src.type === "register" ? this.cpu.registers[src.value] : src.value;
+        
+        if (srcValue === 0) {
+          // Modulo by zero - set to 0
+          this.cpu.registers[dest.value] = 0;
+        } else {
+          const destValue = this.cpu.registers[dest.value] >>> 0;
+          const modValue = srcValue >>> 0;
+          this.cpu.registers[dest.value] = (destValue % modValue) >>> 0;
+        }
+        this.updateFlags(this.cpu.registers[dest.value]);
+        break;
+      }
+
       case "CMP": {
         // CMP destination, source
         if (operands.length !== 2) break;
@@ -1150,6 +1174,32 @@ export class Simulator {
         // In a full implementation, this would pop flags and return address
         // For now, this is a placeholder
         // The debug adapter may handle control flow
+        break;
+      }
+
+      case "RAND": {
+        // RAND dest, max - Generate random number from 0 to max-1, store in dest
+        // Educational instruction for easier random number generation
+        if (operands.length < 1) break;
+        
+        const dest = this.parseOperand(operands[0]);
+        if (dest.type !== "register") break;
+
+        let maxValue = 0xFFFFFFFF; // Default to full 32-bit range
+        
+        if (operands.length === 2) {
+          const maxOp = this.parseOperand(operands[1]);
+          maxValue = maxOp.type === "register" 
+            ? this.cpu.registers[maxOp.value] 
+            : maxOp.value;
+        }
+
+        if (maxValue <= 0) maxValue = 1; // Ensure positive max
+        
+        // Generate random number in range [0, maxValue)
+        const randomValue = Math.floor(Math.random() * maxValue) >>> 0;
+        this.cpu.registers[dest.value] = randomValue;
+        this.updateFlags(randomValue);
         break;
       }
 

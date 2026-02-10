@@ -121,6 +121,12 @@ These 8-bit registers provide access to individual bytes of the 32-bit general p
 - Flags: Z, S
 - Example: `IDIV ECX`
 
+**MOD dest, src** - Modulo operation (dest = dest % src)
+- Cycles: 1
+- Flags: Z, S
+- Example: `MOD EAX, 64`
+- Note: Educational instruction for easier modulo calculations. Alternatively, use DIV and read remainder from EDX.
+
 ### Logical
 
 **AND dest, src** - Bitwise AND
@@ -196,6 +202,15 @@ These 8-bit registers provide access to individual bytes of the 32-bit general p
 - Cycles: 1
 - Flags: None
 - Example: `HLT`
+
+### Special Instructions
+
+**RAND dest, max** - Generate random number
+- Cycles: 1
+- Flags: Z, S
+- Operation: Generates random number from 0 to max-1, stores in dest
+- Example: `RAND EAX, 64` (generates 0-63)
+- Note: Educational instruction for game development and simulations. If max is omitted, generates full 32-bit random value.
 
 ### Stack Operations
 
