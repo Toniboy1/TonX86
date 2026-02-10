@@ -538,7 +538,8 @@ export class Simulator {
         if (this.compatibilityMode === "strict-x86") {
           const isDestMemory =
             dest.type === "immediate" || dest.type === "memory";
-          const isSrcMemory = src.type === "memory";
+          const isSrcMemory = src.type === "memory" || 
+            (src.type === "immediate" && src.value >= 0xf000 && src.value <= 0xf1ff);
 
           if (isDestMemory && isSrcMemory) {
             throw new Error(
@@ -568,8 +569,13 @@ export class Simulator {
           }
         } else {
           // src.type === "immediate"
-          // Literal immediate value (e.g., MOV EAX, 42)
-          srcValue = src.value;
+          // Check if this is an I/O address being read (0xF000-0xF1FF)
+          if (src.value >= 0xf000 && src.value <= 0xf1ff) {
+            srcValue = this.readIO(src.value);
+          } else {
+            // Literal immediate value (e.g., MOV EAX, 42)
+            srcValue = src.value;
+          }
         }
 
         // Handle destination
