@@ -85,6 +85,38 @@ const INSTRUCTIONS = [
     example: "NOT EAX  ; EAX = ~EAX",
   },
   {
+    name: "MUL",
+    description: "Unsigned multiply (EAX *= source)",
+    syntax: "MUL source",
+    cycles: 2,
+    flags: ["Z", "C", "O", "S"],
+    example: "MUL EBX  ; EAX = EAX * EBX",
+  },
+  {
+    name: "IMUL",
+    description: "Signed multiply (EAX *= source)",
+    syntax: "IMUL source",
+    cycles: 2,
+    flags: ["Z", "C", "O", "S"],
+    example: "IMUL EBX  ; EAX = EAX * EBX (signed)",
+  },
+  {
+    name: "DIV",
+    description: "Unsigned divide (EAX /= source)",
+    syntax: "DIV source",
+    cycles: 2,
+    flags: ["Z", "C", "O", "S"],
+    example: "DIV EBX  ; EAX = EAX / EBX",
+  },
+  {
+    name: "IDIV",
+    description: "Signed divide (EAX /= source)",
+    syntax: "IDIV source",
+    cycles: 2,
+    flags: ["Z", "C", "O", "S"],
+    example: "IDIV EBX  ; EAX = EAX / EBX (signed)",
+  },
+  {
     name: "CMP",
     description: "Compare two values (SUB without storing result)",
     syntax: "CMP destination, source",
@@ -215,13 +247,19 @@ const REGISTERS = [
   { name: "ESP", description: "Stack Pointer register" },
   { name: "EBP", description: "Base Pointer register (stack frame)" },
   { name: "ESI", description: "Source Index register (string operations)" },
-  { name: "EDI", description: "Destination Index register (string operations)" },
+  {
+    name: "EDI",
+    description: "Destination Index register (string operations)",
+  },
 ];
 
 // Flag definitions
 const FLAGS = [
   { name: "Z", description: "Zero flag - Set when result is zero" },
-  { name: "C", description: "Carry flag - Set when arithmetic carry/borrow occurs" },
+  {
+    name: "C",
+    description: "Carry flag - Set when arithmetic carry/borrow occurs",
+  },
   { name: "O", description: "Overflow flag - Set when signed overflow occurs" },
   { name: "S", description: "Sign flag - Set when result is negative" },
 ];
@@ -229,18 +267,19 @@ const FLAGS = [
 connection.onInitialize(
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   (_params: InitializeParams) => {
-  const result: InitializeResult = {
-    capabilities: {
-      textDocumentSync: TextDocumentSyncKind.Full,
-      completionProvider: {
-        resolveProvider: false,
-        triggerCharacters: [" ", ","],
+    const result: InitializeResult = {
+      capabilities: {
+        textDocumentSync: TextDocumentSyncKind.Full,
+        completionProvider: {
+          resolveProvider: false,
+          triggerCharacters: [" ", ","],
+        },
+        hoverProvider: true,
       },
-      hoverProvider: true,
-    },
-  };
-  return result;
-});
+    };
+    return result;
+  },
+);
 
 connection.onInitialized(() => {
   connection.console.log("TonX86 Language Server initialized");
@@ -371,23 +410,44 @@ function validateCallingConventions(
 
   const functions: FunctionInfo[] = [];
   const calleeSavedRegs = new Set(["EBX", "ESI", "EDI", "EBP"]);
-  const controlFlowInstructions = ["JMP", "JE", "JZ", "JNE", "JNZ", "RET", "HLT"];
-  
+  const controlFlowInstructions = [
+    "JMP",
+    "JE",
+    "JZ",
+    "JNE",
+    "JNZ",
+    "RET",
+    "HLT",
+  ];
+
   // Instructions that can modify a destination register
   const modifyingInstructions = [
-    "ADD", "SUB", "INC", "DEC", "AND", "OR", "XOR",
-    "SHL", "SHR", "MOV", "MUL", "DIV", "IMUL", "IDIV",
-    "NEG", "NOT"
+    "ADD",
+    "SUB",
+    "INC",
+    "DEC",
+    "AND",
+    "OR",
+    "XOR",
+    "SHL",
+    "SHR",
+    "MOV",
+    "MUL",
+    "DIV",
+    "IMUL",
+    "IDIV",
+    "NEG",
+    "NOT",
   ];
 
   // Parse functions
   let currentFunction: FunctionInfo | null = null;
   let firstInstructionAfterLabel = true;
-  
+
   for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
     const line = lines[lineIndex];
     const trimmed = line.trim();
-    
+
     // Skip empty lines and comments
     if (!trimmed || trimmed.startsWith(";")) {
       continue;
@@ -399,7 +459,7 @@ function validateCallingConventions(
         currentFunction.endLine = lineIndex - 1;
         functions.push(currentFunction);
       }
-      
+
       const funcName = trimmed.slice(0, -1).trim();
       currentFunction = {
         name: funcName,
@@ -455,12 +515,16 @@ function validateCallingConventions(
       if (tokens.length >= 3) {
         const dest = tokens[1].toUpperCase();
         const src = tokens[2].toUpperCase();
-        
+
         // Check for prologue: MOV EBP, ESP (should follow PUSH EBP)
-        if (dest === "EBP" && src === "ESP" && currentFunction.prologuePushEBPLine !== -1) {
+        if (
+          dest === "EBP" &&
+          src === "ESP" &&
+          currentFunction.prologuePushEBPLine !== -1
+        ) {
           currentFunction.prologueMovEBPLine = lineIndex;
         }
-        
+
         // Track modifications to callee-saved registers
         if (calleeSavedRegs.has(dest) && dest !== "EBP") {
           currentFunction.modifiesCalleeSavedRegs.add(dest);
@@ -479,7 +543,7 @@ function validateCallingConventions(
         }
       }
     }
-    
+
     firstInstructionAfterLabel = false;
   }
 
@@ -492,7 +556,11 @@ function validateCallingConventions(
   // Analyze each function for calling convention issues
   for (const func of functions) {
     // Skip main/entry point functions
-    if (func.name === "main" || func.name === "start" || func.name === "_start") {
+    if (
+      func.name === "main" ||
+      func.name === "start" ||
+      func.name === "_start"
+    ) {
       continue;
     }
 
@@ -503,7 +571,10 @@ function validateCallingConventions(
           severity: DiagnosticSeverity.Information,
           range: {
             start: { line: func.startLine, character: 0 },
-            end: { line: func.startLine, character: lines[func.startLine].length },
+            end: {
+              line: func.startLine,
+              character: lines[func.startLine].length,
+            },
           },
           message: `Function '${func.name}' should start with 'PUSH EBP' (standard prologue)`,
           source: "tonx86-convention",
@@ -515,7 +586,10 @@ function validateCallingConventions(
           severity: DiagnosticSeverity.Information,
           range: {
             start: { line: func.prologuePushEBPLine, character: 0 },
-            end: { line: func.prologuePushEBPLine, character: lines[func.prologuePushEBPLine]?.length || 0 },
+            end: {
+              line: func.prologuePushEBPLine,
+              character: lines[func.prologuePushEBPLine]?.length || 0,
+            },
           },
           message: `Function '${func.name}' should follow 'PUSH EBP' with 'MOV EBP, ESP' (standard prologue)`,
           source: "tonx86-convention",
@@ -527,7 +601,10 @@ function validateCallingConventions(
           severity: DiagnosticSeverity.Warning,
           range: {
             start: { line: func.startLine, character: 0 },
-            end: { line: func.endLine, character: lines[func.endLine]?.length || 0 },
+            end: {
+              line: func.endLine,
+              character: lines[func.endLine]?.length || 0,
+            },
           },
           message: `Function '${func.name}' has 'PUSH EBP' but missing 'POP EBP' (unbalanced stack)`,
           source: "tonx86-convention",
@@ -541,7 +618,10 @@ function validateCallingConventions(
         severity: DiagnosticSeverity.Warning,
         range: {
           start: { line: func.startLine, character: 0 },
-          end: { line: func.endLine, character: lines[func.endLine]?.length || 0 },
+          end: {
+            line: func.endLine,
+            character: lines[func.endLine]?.length || 0,
+          },
         },
         message: `Function '${func.name}' has ${func.pushCount} PUSH but ${func.popCount} POP (unbalanced stack)`,
         source: "tonx86-convention",
@@ -555,7 +635,10 @@ function validateCallingConventions(
           severity: DiagnosticSeverity.Warning,
           range: {
             start: { line: func.startLine, character: 0 },
-            end: { line: func.endLine, character: lines[func.endLine]?.length || 0 },
+            end: {
+              line: func.endLine,
+              character: lines[func.endLine]?.length || 0,
+            },
           },
           message: `Function '${func.name}' modifies callee-saved register ${reg} but doesn't save/restore it`,
           source: "tonx86-convention",
@@ -582,7 +665,7 @@ function validateCallingConventions(
     // Check for stack cleanup after CALL (cdecl pattern)
     if (instruction === "CALL" && tokens.length > 1) {
       const targetLabel = tokens[1];
-      
+
       // Look at next non-comment, non-empty line
       let nextLineIndex = lineIndex + 1;
       while (nextLineIndex < lines.length) {
@@ -595,21 +678,27 @@ function validateCallingConventions(
 
       if (nextLineIndex < lines.length) {
         const nextLine = lines[nextLineIndex].trim();
-        const nextTokens = nextLine.split(/[\s,]+/).filter((t) => !t.startsWith(";"));
-        const nextInstruction = nextTokens.length > 0 ? nextTokens[0].toUpperCase() : "";
+        const nextTokens = nextLine
+          .split(/[\s,]+/)
+          .filter((t) => !t.startsWith(";"));
+        const nextInstruction =
+          nextTokens.length > 0 ? nextTokens[0].toUpperCase() : "";
 
         // Check for cdecl stack cleanup pattern
         if (nextInstruction === "ADD" && nextTokens.length >= 3) {
           const dest = nextTokens[1].toUpperCase();
           const src = nextTokens[2];
-          
+
           if (dest === "ESP") {
             // This looks like cdecl (caller cleans stack)
             diagnostics.push({
               severity: DiagnosticSeverity.Hint,
               range: {
                 start: { line: lineIndex, character: 0 },
-                end: { line: nextLineIndex, character: lines[nextLineIndex].length },
+                end: {
+                  line: nextLineIndex,
+                  character: lines[nextLineIndex].length,
+                },
               },
               message: `Call to '${targetLabel}' uses cdecl convention (caller cleans stack with ADD ESP, ${src})`,
               source: "tonx86-convention",
@@ -623,19 +712,30 @@ function validateCallingConventions(
     if (instruction === "PUSH") {
       // Look ahead for CALL within next few lines
       let foundCall = false;
-      for (let i = lineIndex + 1; i < Math.min(lineIndex + 10, lines.length); i++) {
+      for (
+        let i = lineIndex + 1;
+        i < Math.min(lineIndex + 10, lines.length);
+        i++
+      ) {
         const futureTrimmed = lines[i].trim();
         if (!futureTrimmed || futureTrimmed.startsWith(";")) {
           continue;
         }
-        const futureTokens = futureTrimmed.split(/[\s,]+/).filter((t) => !t.startsWith(";"));
-        if (futureTokens.length > 0 && futureTokens[0].toUpperCase() === "CALL") {
+        const futureTokens = futureTrimmed
+          .split(/[\s,]+/)
+          .filter((t) => !t.startsWith(";"));
+        if (
+          futureTokens.length > 0 &&
+          futureTokens[0].toUpperCase() === "CALL"
+        ) {
           foundCall = true;
           break;
         }
         // Stop if we hit a label or control flow
-        if (futureTrimmed.endsWith(":") || 
-            controlFlowInstructions.includes(futureTokens[0]?.toUpperCase())) {
+        if (
+          futureTrimmed.endsWith(":") ||
+          controlFlowInstructions.includes(futureTokens[0]?.toUpperCase())
+        ) {
           break;
         }
       }
@@ -716,7 +816,8 @@ connection.onHover((params) => {
   // Check if it's an instruction
   const instruction = INSTRUCTIONS.find((i) => i.name === word);
   if (instruction) {
-    const flagsStr = instruction.flags.length > 0 ? instruction.flags.join(", ") : "None";
+    const flagsStr =
+      instruction.flags.length > 0 ? instruction.flags.join(", ") : "None";
     const hover: Hover = {
       contents: {
         kind: MarkupKind.Markdown,

@@ -16,5 +16,8 @@ main:
     HLT
 
 add_ten:
+    PUSH EBP
+    MOV EBP, ESP
     ADD EAX, 10        ; Breakpoint: function body (called twice)
+    POP EBP
     RET

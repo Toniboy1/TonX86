@@ -401,16 +401,17 @@ export class Simulator {
     }
 
     // Check if it's an 8-bit register alias (AL, AH, BL, BH, CL, CH, DL, DH)
-    const register8Map: { [key: string]: { reg: number; byteOffset: number } } = {
-      AL: { reg: 0, byteOffset: 0 },
-      AH: { reg: 0, byteOffset: 8 },
-      CL: { reg: 1, byteOffset: 0 },
-      CH: { reg: 1, byteOffset: 8 },
-      DL: { reg: 2, byteOffset: 0 },
-      DH: { reg: 2, byteOffset: 8 },
-      BL: { reg: 3, byteOffset: 0 },
-      BH: { reg: 3, byteOffset: 8 },
-    };
+    const register8Map: { [key: string]: { reg: number; byteOffset: number } } =
+      {
+        AL: { reg: 0, byteOffset: 0 },
+        AH: { reg: 0, byteOffset: 8 },
+        CL: { reg: 1, byteOffset: 0 },
+        CH: { reg: 1, byteOffset: 8 },
+        DL: { reg: 2, byteOffset: 0 },
+        DH: { reg: 2, byteOffset: 8 },
+        BL: { reg: 3, byteOffset: 0 },
+        BH: { reg: 3, byteOffset: 8 },
+      };
 
     if (Object.prototype.hasOwnProperty.call(register8Map, operand)) {
       return {
@@ -430,9 +431,13 @@ export class Simulator {
 
     // Parse as immediate value (decimal, hex 0x, binary 0b, or character literal)
     let value = 0;
-    
+
     // Check for character literal ('X')
-    if (operand.startsWith("'") && operand.endsWith("'") && operand.length === 3) {
+    if (
+      operand.startsWith("'") &&
+      operand.endsWith("'") &&
+      operand.length === 3
+    ) {
       value = operand.charCodeAt(1);
     } else if (operand.startsWith("0X")) {
       value = parseInt(operand.substring(2), 16);
@@ -473,15 +478,19 @@ export class Simulator {
     return regValue;
   }
 
-  private writeRegisterValue(operand: {
-    type: "register" | "register8";
-    value: number;
-    byteOffset?: number;
-  }, value: number): void {
+  private writeRegisterValue(
+    operand: {
+      type: "register" | "register8";
+      value: number;
+      byteOffset?: number;
+    },
+    value: number,
+  ): void {
     if (operand.type === "register8") {
       const shift = operand.byteOffset ?? 0;
       const mask = ~(0xff << shift);
-      const updated = (this.cpu.registers[operand.value] & mask) | ((value & 0xff) << shift);
+      const updated =
+        (this.cpu.registers[operand.value] & mask) | ((value & 0xff) << shift);
       this.cpu.registers[operand.value] = updated >>> 0;
       return;
     }
@@ -530,7 +539,7 @@ export class Simulator {
           } else {
             addr = (this.cpu.registers[src.base!] + (src.offset || 0)) & 0xffff;
           }
-          
+
           if (addr >= 0xf000) {
             srcValue = this.readIO(addr);
           } else {
@@ -557,9 +566,10 @@ export class Simulator {
           if (dest.base === -1) {
             addr = dest.offset || 0;
           } else {
-            addr = (this.cpu.registers[dest.base!] + (dest.offset || 0)) & 0xffff;
+            addr =
+              (this.cpu.registers[dest.base!] + (dest.offset || 0)) & 0xffff;
           }
-          
+
           if (addr >= 0xf000) {
             this.writeIO(addr, srcValue);
           } else {
@@ -583,7 +593,10 @@ export class Simulator {
           (src.type === "register" || src.type === "register8")
         ) {
           const temp = this.readRegisterValue(dest as any);
-          this.writeRegisterValue(dest as any, this.readRegisterValue(src as any));
+          this.writeRegisterValue(
+            dest as any,
+            this.readRegisterValue(src as any),
+          );
           this.writeRegisterValue(src as any, temp);
         }
         break;
