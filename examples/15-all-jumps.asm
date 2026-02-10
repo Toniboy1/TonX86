@@ -10,8 +10,8 @@ main:
 
 test_je:
     ; Test JE (Jump if Equal/Zero)
-    MOV EBX, 5
-    CMP EBX, 5         ; Sets Z flag
+    MOV EDX, 5
+    CMP EDX, 5         ; Sets Z flag
     JE je_taken        ; Should jump
     MOV EAX, 1         ; Should skip
     JMP test_jne

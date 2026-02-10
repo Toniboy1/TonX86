@@ -8,9 +8,10 @@
 ; 4. Press F5 to continue
 
 main_loop:
+    PUSH EBX           ; Save callee-saved register
     MOV EAX, 0xF100    ; Read keyboard status
     CMP EAX, 1         ; Key available?
-    JNE main_loop      ; No - keep waiting
+    JNE main_loop_end  ; No - keep waiting
     
     ; Key available - read it
     MOV EBX, 0xF101    ; Read key code (pops from queue)
@@ -21,7 +22,8 @@ main_loop:
     
     ; Key released
     MOV 0xF000, 0      ; Turn off pixel
-    JMP main_loop
+    JMP main_loop_end
+    POP EBX
 
 key_pressed:
     ; Key pressed - turn on pixel
@@ -30,7 +32,11 @@ key_pressed:
     ; Check for ESC key to exit
     CMP EBX, 27
     JE exit_program
+    
+main_loop_end:
+    PUSH EBX            ; Restore callee-saved register
     JMP main_loop
+    POP EBX
 
 exit_program:
     HLT
