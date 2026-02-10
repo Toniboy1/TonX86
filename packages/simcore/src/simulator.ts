@@ -197,7 +197,7 @@ export class Simulator {
   private lcd: LCDDisplay;
   private keyboard: Keyboard;
   private code: Uint8Array = new Uint8Array();
-  private consoleOutput: string = ""; // Buffer for console output from INT 0x10
+  private consoleOutput: string = ""; // Buffer for console output from INT 0x10 and INT 0x21
 
   // Map of mnemonics to register names
   private registerMap: { [key: string]: number } = {
@@ -517,13 +517,11 @@ export class Simulator {
       }
 
       case "INT": {
-        // INT num - Software interrupt
+        // INT num - Software interrupt: Handle software interrupt by executing the appropriate interrupt handler
         if (operands.length !== 1) break;
         const intNum = this.parseOperand(operands[0]);
         
         if (intNum.type === "immediate") {
-          // Push flags and return address (would be done in real implementation)
-          // For now, we just handle specific interrupt handlers
           
           switch (intNum.value) {
             case 0x10: {
