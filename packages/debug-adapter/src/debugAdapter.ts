@@ -207,6 +207,15 @@ export class TonX86DebugSession extends DebugSession {
 
       const currentInstr = this.instructions[this.instructionPointer];
 
+      // Check for breakpoint BEFORE executing the instruction
+      if (this.breakpoints.has(currentInstr.line)) {
+        this.currentLine = currentInstr.line;
+        console.error("[TonX86] Hit breakpoint at line", this.currentLine);
+        // Send stopped event at breakpoint
+        this.sendEvent(new StoppedEvent("breakpoint", 1));
+        return;
+      }
+
       // Add delay based on CPU speed (lower speed = longer delay)
       // At 100%, delay is 0ms. At 50%, delay is ~1ms. At 1%, delay is ~50ms.
       // At 200%, delay is 0ms (max speed).
@@ -315,18 +324,6 @@ export class TonX86DebugSession extends DebugSession {
         }
       } else {
         this.instructionPointer++;
-      }
-
-      // Check if we hit a breakpoint at the new position (after moving)
-      if (
-        this.instructionPointer < this.instructions.length &&
-        this.breakpoints.has(this.instructions[this.instructionPointer].line)
-      ) {
-        this.currentLine = this.instructions[this.instructionPointer].line;
-        console.error("[TonX86] Hit breakpoint at line", this.currentLine);
-        // Send stopped event at breakpoint
-        this.sendEvent(new StoppedEvent("breakpoint", 1));
-        return;
       }
     }
 
