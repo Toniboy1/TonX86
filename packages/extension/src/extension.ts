@@ -747,7 +747,7 @@ export function activate(context: vscode.ExtensionContext): void {
 }
 
 export function deactivate(): Thenable<void> | undefined {
-  console.log("TonX86 extension is now deactive");
+  console.log("TonX86 extension is now deactivated");
   if (!client) {
     return undefined;
   }
