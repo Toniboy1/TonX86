@@ -88,6 +88,10 @@ npm run build
 | `INC` | reg | ZCOS | Increment |
 | `DEC` | reg | ZCOS | Decrement |
 | `NEG` | reg | ZCOS | Two's complement negation |
+| `MUL` | reg/imm | ZS | Unsigned multiply |
+| `IMUL` | reg/imm | ZS | Signed multiply |
+| `DIV` | reg/imm | ZS | Unsigned divide |
+| `IDIV` | reg/imm | ZS | Signed divide |
 | `CMP` | reg, reg/imm | ZCOS | Compare (SUB without storing) |
 | `AND` | reg, reg/imm | ZS | Bitwise AND |
 | `OR` | reg, reg/imm | ZS | Bitwise OR |

@@ -522,6 +522,84 @@ export class Simulator {
         break;
       }
 
+      case "MUL": {
+        // MUL source - Unsigned multiply (EAX * source -> EDX:EAX)
+        // Simplified: result in EAX only (lower 32 bits)
+        if (operands.length !== 1) break;
+        const src = this.parseOperand(operands[0]);
+
+        const srcValue =
+          src.type === "register" ? this.cpu.registers[src.value] : src.value;
+        const result = (this.cpu.registers[0] >>> 0) * (srcValue >>> 0);
+        // Store lower 32 bits in EAX, upper 32 bits in EDX
+        this.cpu.registers[0] = (result & 0xffffffff) >>> 0;
+        this.cpu.registers[2] = ((result / 0x100000000) & 0xffffffff) >>> 0; // EDX
+        this.updateFlags(this.cpu.registers[0]);
+        break;
+      }
+
+      case "IMUL": {
+        // IMUL source - Signed multiply
+        // Simplified: single operand form, result in EAX
+        if (operands.length !== 1) break;
+        const src = this.parseOperand(operands[0]);
+
+        const srcValue =
+          src.type === "register" ? this.cpu.registers[src.value] : src.value;
+        // Convert to signed 32-bit, multiply, convert back
+        const eaxSigned = this.cpu.registers[0] | 0;
+        const srcSigned = srcValue | 0;
+        const result = eaxSigned * srcSigned;
+        this.cpu.registers[0] = (result & 0xffffffff) >>> 0;
+        this.updateFlags(this.cpu.registers[0]);
+        break;
+      }
+
+      case "DIV": {
+        // DIV source - Unsigned divide (EDX:EAX / source -> quotient in EAX, remainder in EDX)
+        // Simplified: EAX / source -> quotient in EAX, remainder in EDX
+        if (operands.length !== 1) break;
+        const src = this.parseOperand(operands[0]);
+
+        const srcValue =
+          src.type === "register" ? this.cpu.registers[src.value] : src.value;
+        if (srcValue === 0) {
+          // Division by zero - in real x86 this would trigger an exception
+          // For simplicity, we'll just set result to 0
+          this.cpu.registers[0] = 0;
+          this.cpu.registers[2] = 0;
+        } else {
+          const dividend = this.cpu.registers[0] >>> 0;
+          const divisor = srcValue >>> 0;
+          this.cpu.registers[0] = Math.floor(dividend / divisor) >>> 0; // Quotient
+          this.cpu.registers[2] = (dividend % divisor) >>> 0; // Remainder
+        }
+        this.updateFlags(this.cpu.registers[0]);
+        break;
+      }
+
+      case "IDIV": {
+        // IDIV source - Signed divide
+        if (operands.length !== 1) break;
+        const src = this.parseOperand(operands[0]);
+
+        const srcValue =
+          src.type === "register" ? this.cpu.registers[src.value] : src.value;
+        const divisor = srcValue | 0;
+        
+        if (divisor === 0) {
+          // Division by zero
+          this.cpu.registers[0] = 0;
+          this.cpu.registers[2] = 0;
+        } else {
+          const dividend = this.cpu.registers[0] | 0;
+          this.cpu.registers[0] = Math.floor(dividend / divisor) >>> 0; // Quotient
+          this.cpu.registers[2] = (dividend % divisor) >>> 0; // Remainder
+        }
+        this.updateFlags(this.cpu.registers[0]);
+        break;
+      }
+
       case "CMP": {
         // CMP destination, source
         if (operands.length !== 2) break;

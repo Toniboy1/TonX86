@@ -243,6 +243,50 @@
       "flags": ["Z", "O", "S"]
     },
     {
+      "mnemonic": "MUL",
+      "opcode": "0xF7",
+      "operands": ["reg/imm"],
+      "description": "Unsigned multiply (EAX * src -> EDX:EAX)",
+      "cycles": 1,
+      "flags": ["Z", "S"],
+      "examples": [
+        "MUL ECX            ; EAX = EAX * ECX, overflow in EDX"
+      ]
+    },
+    {
+      "mnemonic": "IMUL",
+      "opcode": "0xF7",
+      "operands": ["reg/imm"],
+      "description": "Signed multiply (EAX * src -> EAX)",
+      "cycles": 1,
+      "flags": ["Z", "S"],
+      "examples": [
+        "IMUL ECX           ; EAX = EAX * ECX (signed)"
+      ]
+    },
+    {
+      "mnemonic": "DIV",
+      "opcode": "0xF7",
+      "operands": ["reg/imm"],
+      "description": "Unsigned divide (EAX / src -> quotient in EAX, remainder in EDX)",
+      "cycles": 1,
+      "flags": ["Z", "S"],
+      "examples": [
+        "DIV ECX            ; EAX = EAX / ECX, EDX = remainder"
+      ]
+    },
+    {
+      "mnemonic": "IDIV",
+      "opcode": "0xF7",
+      "operands": ["reg/imm"],
+      "description": "Signed divide (EAX / src -> quotient in EAX, remainder in EDX)",
+      "cycles": 1,
+      "flags": ["Z", "S"],
+      "examples": [
+        "IDIV ECX           ; EAX = EAX / ECX (signed), EDX = remainder"
+      ]
+    },
+    {
       "mnemonic": "JMP",
       "opcode": "0xE9",
       "operands": ["label"],

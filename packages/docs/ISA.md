@@ -86,6 +86,26 @@
 - Flags: Z, C, O, S
 - Example: `NEG EAX`
 
+**MUL src** - Unsigned multiply (EAX * src -> EDX:EAX)
+- Cycles: 1
+- Flags: Z, S
+- Example: `MUL ECX`
+
+**IMUL src** - Signed multiply (EAX * src -> EAX)
+- Cycles: 1
+- Flags: Z, S
+- Example: `IMUL ECX`
+
+**DIV src** - Unsigned divide (EAX / src -> quotient in EAX, remainder in EDX)
+- Cycles: 1
+- Flags: Z, S
+- Example: `DIV ECX`
+
+**IDIV src** - Signed divide (EAX / src -> quotient in EAX, remainder in EDX)
+- Cycles: 1
+- Flags: Z, S
+- Example: `IDIV ECX`
+
 ### Logical
 
 **AND dest, src** - Bitwise AND

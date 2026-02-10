@@ -539,6 +539,109 @@ describe("Simulator - executeInstruction", () => {
     });
   });
 
+  describe("MUL instruction", () => {
+    test("multiplies unsigned values", () => {
+      sim.executeInstruction("MOV", ["EAX", "10"]);
+      sim.executeInstruction("MOV", ["ECX", "5"]);
+      sim.executeInstruction("MUL", ["ECX"]);
+      const regs = sim.getRegisters();
+      expect(regs.EAX).toBe(50);
+    });
+
+    test("handles large multiplication", () => {
+      sim.executeInstruction("MOV", ["EAX", "1000"]);
+      sim.executeInstruction("MUL", ["1000"]);
+      const regs = sim.getRegisters();
+      expect(regs.EAX).toBe(1000000);
+    });
+
+    test("stores overflow in EDX", () => {
+      sim.executeInstruction("MOV", ["EAX", "0x1000"]);
+      sim.executeInstruction("MOV", ["ECX", "0x1000"]);
+      sim.executeInstruction("MUL", ["ECX"]);
+      const regs = sim.getRegisters();
+      expect(regs.EAX).toBe(0x1000000); // Lower 32 bits
+      expect(regs.EDX).toBe(0); // Upper 32 bits
+    });
+  });
+
+  describe("IMUL instruction", () => {
+    test("multiplies signed positive values", () => {
+      sim.executeInstruction("MOV", ["EAX", "10"]);
+      sim.executeInstruction("MOV", ["ECX", "5"]);
+      sim.executeInstruction("IMUL", ["ECX"]);
+      const regs = sim.getRegisters();
+      expect(regs.EAX).toBe(50);
+    });
+
+    test("multiplies signed negative values", () => {
+      sim.executeInstruction("MOV", ["EAX", "0xFFFFFFF6"]); // -10
+      sim.executeInstruction("IMUL", ["5"]);
+      const regs = sim.getRegisters();
+      expect(regs.EAX).toBe(0xffffffce); // -50
+    });
+
+    test("negative times negative gives positive", () => {
+      sim.executeInstruction("MOV", ["EAX", "0xFFFFFFF6"]); // -10
+      sim.executeInstruction("MOV", ["ECX", "0xFFFFFFFB"]); // -5
+      sim.executeInstruction("IMUL", ["ECX"]);
+      const regs = sim.getRegisters();
+      expect(regs.EAX).toBe(50);
+    });
+  });
+
+  describe("DIV instruction", () => {
+    test("divides unsigned values", () => {
+      sim.executeInstruction("MOV", ["EAX", "50"]);
+      sim.executeInstruction("MOV", ["ECX", "5"]);
+      sim.executeInstruction("DIV", ["ECX"]);
+      const regs = sim.getRegisters();
+      expect(regs.EAX).toBe(10); // Quotient
+      expect(regs.EDX).toBe(0); // Remainder
+    });
+
+    test("computes remainder", () => {
+      sim.executeInstruction("MOV", ["EAX", "23"]);
+      sim.executeInstruction("DIV", ["5"]);
+      const regs = sim.getRegisters();
+      expect(regs.EAX).toBe(4); // Quotient
+      expect(regs.EDX).toBe(3); // Remainder
+    });
+
+    test("handles division by zero gracefully", () => {
+      sim.executeInstruction("MOV", ["EAX", "100"]);
+      sim.executeInstruction("DIV", ["0"]);
+      const regs = sim.getRegisters();
+      expect(regs.EAX).toBe(0);
+      expect(regs.EDX).toBe(0);
+    });
+  });
+
+  describe("IDIV instruction", () => {
+    test("divides signed positive values", () => {
+      sim.executeInstruction("MOV", ["EAX", "50"]);
+      sim.executeInstruction("MOV", ["ECX", "5"]);
+      sim.executeInstruction("IDIV", ["ECX"]);
+      const regs = sim.getRegisters();
+      expect(regs.EAX).toBe(10);
+    });
+
+    test("divides signed negative by positive", () => {
+      sim.executeInstruction("MOV", ["EAX", "0xFFFFFFCE"]); // -50
+      sim.executeInstruction("IDIV", ["5"]);
+      const regs = sim.getRegisters();
+      expect(regs.EAX).toBe(0xfffffff6); // -10
+    });
+
+    test("handles division by zero gracefully", () => {
+      sim.executeInstruction("MOV", ["EAX", "100"]);
+      sim.executeInstruction("IDIV", ["0"]);
+      const regs = sim.getRegisters();
+      expect(regs.EAX).toBe(0);
+      expect(regs.EDX).toBe(0);
+    });
+  });
+
   describe("AND instruction", () => {
     test("ANDs immediate with register", () => {
       sim.executeInstruction("MOV", ["EAX", "0xFF"]);
