@@ -837,6 +837,16 @@ export class TonX86DebugSession extends DebugSession {
         pixels: Array.from(lcdData),
       };
       this.sendResponse(response);
+    } else if (command === "getMemoryState") {
+      // Get memory state for both memory banks
+      const { start = 0, length = 16 } = args || {};
+      const memoryA = this.simulator.getMemoryA(start, length);
+      const memoryB = this.simulator.getMemoryB(start, length);
+      response.body = {
+        memoryA: Array.from(memoryA),
+        memoryB: Array.from(memoryB),
+      };
+      this.sendResponse(response);
     } else if (command === "keyboardEvent") {
       // Forward keyboard event to simulator
       const { keyCode, pressed } = args;

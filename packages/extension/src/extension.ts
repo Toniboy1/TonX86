@@ -586,17 +586,18 @@ export function activate(context: vscode.ExtensionContext): void {
     ),
   );
 
-  // Listen for debug events to update LCD display
-  let lcdUpdateInterval: NodeJS.Timeout | undefined;
+  // Listen for debug events to update LCD display and memory views
+  let viewUpdateInterval: NodeJS.Timeout | undefined;
 
   context.subscriptions.push(
     vscode.debug.onDidStartDebugSession((session) => {
       if (session.type === "tonx86") {
-        console.log("TonX86 debug session started, polling LCD state");
+        console.log("TonX86 debug session started, polling view states");
         currentDebugSession = session; // Store current session for keyboard events
-        // Poll LCD state every 50ms while debugging (20 FPS)
-        lcdUpdateInterval = setInterval(async () => {
+        // Poll LCD and memory state every 50ms while debugging (20 FPS)
+        viewUpdateInterval = setInterval(async () => {
           await updateLCDDisplay(session);
+          await updateMemoryViews(session);
         }, 50);
       }
     }),
@@ -605,11 +606,11 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
     vscode.debug.onDidTerminateDebugSession((session) => {
       if (session.type === "tonx86") {
-        console.log("TonX86 debug session terminated, stopping LCD polling");
+        console.log("TonX86 debug session terminated, stopping view polling");
         currentDebugSession = undefined; // Clear session reference
-        if (lcdUpdateInterval) {
-          clearInterval(lcdUpdateInterval);
-          lcdUpdateInterval = undefined;
+        if (viewUpdateInterval) {
+          clearInterval(viewUpdateInterval);
+          viewUpdateInterval = undefined;
         }
       }
     }),
@@ -621,6 +622,22 @@ export function activate(context: vscode.ExtensionContext): void {
       const response = await session.customRequest("getLCDState");
       if (response && response.pixels) {
         lcdProvider.updatePixels(response.pixels);
+      }
+    } catch (error) {
+      // Silently fail - session might not be ready yet
+    }
+  }
+
+  // Helper function to fetch and update memory views
+  async function updateMemoryViews(session: vscode.DebugSession) {
+    try {
+      const response = await session.customRequest("getMemoryState", {
+        start: 0,
+        length: 16,
+      });
+      if (response && response.memoryA && response.memoryB) {
+        memoryProviderA.updateMemory(new Uint8Array(response.memoryA));
+        memoryProviderB.updateMemory(new Uint8Array(response.memoryB));
       }
     } catch (error) {
       // Silently fail - session might not be ready yet
