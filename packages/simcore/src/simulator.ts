@@ -506,24 +506,12 @@ export class Simulator {
         break;
       }
 
-      case "CALL": {
-        // CALL label - Push return address, jump to label
-        // Note: The actual jump is handled by the debug adapter for label resolution
-        // The simulator only manages the stack operation
-        if (operands.length !== 1) break;
-        
-        // CALL is typically followed by pushing a return address
-        // However, since the debug adapter handles the control flow,
-        // this is a no-op in the simulator. The debug adapter will
-        // directly call pushStack() when needed.
-        break;
-      }
-
+      case "CALL":
       case "RET": {
-        // RET - Pop return address, jump to it
-        // Note: The actual jump is handled by the debug adapter
-        // The simulator only manages the stack operation
-        // The debug adapter will directly call popStack() when needed.
+        // CALL/RET are handled by the debug adapter
+        // The debug adapter manages both control flow (jumping to labels/return addresses)
+        // and stack operations (via pushStack/popStack methods)
+        // These cases are intentionally no-ops in executeInstruction
         break;
       }
 
