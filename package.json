@@ -33,14 +33,16 @@
     "precommit": "npm run check",
     "package": "npm run build && cd packages/extension && npm run package",
     "sync-version": "node scripts/sync-version.js",
-    "version:patch": "npm version patch && npm run sync-version",
-    "version:minor": "npm version minor && npm run sync-version",
-    "version:major": "npm version major && npm run sync-version",
-    "postversion": "git add packages/extension/package.json && git commit --amend --no-edit && git tag -d $(git describe --tags --abbrev=0) && git tag v$(node scripts/get-version.js)"
+    "release": "standard-version",
+    "release:minor": "standard-version --release-as minor",
+    "release:major": "standard-version --release-as major",
+    "release:patch": "standard-version --release-as patch",
+    "release:first": "standard-version --first-release"
   },
   "devDependencies": {
     "@vscode/vsce": "^3.7.1",
     "esbuild": "^0.27.3",
-    "npm-run-all": "^4.1.5"
+    "npm-run-all": "^4.1.5",
+    "standard-version": "^9.5.0"
   }
 }

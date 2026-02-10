@@ -1,0 +1,38 @@
+{
+  "packageFiles": [
+    {
+      "filename": "package.json",
+      "type": "json"
+    }
+  ],
+  "bumpFiles": [
+    {
+      "filename": "package.json",
+      "type": "json"
+    },
+    {
+      "filename": "packages/extension/package.json",
+      "type": "json"
+    }
+  ],
+  "types": [
+    {"type": "feat", "section": "Features"},
+    {"type": "fix", "section": "Bug Fixes"},
+    {"type": "perf", "section": "Performance Improvements"},
+    {"type": "docs", "section": "Documentation", "hidden": false},
+    {"type": "style", "section": "Styles", "hidden": true},
+    {"type": "refactor", "section": "Code Refactoring", "hidden": true},
+    {"type": "test", "section": "Tests", "hidden": true},
+    {"type": "build", "section": "Build System", "hidden": true},
+    {"type": "ci", "section": "CI", "hidden": true},
+    {"type": "chore", "section": "Chores", "hidden": true}
+  ],
+  "commitUrlFormat": "https://github.com/Toniboy1/TonX86/commit/{{hash}}",
+  "compareUrlFormat": "https://github.com/Toniboy1/TonX86/compare/{{previousTag}}...{{currentTag}}",
+  "issueUrlFormat": "https://github.com/Toniboy1/TonX86/issues/{{id}}",
+  "userUrlFormat": "https://github.com/{{user}}",
+  "releaseCommitMessageFormat": "chore(release): {{currentTag}}",
+  "skip": {
+    "changelog": false
+  }
+}

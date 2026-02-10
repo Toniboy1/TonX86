@@ -9,65 +9,118 @@ The project has two `package.json` files with versions:
 1. **Root `package.json`** - Project version (currently used for Git tags and releases)
 2. **Extension `packages/extension/package.json`** - VS Code extension version (published to marketplace)
 
-These versions are kept in sync automatically.
+These versions are kept in sync automatically using `standard-version`.
 
-## Bumping Versions
+## Automatic Version Bumping
 
-Use the provided npm scripts to bump versions correctly:
+The project uses **[standard-version](https://github.com/conventional-changelog/standard-version)** to automatically determine version bumps based on your commit messages.
 
-### Patch Version (0.0.X)
+### Conventional Commits
 
-For bug fixes and minor changes:
+Follow the [Conventional Commits](https://www.conventionalcommits.org/) specification:
 
-```bash
-npm run version:patch
-```
+- `fix:` - Bug fixes → **PATCH** version bump (0.0.X)
+- `feat:` - New features → **MINOR** version bump (0.X.0)
+- `BREAKING CHANGE:` or `!` - Breaking changes → **MAJOR** version bump (X.0.0)
 
-This will:
-- Bump version from `0.1.10` → `0.1.11`
-- Sync the version to extension package.json
-- Create a Git commit and tag
-- Push changes (you'll need to push manually)
-
-### Minor Version (0.X.0)
-
-For new features:
+**Examples:**
 
 ```bash
-npm run version:minor
+git commit -m "fix: resolve debug adapter crash on startup"
+git commit -m "feat: add keyboard input support for simulator"
+git commit -m "feat!: change extension API (BREAKING CHANGE)"
 ```
 
-This will:
-- Bump version from `0.1.10` → `0.2.0`
-- Sync the version to extension package.json
-- Create a Git commit and tag
+### Creating a Release
 
-### Major Version (X.0.0)
-
-For breaking changes:
+After committing your changes with conventional commit messages:
 
 ```bash
-npm run version:major
+# Automatic version bump based on commits since last tag
+npm run release
 ```
 
-This will:
-- Bump version from `0.1.10` → `1.0.0`
-- Sync the version to extension package.json
-- Create a Git commit and tag
+This will automatically:
+1. ✅ Analyze commits since the last release
+2. ✅ Determine the appropriate version bump (patch/minor/major)
+3. ✅ Update version in both root and extension package.json
+4. ✅ Generate/update CHANGELOG.md
+5. ✅ Create a Git commit and tag
+6. ✅ You just need to push: `git push --follow-tags`
 
-## After Bumping Version
+### Manual Version Control
 
-After running any version bump command:
+If you need to force a specific version bump:
 
 ```bash
-# Push the commit and tags
-git push && git push --tags
+# Force a patch release (0.1.10 → 0.1.11)
+npm run release:patch
+
+# Force a minor release (0.1.10 → 0.2.0)
+npm run release:minor
+
+# Force a major release (0.1.10 → 1.0.0)
+npm run release:major
+
+# First release (creates v0.1.0 without bumping)
+npm run release:first
 ```
 
-This will trigger the GitHub Actions workflow to:
-1. Build the extension
-2. Create a GitHub release
-3. Publish to VS Code Marketplace (if configured)
+## Complete Workflow Example
+
+```bash
+# 1. Create a feature branch
+git checkout -b feature/new-lcd-display
+
+# 2. Make your changes
+# ... edit files ...
+
+# 3. Commit with conventional commit format
+git add .
+git commit -m "feat: add color LCD display support"
+git commit -m "fix: resolve LCD refresh rate issue"
+
+# 4. Push and create PR
+git push -u origin feature/new-lcd-display
+
+# 5. After PR is merged to main, create a release
+git checkout main
+git pull
+npm run release
+
+# 6. Push the release
+git push --follow-tags
+```
+
+The GitHub Actions workflow will automatically:
+- Build the extension
+- Create a GitHub release with the VSIX
+- Publish to VS Code Marketplace
+
+## Version Bump Rules
+
+`standard-version` follows these rules:
+
+| Commit Type | Example | Version Bump |
+|-------------|---------|--------------|
+| `fix:` | `fix: button not working` | Patch (0.0.1) |
+| `feat:` | `feat: add new command` | Minor (0.1.0) |
+| `BREAKING CHANGE:` or `!` | `feat!: change API` | Major (1.0.0) |
+| `chore:`, `docs:`, etc. | `docs: update README` | No bump |
+
+Multiple commits are combined:
+- `fix:` + `fix:` = Patch bump
+- `fix:` + `feat:` = Minor bump
+- Any `BREAKING CHANGE` = Major bump
+
+## Changelog
+
+`standard-version` automatically generates a `CHANGELOG.md` file with:
+- Grouped changes by type (Features, Bug Fixes, etc.)
+- Links to commits and PRs
+- Contributor information
+
+The changelog is updated with each release.
 
 ## Manual Version Sync
 
@@ -89,31 +142,50 @@ The GitHub Actions workflow (`release-on-version-change.yml`) automatically:
 4. If new, creates a release with the VSIX file
 5. Publishes to VS Code Marketplace
 
-## Version Conventions
+## Commit Message Guidelines
 
-We follow [Semantic Versioning](https://semver.org/):
+Follow these guidelines for your commits:
 
-- **MAJOR** version: Incompatible API changes
-- **MINOR** version: Backwards-compatible new features  
-- **PATCH** version: Backwards-compatible bug fixes
+### Format
 
-### Example Workflow
+```
+<type>[optional scope]: <description>
+
+[optional body]
+
+[optional footer(s)]
+```
+
+### Types
+
+- `feat:` - A new feature
+- `fix:` - A bug fix
+- `docs:` - Documentation only changes
+- `style:` - Code style changes (formatting, missing semi colons, etc)
+- `refactor:` - Code refactoring (neither fixes a bug nor adds a feature)
+- `perf:` - Performance improvements
+- `test:` - Adding or updating tests
+- `build:` - Changes to build system or dependencies
+- `ci:` - Changes to CI configuration files and scripts
+- `chore:` - Other changes that don't modify src or test files
+
+### Examples
 
 ```bash
-# 1. Make your changes
-git add .
-git commit -m "feat: Add new feature"
+# New feature (minor version bump)
+git commit -m "feat: add LCD color support"
 
-# 2. Bump version appropriately
-npm run version:minor
+# Bug fix (patch version bump)
+git commit -m "fix: resolve memory leak in simulator"
 
-# 3. Push to trigger release
-git push && git push --tags
+# Breaking change (major version bump)
+git commit -m "feat!: redesign extension API
 
-# 4. GitHub Actions will automatically:
-#    - Build and package the extension
-#    - Create a GitHub release
-#    - Publish to marketplace
+BREAKING CHANGE: The old API methods have been removed."
+
+# No version bump
+git commit -m "docs: update installation guide"
+git commit -m "chore: update dependencies"
 ```
 
 ## Troubleshooting
@@ -128,37 +200,84 @@ git add packages/extension/package.json
 git commit -m "chore: Sync extension version"
 ```
 
+### No Commits to Bump
+
+If you run `npm run release` and get "No commits to bump version":
+
+This means there are no commits with `feat:` or `fix:` since the last release. Either:
+1. Add commits with conventional prefixes
+2. Force a specific version: `npm run release:patch`
+
+### Wrong Version Bump
+
+If standard-version chose the wrong version:
+
+```bash
+# Undo the release commit (keep your changes)
+git reset --soft HEAD~1
+
+# Force the correct version
+npm run release:major  # or :minor or :patch
+```
+
 ### Tag Already Exists
 
-If you need to re-tag a version:
+If you need to re-create a release:
 
 ```bash
 # Delete local tag
 git tag -d v0.1.10
 
-# Delete remote tag
+# Delete remote tag (if pushed)
 git push origin :refs/tags/v0.1.10
 
-# Create new tag
-npm run version:patch
-git push --tags
+# Create new release
+npm run release
 ```
 
-### Failed Release
+### Skipping CI/CD
 
-If a GitHub Actions release fails:
+If you want to release without triggering CI:
 
-1. Check the Actions tab for error details
-2. Fix any issues
-3. Delete the failed tag (see above)
-4. Bump version again or re-tag manually
+```bash
+npm run release
+git push --follow-tags --no-verify
+```
+
+### Dry Run
+
+To see what would happen without making changes:
+
+```bash
+npx standard-version --dry-run
+```
+
+## Configuration
+
+Version management is configured in `.versionrc.json`:
+
+- Tracks both root and extension package.json
+- Configures changelog sections
+- Sets commit message format
+- Defines GitHub URLs for links
 
 ## Scripts Reference
 
 | Script | Description |
 |--------|-------------|
+| `npm run release` | Automatic version bump based on commits |
+| `npm run release:patch` | Force patch version (0.0.X) |
+| `npm run release:minor` | Force minor version (0.X.0) |
+| `npm run release:major` | Force major version (X.0.0) |
+| `npm run release:first` | First release (no bump) |
 | `npm run sync-version` | Sync version from root to extension |
-| `npm run version:patch` | Bump patch version (0.0.X) |
-| `npm run version:minor` | Bump minor version (0.X.0) |
-| `npm run version:major` | Bump major version (X.0.0) |
 | `node scripts/get-version.js` | Get current extension version |
+
+## Benefits of Automatic Versioning
+
+✅ **Consistency** - Version bumps follow Semantic Versioning automatically
+✅ **Changelog** - Automatically generated from commit messages
+✅ **No Manual Decisions** - The version bump is determined by your commits
+✅ **Synchronized** - Both package.json files are updated together
+✅ **Traceable** - Clear connection between commits and releases
+✅ **Less Errors** - No manual version editing required
