@@ -122,16 +122,6 @@ Multiple commits are combined:
 
 The changelog is updated with each release.
 
-## Manual Version Sync
-
-If you need to manually sync the extension version to match the root version:
-
-```bash
-npm run sync-version
-```
-
-This reads the version from root `package.json` and updates `packages/extension/package.json`.
-
 ## Automatic CI/CD Flow
 
 The updated workflow now works seamlessly with `standard-version`:
@@ -240,13 +230,15 @@ git commit -m "chore: update dependencies"
 
 ### Versions Out of Sync
 
-If the root and extension versions get out of sync:
+If the root and extension versions somehow get out of sync, you can manually edit and commit:
 
 ```bash
-npm run sync-version
+# Manually edit packages/extension/package.json to match root
 git add packages/extension/package.json
-git commit -m "chore: Sync extension version"
+git commit -m "chore: sync extension version"
 ```
+
+Or run `standard-version` which will sync them on the next release.
 
 ### No Commits to Bump
 
@@ -316,8 +308,8 @@ Version management is configured in `.versionrc.json`:
 | `npm run release` | Automatic version bump based on commits |
 | `npm run release:patch` | Force patch version (0.0.X) |
 | `npm run release:minor` | Force minor version (0.X.0) |
-| `npm run release:major` | Force major version (X.0.0) |
-| `npm run release:first` | First release (no bump) |
+
+**Note:** Version syncing between root and extension package.json is handled automatically by `standard-version` via `.versionrc.json` configuration.
 | `npm run sync-version` | Sync version from root to extension |
 | `node scripts/get-version.js` | Get current extension version |
 

@@ -32,7 +32,6 @@
     "check": "npm run lint && npm run build && npm test",
     "precommit": "npm run check",
     "package": "npm run build && cd packages/extension && npm run package",
-    "sync-version": "node scripts/sync-version.js",
     "release": "standard-version",
     "release:minor": "standard-version --release-as minor",
     "release:major": "standard-version --release-as major",
