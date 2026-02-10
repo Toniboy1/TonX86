@@ -162,7 +162,9 @@ const FLAGS = [
   { name: "S", description: "Sign flag - Set when result is negative" },
 ];
 
-connection.onInitialize((params: InitializeParams) => {
+connection.onInitialize(
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  (_params: InitializeParams) => {
   const result: InitializeResult = {
     capabilities: {
       textDocumentSync: TextDocumentSyncKind.Full,
@@ -281,7 +283,7 @@ documents.onDidChangeContent((change) => {
 });
 
 // Completion provider
-connection.onCompletion((_textDocumentPosition) => {
+connection.onCompletion(() => {
   const completions: CompletionItem[] = [];
 
   // Add instructions
