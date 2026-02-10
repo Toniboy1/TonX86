@@ -445,6 +445,68 @@ describe("Simulator - executeInstruction", () => {
     });
   });
 
+  describe("AND instruction", () => {
+    test("ANDs immediate with register", () => {
+      sim.executeInstruction("MOV", ["EAX", "0xFF"]);
+      sim.executeInstruction("AND", ["EAX", "0x0F"]);
+      const regs = sim.getRegisters();
+      expect(regs.EAX).toBe(0x0f);
+    });
+
+    test("ANDs two registers", () => {
+      sim.executeInstruction("MOV", ["EAX", "0b11110000"]);
+      sim.executeInstruction("MOV", ["ECX", "0b11001100"]);
+      sim.executeInstruction("AND", ["EAX", "ECX"]);
+      const regs = sim.getRegisters();
+      expect(regs.EAX).toBe(0b11000000);
+    });
+
+    test("sets Zero flag on zero result", () => {
+      sim.executeInstruction("MOV", ["EAX", "0b11110000"]);
+      sim.executeInstruction("AND", ["EAX", "0b00001111"]);
+      const state = sim.getState();
+      expect(state.flags & 0x40).toBeTruthy(); // Zero flag
+    });
+
+    test("clears Zero flag on non-zero result", () => {
+      sim.executeInstruction("MOV", ["EAX", "0xFF"]);
+      sim.executeInstruction("AND", ["EAX", "0x0F"]);
+      const state = sim.getState();
+      expect(state.flags & 0x40).toBe(0); // Zero flag
+    });
+  });
+
+  describe("OR instruction", () => {
+    test("ORs immediate with register", () => {
+      sim.executeInstruction("MOV", ["EAX", "0x0F"]);
+      sim.executeInstruction("OR", ["EAX", "0xF0"]);
+      const regs = sim.getRegisters();
+      expect(regs.EAX).toBe(0xff);
+    });
+
+    test("ORs two registers", () => {
+      sim.executeInstruction("MOV", ["EAX", "0b11110000"]);
+      sim.executeInstruction("MOV", ["ECX", "0b00001111"]);
+      sim.executeInstruction("OR", ["EAX", "ECX"]);
+      const regs = sim.getRegisters();
+      expect(regs.EAX).toBe(0b11111111);
+    });
+
+    test("sets Zero flag on zero result", () => {
+      sim.executeInstruction("MOV", ["EAX", "0"]);
+      sim.executeInstruction("OR", ["EAX", "0"]);
+      const state = sim.getState();
+      expect(state.flags & 0x40).toBeTruthy(); // Zero flag
+    });
+
+    test("clears Zero flag on non-zero result", () => {
+      sim.executeInstruction("MOV", ["EAX", "0"]);
+      sim.executeInstruction("OR", ["EAX", "1"]);
+      const state = sim.getState();
+      expect(state.flags & 0x40).toBe(0); // Zero flag
+    });
+  });
+
   test("HLT instruction", () => {
     const stateBefore = sim.getState();
     expect(stateBefore.halted).toBe(false);

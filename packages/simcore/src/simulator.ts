@@ -464,6 +464,38 @@ export class Simulator {
         break;
       }
 
+      case "AND": {
+        // AND destination, source
+        if (operands.length !== 2) break;
+        const dest = this.parseOperand(operands[0]);
+        const src = this.parseOperand(operands[1]);
+
+        if (dest.type === "register") {
+          const srcValue =
+            src.type === "register" ? this.cpu.registers[src.value] : src.value;
+          this.cpu.registers[dest.value] =
+            (this.cpu.registers[dest.value] & srcValue) & 0xffffffff;
+          this.updateFlags(this.cpu.registers[dest.value]);
+        }
+        break;
+      }
+
+      case "OR": {
+        // OR destination, source
+        if (operands.length !== 2) break;
+        const dest = this.parseOperand(operands[0]);
+        const src = this.parseOperand(operands[1]);
+
+        if (dest.type === "register") {
+          const srcValue =
+            src.type === "register" ? this.cpu.registers[src.value] : src.value;
+          this.cpu.registers[dest.value] =
+            (this.cpu.registers[dest.value] | srcValue) & 0xffffffff;
+          this.updateFlags(this.cpu.registers[dest.value]);
+        }
+        break;
+      }
+
       case "JMP": {
         // JMP label (not implemented - labels need symbol table)
         break;
