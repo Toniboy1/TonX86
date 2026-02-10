@@ -1,67 +1,10 @@
 import { describe, it, expect, beforeEach } from '@jest/globals';
+import { parseAssembly, Instruction, ParseResult } from './parser';
 
 /**
- * Tests for DAP Assembly Parser
- * This validates the parseAssembly function works correctly
+ * Tests for DAP Assembly Parser and Control Flow
+ * This validates the parseAssembly function and control flow logic
  */
-
-// We'll import the actual parseAssembly function when we export it from debugAdapter.ts
-// For now, we'll create a local copy for testing
-
-interface Instruction {
-  line: number;
-  mnemonic: string;
-  operands: string[];
-  raw: string;
-}
-
-interface ParseResult {
-  instructions: Instruction[];
-  labels: Map<string, number>;
-}
-
-function parseAssembly(lines: string[]): ParseResult {
-  const instructions: Instruction[] = [];
-  const labels = new Map<string, number>();
-
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    const trimmed = line.trim();
-
-    // Skip empty lines and comments
-    if (!trimmed || trimmed.startsWith(";")) {
-      continue;
-    }
-
-    // Handle labels (lines ending with :)
-    if (trimmed.endsWith(":")) {
-      const labelName = trimmed.slice(0, -1).trim();
-      labels.set(labelName, instructions.length);
-      continue;
-    }
-
-    // Parse instruction
-    const parts = trimmed.split(/\s+/);
-    if (parts.length === 0) continue;
-
-    const mnemonic = parts[0].toUpperCase();
-    const operandString = parts.slice(1).join(" ");
-    const operandStringWithoutComment = operandString.split(";")[0];
-    const operands = operandStringWithoutComment
-      .split(",")
-      .map((op) => op.trim())
-      .filter((op) => op.length > 0);
-
-    instructions.push({
-      line: i + 1,
-      mnemonic,
-      operands,
-      raw: trimmed,
-    });
-  }
-
-  return { instructions, labels };
-}
 
 describe('DAP Assembly Parser', () => {
   it('should parse simple MOV instruction', () => {
