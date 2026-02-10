@@ -136,6 +136,17 @@ export class TonX86DebugSession extends DebugSession {
           );
         });
 
+        // Show labels in Debug Console to help with CALL/JMP debugging
+        const labelList = Array.from(this.labels.entries())
+          .map(([name, index]) => `${name} -> ${index}`)
+          .join(", ");
+        this.sendEvent(
+          new OutputEvent(
+            `Labels: ${labelList.length > 0 ? labelList : "(none)"}\n`,
+            "stdout",
+          ),
+        );
+
         // Start at first instruction
         if (this.instructions.length > 0) {
           this.currentLine = this.instructions[0].line;
@@ -313,6 +324,13 @@ export class TonX86DebugSession extends DebugSession {
           const targetLabel = currentInstr.operands[0];
           const targetIndex = this.labels.get(targetLabel);
 
+          this.sendEvent(
+            new OutputEvent(
+              `[CALL] target="${targetLabel}", resolvedIndex=${targetIndex}\n`,
+              "stdout",
+            ),
+          );
+
           if (targetIndex !== undefined) {
             // Push return address onto call stack
             const returnAddress = this.instructionPointer + 1;
@@ -323,9 +341,21 @@ export class TonX86DebugSession extends DebugSession {
 
             // Jump to target
             this.instructionPointer = targetIndex;
+            this.sendEvent(
+              new OutputEvent(
+                `[CALL] jumping to instruction index ${targetIndex}, return=${returnAddress}\n`,
+                "stdout",
+              ),
+            );
           } else {
             console.error(
               `[TonX86] CALL target "${targetLabel}" not found in labels`,
+            );
+            this.sendEvent(
+              new OutputEvent(
+                `[CALL] ERROR: label "${targetLabel}" not found\n`,
+                "stderr",
+              ),
             );
             this.instructionPointer++;
           }
@@ -753,7 +783,7 @@ export class TonX86DebugSession extends DebugSession {
 
     this.sendResponse(response);
 
-    // Execute current instruction, then stop (same as next for our flat program)
+    // Execute current instruction, then stop
     if (this.instructionPointer < this.instructions.length) {
       const currentInstr = this.instructions[this.instructionPointer];
 
@@ -761,7 +791,7 @@ export class TonX86DebugSession extends DebugSession {
         `[TonX86] Executing (stepIn): ${currentInstr.mnemonic} ${currentInstr.operands.join(", ")}`,
       );
 
-      // Execute the instruction
+      // Execute the instruction (CALL/RET are handled below)
       this.simulator.executeInstruction(
         currentInstr.mnemonic,
         currentInstr.operands,
@@ -783,35 +813,65 @@ export class TonX86DebugSession extends DebugSession {
         return;
       }
 
-      // Handle jump instructions
-      if (["JMP", "JE", "JZ", "JNE", "JNZ"].includes(currentInstr.mnemonic)) {
-        const targetLabel = currentInstr.operands[0];
-        const targetIndex = this.labels.get(targetLabel);
+      // Handle jump/call/ret instructions
+      if (
+        ["JMP", "JE", "JZ", "JNE", "JNZ", "CALL", "RET"].includes(
+          currentInstr.mnemonic,
+        )
+      ) {
+        if (currentInstr.mnemonic === "CALL") {
+          const targetLabel = currentInstr.operands[0];
+          const targetIndex = this.labels.get(targetLabel);
 
-        if (targetIndex !== undefined) {
-          const shouldJump =
-            currentInstr.mnemonic === "JMP" ||
-            (["JE", "JZ"].includes(currentInstr.mnemonic) &&
-              this.isZeroFlagSet()) ||
-            (["JNE", "JNZ"].includes(currentInstr.mnemonic) &&
-              !this.isZeroFlagSet());
-
-          if (shouldJump) {
-            console.error(
-              `[TonX86] Jump taken to label "${targetLabel}" at instruction index ${targetIndex}`,
-            );
+          if (targetIndex !== undefined) {
+            const returnAddress = this.instructionPointer + 1;
+            this.callStack.push(returnAddress);
+            this.simulator.pushStack(returnAddress);
             this.instructionPointer = targetIndex;
           } else {
             console.error(
-              `[TonX86] Conditional jump not taken (label: ${targetLabel})`,
+              `[TonX86] CALL target "${targetLabel}" not found in labels`,
             );
             this.instructionPointer++;
           }
+        } else if (currentInstr.mnemonic === "RET") {
+          if (this.callStack.length > 0) {
+            const returnAddress = this.callStack.pop()!;
+            this.simulator.popStack();
+            this.instructionPointer = returnAddress;
+          } else {
+            console.error("[TonX86] RET called with empty call stack");
+            this.instructionPointer++;
+          }
         } else {
-          console.error(
-            `[TonX86] Jump target "${targetLabel}" not found in labels`,
-          );
-          this.instructionPointer++;
+          const targetLabel = currentInstr.operands[0];
+          const targetIndex = this.labels.get(targetLabel);
+
+          if (targetIndex !== undefined) {
+            const shouldJump =
+              currentInstr.mnemonic === "JMP" ||
+              (["JE", "JZ"].includes(currentInstr.mnemonic) &&
+                this.isZeroFlagSet()) ||
+              (["JNE", "JNZ"].includes(currentInstr.mnemonic) &&
+                !this.isZeroFlagSet());
+
+            if (shouldJump) {
+              console.error(
+                `[TonX86] Jump taken to label "${targetLabel}" at instruction index ${targetIndex}`,
+              );
+              this.instructionPointer = targetIndex;
+            } else {
+              console.error(
+                `[TonX86] Conditional jump not taken (label: ${targetLabel})`,
+              );
+              this.instructionPointer++;
+            }
+          } else {
+            console.error(
+              `[TonX86] Jump target "${targetLabel}" not found in labels`,
+            );
+            this.instructionPointer++;
+          }
         }
       } else {
         // Move to next instruction for non-jump instructions
