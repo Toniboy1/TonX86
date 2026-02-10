@@ -102,8 +102,8 @@ Students should start in **educational mode** to learn core concepts, then switc
 | `LEA` | reg, imm | - | Load effective address |
 | `MOVZX` | reg, reg/imm | - | Move with zero extend |
 | `MOVSX` | reg, reg/imm | - | Move with sign extend |
-| `ADD` | reg, reg/imm | ZCOS | Add |
-| `SUB` | reg, reg/imm | ZCOS | Subtract |
+| `ADD` | reg, reg/imm/mem | ZCOS | Add |
+| `SUB` | reg, reg/imm/mem | ZCOS | Subtract |
 | `INC` | reg | ZCOS | Increment |
 | `DEC` | reg | ZCOS | Decrement |
 | `NEG` | reg | ZCOS | Two's complement negation |
@@ -127,7 +127,7 @@ Students should start in **educational mode** to learn core concepts, then switc
 | `JNE/JNZ` | label | - | Jump if not zero |
 | `CALL` | label | - | Push return address, jump to label |
 | `RET` | - | - | Pop return address, jump to it |
-| `PUSH` | reg | - | Push register onto stack |
+| `PUSH` | reg/imm/mem | - | Push register/immediate/memory onto stack |
 | `POP` | reg | - | Pop from stack into register |
 | `INT` | imm8 | - | Software interrupt (syscall) |
 | `IRET` | - | All | Return from interrupt |
@@ -139,10 +139,26 @@ Students should start in **educational mode** to learn core concepts, then switc
 **Stack Growth:** Downward (from high to low memory addresses)  
 **Stack Width:** 32-bit (4 bytes per push/pop)
 
-- `PUSH reg` - Decrements ESP by 4, writes register value to memory
+- `PUSH reg/imm` - Decrements ESP by 4, writes value to memory
 - `POP reg` - Reads value from memory, increments ESP by 4
 - `CALL label` - Pushes return address, jumps to label
 - `RET` - Pops return address, jumps to it
+
+### Memory Addressing
+
+Supports indirect memory access with register-based addressing:
+- `[REG]` - Direct memory access via register (e.g., `MOV EAX, [ESP]`)
+- `[REG+offset]` - Register with positive offset (e.g., `MOV EAX, [EBP+8]`)
+- `[REG-offset]` - Register with negative offset (e.g., `MOV EAX, [EBP-4]`)
+- `[REG+REG]` - Register with register offset (e.g., `MOV EAX, [EBX+ECX]`)
+
+Examples:
+```asm
+MOV EAX, [EBP+8]      ; Load from stack (parameter access)
+MOV [ESP], EBX        ; Store to stack
+PUSH [EBP+12]         ; Push memory value onto stack
+ADD EAX, [ESI+4]      ; Add memory value to register
+```
 
 ### Calling Conventions
 
