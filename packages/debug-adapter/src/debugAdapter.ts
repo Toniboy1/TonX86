@@ -62,7 +62,7 @@ export class TonX86DebugSession extends DebugSession {
 
           // Check for direct memory access [0xFxxx]
           if (opUpper.startsWith("[") && opUpper.includes("0XF")) {
-            const addressStr = opUpper.slice(1, -1).replace(/[\]\[]/g, "");
+            const addressStr = opUpper.slice(1, -1).replace(/[[\]]/g, "");
             if (addressStr.startsWith("0XF")) {
               const address = parseInt(addressStr, 16);
               if (address >= 0xf000 && address <= 0xf0ff) {
