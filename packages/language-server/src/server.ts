@@ -339,6 +339,14 @@ const REGISTERS = [
     name: "EDI",
     description: "Destination Index register (string operations)",
   },
+  { name: "AL", description: "Low byte of EAX (bits 0-7) - 8-bit register" },
+  { name: "AH", description: "High byte of EAX (bits 8-15) - 8-bit register" },
+  { name: "BL", description: "Low byte of EBX (bits 0-7) - 8-bit register" },
+  { name: "BH", description: "High byte of EBX (bits 8-15) - 8-bit register" },
+  { name: "CL", description: "Low byte of ECX (bits 0-7) - 8-bit register" },
+  { name: "CH", description: "High byte of ECX (bits 8-15) - 8-bit register" },
+  { name: "DL", description: "Low byte of EDX (bits 0-7) - 8-bit register" },
+  { name: "DH", description: "High byte of EDX (bits 8-15) - 8-bit register" },
 ];
 
 // Flag definitions

@@ -508,37 +508,158 @@ class DocsViewProvider implements vscode.WebviewViewProvider {
 			<body>
 				<h3>TonX86 ISA Reference</h3>
 				<div id="docs">
+					<h4 style="margin-top: 15px; color: #007acc;">Data Movement</h4>
 					<div class="instruction">
 						<span class="mnemonic">MOV</span>
-						<div class="description">Move data between registers (1 cycle)</div>
+						<div class="description">Move data between registers or memory (1 cycle)</div>
 					</div>
 					<div class="instruction">
+						<span class="mnemonic">XCHG</span>
+						<div class="description">Exchange values between two registers (1 cycle)</div>
+					</div>
+					<div class="instruction">
+						<span class="mnemonic">LEA</span>
+						<div class="description">Load effective address (1 cycle)</div>
+					</div>
+					<div class="instruction">
+						<span class="mnemonic">MOVZX</span>
+						<div class="description">Move with zero extension (1 cycle)</div>
+					</div>
+					<div class="instruction">
+						<span class="mnemonic">MOVSX</span>
+						<div class="description">Move with sign extension (1 cycle)</div>
+					</div>
+					
+					<h4 style="margin-top: 15px; color: #007acc;">Arithmetic</h4>
+					<div class="instruction">
 						<span class="mnemonic">ADD</span>
-						<div class="description">Add two registers (1 cycle, affects flags)</div>
+						<div class="description">Add two values (1 cycle, affects Z,C,O,S)</div>
 					</div>
 					<div class="instruction">
 						<span class="mnemonic">SUB</span>
-						<div class="description">Subtract two registers (1 cycle)</div>
+						<div class="description">Subtract source from destination (1 cycle, affects Z,C,O,S)</div>
 					</div>
 					<div class="instruction">
+						<span class="mnemonic">CMP</span>
+						<div class="description">Compare values (SUB without storing, 1 cycle, affects Z,C,O,S)</div>
+					</div>
+					<div class="instruction">
+						<span class="mnemonic">INC</span>
+						<div class="description">Increment by 1 (1 cycle, affects Z,O,S)</div>
+					</div>
+					<div class="instruction">
+						<span class="mnemonic">DEC</span>
+						<div class="description">Decrement by 1 (1 cycle, affects Z,O,S)</div>
+					</div>
+					<div class="instruction">
+						<span class="mnemonic">NEG</span>
+						<div class="description">Two's complement negation (1 cycle, affects Z,C,O,S)</div>
+					</div>
+					<div class="instruction">
+						<span class="mnemonic">MUL</span>
+						<div class="description">Unsigned multiply (1 cycle, affects Z,S)</div>
+					</div>
+					<div class="instruction">
+						<span class="mnemonic">IMUL</span>
+						<div class="description">Signed multiply (1 cycle, affects Z,S)</div>
+					</div>
+					<div class="instruction">
+						<span class="mnemonic">DIV</span>
+						<div class="description">Unsigned divide (1 cycle, affects Z,S)</div>
+					</div>
+					<div class="instruction">
+						<span class="mnemonic">IDIV</span>
+						<div class="description">Signed divide (1 cycle, affects Z,S)</div>
+					</div>
+					
+					<h4 style="margin-top: 15px; color: #007acc;">Logical</h4>
+					<div class="instruction">
 						<span class="mnemonic">AND</span>
-						<div class="description">Bitwise AND (1 cycle)</div>
+						<div class="description">Bitwise AND (1 cycle, affects Z,S)</div>
 					</div>
 					<div class="instruction">
 						<span class="mnemonic">OR</span>
-						<div class="description">Bitwise OR (1 cycle)</div>
+						<div class="description">Bitwise OR (1 cycle, affects Z,S)</div>
 					</div>
+					<div class="instruction">
+						<span class="mnemonic">XOR</span>
+						<div class="description">Bitwise XOR (1 cycle, affects Z,S)</div>
+					</div>
+					<div class="instruction">
+						<span class="mnemonic">NOT</span>
+						<div class="description">Bitwise NOT (1 cycle)</div>
+					</div>
+					<div class="instruction">
+						<span class="mnemonic">TEST</span>
+						<div class="description">Logical AND (flags only, 1 cycle, affects Z,S)</div>
+					</div>
+					
+					<h4 style="margin-top: 15px; color: #007acc;">Shifts & Rotates</h4>
+					<div class="instruction">
+						<span class="mnemonic">SHL</span>
+						<div class="description">Shift left (1 cycle, affects Z,S)</div>
+					</div>
+					<div class="instruction">
+						<span class="mnemonic">SHR</span>
+						<div class="description">Shift right logical (1 cycle, affects Z,S)</div>
+					</div>
+					<div class="instruction">
+						<span class="mnemonic">SAR</span>
+						<div class="description">Shift arithmetic right (1 cycle, affects Z,S)</div>
+					</div>
+					<div class="instruction">
+						<span class="mnemonic">ROL</span>
+						<div class="description">Rotate left (1 cycle, affects Z,S)</div>
+					</div>
+					<div class="instruction">
+						<span class="mnemonic">ROR</span>
+						<div class="description">Rotate right (1 cycle, affects Z,S)</div>
+					</div>
+					
+					<h4 style="margin-top: 15px; color: #007acc;">Control Flow</h4>
 					<div class="instruction">
 						<span class="mnemonic">JMP</span>
 						<div class="description">Unconditional jump (1 cycle)</div>
 					</div>
 					<div class="instruction">
-						<span class="mnemonic">JZ</span>
-						<div class="description">Jump if zero (1 cycle)</div>
+						<span class="mnemonic">JE/JZ</span>
+						<div class="description">Jump if equal/zero (1 cycle)</div>
+					</div>
+					<div class="instruction">
+						<span class="mnemonic">JNE/JNZ</span>
+						<div class="description">Jump if not equal/not zero (1 cycle)</div>
 					</div>
 					<div class="instruction">
 						<span class="mnemonic">HLT</span>
 						<div class="description">Halt execution (1 cycle)</div>
+					</div>
+					
+					<h4 style="margin-top: 15px; color: #007acc;">Stack Operations</h4>
+					<div class="instruction">
+						<span class="mnemonic">PUSH</span>
+						<div class="description">Push register onto stack (1 cycle)</div>
+					</div>
+					<div class="instruction">
+						<span class="mnemonic">POP</span>
+						<div class="description">Pop from stack into register (1 cycle)</div>
+					</div>
+					<div class="instruction">
+						<span class="mnemonic">CALL</span>
+						<div class="description">Call subroutine (2 cycles)</div>
+					</div>
+					<div class="instruction">
+						<span class="mnemonic">RET</span>
+						<div class="description">Return from subroutine (2 cycles)</div>
+					</div>
+					
+					<h4 style="margin-top: 15px; color: #007acc;">Interrupts</h4>
+					<div class="instruction">
+						<span class="mnemonic">INT</span>
+						<div class="description">Software interrupt (2 cycles)</div>
+					</div>
+					<div class="instruction">
+						<span class="mnemonic">IRET</span>
+						<div class="description">Return from interrupt (2 cycles)</div>
 					</div>
 				</div>
 			</body>

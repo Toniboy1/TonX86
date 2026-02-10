@@ -12,6 +12,18 @@
 - `ESI` - Source Index
 - `EDI` - Destination Index
 
+**8-bit Register Aliases:**
+- `AL` - Low byte of EAX (bits 0-7)
+- `AH` - High byte of EAX (bits 8-15)
+- `CL` - Low byte of ECX (bits 0-7)
+- `CH` - High byte of ECX (bits 8-15)
+- `DL` - Low byte of EDX (bits 0-7)
+- `DH` - High byte of EDX (bits 8-15)
+- `BL` - Low byte of EBX (bits 0-7)
+- `BH` - High byte of EBX (bits 8-15)
+
+These 8-bit registers provide access to individual bytes of the 32-bit general purpose registers. They are commonly used for byte-oriented operations, character I/O, and interrupt service routines.
+
 ## Flags
 
 - **Z** (Zero) - Set when result is zero
@@ -32,6 +44,9 @@
   MOV EAX, ECX       ; Register to register
   MOV EAX, 0xF100    ; Read from I/O
   MOV 0xF000, 1      ; Write to I/O
+  MOV AL, 'H'        ; Move character to low byte of EAX
+  MOV AH, 0x0E       ; Move to high byte of EAX
+  MOV DL, 65         ; Move to low byte of EDX
   ```
 
 **XCHG dest, src** - Exchange values
