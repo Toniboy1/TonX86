@@ -93,6 +93,8 @@ npm run build
 | `RET` | - | - | Pop return address, jump to it |
 | `PUSH` | reg | - | Push register onto stack |
 | `POP` | reg | - | Pop from stack into register |
+| `INT` | imm8 | - | Software interrupt (syscall) |
+| `IRET` | - | All | Return from interrupt |
 | `HLT` | - | - | Halt execution |
 
 ### Stack Operations
@@ -108,6 +110,23 @@ npm run build
 
 ### Flags
 **Z** (Zero) | **C** (Carry) | **O** (Overflow) | **S** (Sign)
+
+### Interrupts
+
+Software interrupts enable system calls and I/O operations similar to DOS/BIOS.
+
+**INT num** - Software interrupt
+- Executes interrupt handler for the specified number
+- Output appears in VS Code Debug Console
+
+**Supported Interrupts:**
+- `INT 0x10` - Video services
+  - `AH=0x0E` - Teletype output (write character in AL to console)
+- `INT 0x21` - DOS-style services
+  - `AH=0x02` - Write character (character in DL to console)
+- `INT 0x20` - Program terminate (halts execution)
+
+**IRET** - Return from interrupt (placeholder for future use)
 
 ## Memory-Mapped I/O
 
@@ -181,6 +200,43 @@ main_loop:
 key_pressed:
     MOV 0xF000, 1          ; Turn on pixel
     JMP main_loop
+```
+
+### Console Output with Interrupts
+
+```asm
+; Print "Hello" to console using INT 0x10
+main:
+    MOV AH, 0x0E           ; Teletype output function
+    MOV AL, 'H'            ; Character 'H'
+    INT 0x10               ; Video services interrupt
+    
+    MOV AL, 'e'            ; Character 'e'
+    INT 0x10
+    
+    MOV AL, 'l'            ; Character 'l'
+    INT 0x10
+    INT 0x10               ; Print 'l' twice
+    
+    MOV AL, 'o'            ; Character 'o'
+    INT 0x10
+    
+    INT 0x20               ; Terminate program
+```
+
+### DOS-Style Console Output
+
+```asm
+; Print "Hi" using DOS INT 0x21
+main:
+    MOV AH, 0x02           ; Write character function
+    MOV DL, 'H'            ; Character 'H'
+    INT 0x21               ; DOS services interrupt
+    
+    MOV DL, 'i'            ; Character 'i'
+    INT 0x21
+    
+    HLT                    ; Halt execution
 ```
 
 ## Development

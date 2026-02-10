@@ -995,3 +995,136 @@ describe("Simulator - Keyboard Integration", () => {
     expect(registers.EDX).toBe(131);
   });
 });
+
+describe("Simulator - INT instruction", () => {
+  let sim: Simulator;
+
+  beforeEach(() => {
+    sim = new Simulator();
+  });
+
+  describe("INT 0x10 - Video services", () => {
+    test("INT 0x10 with AH=0x0E writes character to console", () => {
+      // Set AH = 0x0E (teletype output)
+      // Set AL = 'H' (0x48)
+      sim.executeInstruction("MOV", ["EAX", "0x0E48"]); // AH=0x0E, AL=0x48
+      sim.executeInstruction("INT", ["0x10"]);
+      
+      const output = sim.getConsoleOutput();
+      expect(output).toBe("H");
+    });
+
+    test("INT 0x10 outputs multiple characters", () => {
+      // Output 'H'
+      sim.executeInstruction("MOV", ["EAX", "0x0E48"]);
+      sim.executeInstruction("INT", ["0x10"]);
+      
+      // Output 'i'
+      sim.executeInstruction("MOV", ["EAX", "0x0E69"]);
+      sim.executeInstruction("INT", ["0x10"]);
+      
+      const output = sim.getConsoleOutput();
+      expect(output).toBe("Hi");
+    });
+
+    test("INT 0x10 handles newline character", () => {
+      sim.executeInstruction("MOV", ["EAX", "0x0E0A"]); // AL = '\n' (0x0A)
+      sim.executeInstruction("INT", ["0x10"]);
+      
+      const output = sim.getConsoleOutput();
+      expect(output).toBe("\n");
+    });
+
+    test("clearConsoleOutput clears the buffer", () => {
+      sim.executeInstruction("MOV", ["EAX", "0x0E48"]);
+      sim.executeInstruction("INT", ["0x10"]);
+      expect(sim.getConsoleOutput()).toBe("H");
+      
+      sim.clearConsoleOutput();
+      expect(sim.getConsoleOutput()).toBe("");
+    });
+
+    test("reset clears console output", () => {
+      sim.executeInstruction("MOV", ["EAX", "0x0E48"]);
+      sim.executeInstruction("INT", ["0x10"]);
+      expect(sim.getConsoleOutput()).toBe("H");
+      
+      sim.reset();
+      expect(sim.getConsoleOutput()).toBe("");
+    });
+  });
+
+  describe("INT 0x20 - Program terminate", () => {
+    test("INT 0x20 halts the program", () => {
+      sim.executeInstruction("INT", ["0x20"]);
+      
+      const state = sim.getState();
+      expect(state.halted).toBe(true);
+      expect(state.running).toBe(false);
+    });
+  });
+
+  describe("INT 0x21 - DOS services", () => {
+    test("INT 0x21 with AH=0x02 writes character from DL", () => {
+      // Set AH = 0x02 (write character)
+      // Set DL = 'A' (0x41)
+      sim.executeInstruction("MOV", ["EAX", "0x0200"]); // AH = 0x02
+      sim.executeInstruction("MOV", ["EDX", "0x41"]); // DL = 'A'
+      sim.executeInstruction("INT", ["0x21"]);
+      
+      const output = sim.getConsoleOutput();
+      expect(output).toBe("A");
+    });
+
+    test("INT 0x21 AH=0x02 outputs multiple characters", () => {
+      sim.executeInstruction("MOV", ["EAX", "0x0200"]);
+      sim.executeInstruction("MOV", ["EDX", "0x48"]); // 'H'
+      sim.executeInstruction("INT", ["0x21"]);
+      
+      sim.executeInstruction("MOV", ["EDX", "0x69"]); // 'i'
+      sim.executeInstruction("INT", ["0x21"]);
+      
+      const output = sim.getConsoleOutput();
+      expect(output).toBe("Hi");
+    });
+  });
+
+  describe("IRET instruction", () => {
+    test("IRET is recognized and doesn't crash", () => {
+      // IRET is a placeholder for now
+      expect(() => {
+        sim.executeInstruction("IRET", []);
+      }).not.toThrow();
+    });
+  });
+
+  describe("case insensitivity", () => {
+    test("int is case insensitive", () => {
+      sim.executeInstruction("MOV", ["EAX", "0x0E48"]);
+      sim.executeInstruction("int", ["0x10"]);
+      
+      const output = sim.getConsoleOutput();
+      expect(output).toBe("H");
+    });
+
+    test("iret is case insensitive", () => {
+      expect(() => {
+        sim.executeInstruction("iret", []);
+      }).not.toThrow();
+    });
+  });
+
+  describe("hex number parsing", () => {
+    test("INT accepts hex interrupt numbers", () => {
+      sim.executeInstruction("MOV", ["EAX", "0x0E48"]);
+      sim.executeInstruction("INT", ["0x10"]);
+      expect(sim.getConsoleOutput()).toBe("H");
+    });
+
+    test("INT accepts decimal interrupt numbers", () => {
+      sim.executeInstruction("MOV", ["EAX", "0x0E48"]);
+      sim.executeInstruction("INT", ["16"]); // 0x10 = 16
+      expect(sim.getConsoleOutput()).toBe("H");
+    });
+  });
+});

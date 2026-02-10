@@ -197,6 +197,7 @@ export class Simulator {
   private lcd: LCDDisplay;
   private keyboard: Keyboard;
   private code: Uint8Array = new Uint8Array();
+  private consoleOutput: string = ""; // Buffer for console output from INT 0x10
 
   // Map of mnemonics to register names
   private registerMap: { [key: string]: number } = {
@@ -515,6 +516,68 @@ export class Simulator {
         break;
       }
 
+      case "INT": {
+        // INT num - Software interrupt
+        if (operands.length !== 1) break;
+        const intNum = this.parseOperand(operands[0]);
+        
+        if (intNum.type === "immediate") {
+          // Push flags and return address (would be done in real implementation)
+          // For now, we just handle specific interrupt handlers
+          
+          switch (intNum.value) {
+            case 0x10: {
+              // Video services - write character to console
+              // AH = 0x0E: Write character in AL to console
+              const ah = (this.cpu.registers[0] >> 8) & 0xff; // High byte of EAX
+              const al = this.cpu.registers[0] & 0xff; // Low byte of EAX
+              
+              if (ah === 0x0e) {
+                // Teletype output - write character
+                this.consoleOutput += String.fromCharCode(al);
+              }
+              break;
+            }
+            
+            case 0x20: {
+              // Program terminate
+              this.cpu.halted = true;
+              this.cpu.running = false;
+              break;
+            }
+            
+            case 0x21: {
+              // DOS-style services
+              const ah = (this.cpu.registers[0] >> 8) & 0xff;
+              
+              switch (ah) {
+                case 0x02: {
+                  // Write character to stdout (DL contains character)
+                  const dl = (this.cpu.registers[2]) & 0xff; // Low byte of EDX
+                  this.consoleOutput += String.fromCharCode(dl);
+                  break;
+                }
+                case 0x09: {
+                  // Write string to stdout (would need pointer in EDX)
+                  // Not fully implemented for now
+                  break;
+                }
+              }
+              break;
+            }
+          }
+        }
+        break;
+      }
+
+      case "IRET": {
+        // IRET - Return from interrupt
+        // In a full implementation, this would pop flags and return address
+        // For now, this is a placeholder
+        // The debug adapter may handle control flow
+        break;
+      }
+
       case "HLT": {
         // HLT - halt processor
         this.cpu.halted = true;
@@ -581,6 +644,7 @@ export class Simulator {
     this.memory.clear();
     this.lcd.clear();
     this.keyboard.clear();
+    this.consoleOutput = "";
   }
 
   getState() {
@@ -642,6 +706,20 @@ export class Simulator {
       keyCode: this.keyboard.getKeyCode(),
       keyState: this.keyboard.getKeyState(),
     };
+  }
+
+  /**
+   * Get console output (from INT 0x10 and INT 0x21)
+   */
+  getConsoleOutput(): string {
+    return this.consoleOutput;
+  }
+
+  /**
+   * Clear console output buffer
+   */
+  clearConsoleOutput(): void {
+    this.consoleOutput = "";
   }
 
   addBreakpoint(address: number): void {
