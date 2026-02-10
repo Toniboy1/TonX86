@@ -37,6 +37,7 @@ export class TonX86DebugSession extends DebugSession {
   private shouldAutoStart = false; // Track if we should auto-start after config
   private simulator: Simulator; // CPU simulator instance
   private cpuSpeed: number = 100; // CPU speed percentage (1-200)
+  private callStack: number[] = []; // Call stack for tracking return addresses
 
   public constructor() {
     super();
@@ -242,30 +243,96 @@ export class TonX86DebugSession extends DebugSession {
         return;
       }
 
-      // Handle jump instructions
-      if (["JMP", "JE", "JZ", "JNE", "JNZ"].includes(currentInstr.mnemonic)) {
-        const targetLabel = currentInstr.operands[0];
-        const targetIndex = this.labels.get(targetLabel);
+      // Handle jump instructions (including CALL and RET)
+      if (
+        ["JMP", "JE", "JZ", "JNE", "JNZ", "CALL", "RET"].includes(
+          currentInstr.mnemonic,
+        )
+      ) {
+        if (currentInstr.mnemonic === "CALL") {
+          // CALL: Push return address (next instruction) and jump to label
+          const targetLabel = currentInstr.operands[0];
+          const targetIndex = this.labels.get(targetLabel);
 
-        if (targetIndex !== undefined) {
-          // For conditional jumps, check the Zero flag
-          const shouldJump =
-            currentInstr.mnemonic === "JMP" ||
-            (["JE", "JZ"].includes(currentInstr.mnemonic) &&
-              this.isZeroFlagSet()) ||
-            (["JNE", "JNZ"].includes(currentInstr.mnemonic) &&
-              !this.isZeroFlagSet());
+          if (targetIndex !== undefined) {
+            // Push return address onto call stack
+            const returnAddress = this.instructionPointer + 1;
+            this.callStack.push(returnAddress);
 
-          if (shouldJump) {
+            // Also push to CPU stack via simulator
+            // Store return address in a temporary way
+            const registers = this.simulator.getRegisters();
+            const tempEAX = registers.EAX; // Save EAX
+
+            // Use EAX to push return address
+            this.simulator.executeInstruction("MOV", [
+              "EAX",
+              returnAddress.toString(),
+            ]);
+            this.simulator.executeInstruction("PUSH", ["EAX"]);
+
+            // Restore EAX
+            this.simulator.executeInstruction("MOV", [
+              "EAX",
+              tempEAX.toString(),
+            ]);
+
+            // Jump to target
             this.instructionPointer = targetIndex;
           } else {
+            console.error(
+              `[TonX86] CALL target "${targetLabel}" not found in labels`,
+            );
+            this.instructionPointer++;
+          }
+        } else if (currentInstr.mnemonic === "RET") {
+          // RET: Pop return address and jump to it
+          if (this.callStack.length > 0) {
+            const returnAddress = this.callStack.pop()!;
+
+            // Also pop from CPU stack (discard the value)
+            const registers = this.simulator.getRegisters();
+            const tempEAX = registers.EAX; // Save EAX
+
+            this.simulator.executeInstruction("POP", ["EAX"]); // Pop return address
+
+            // Restore EAX
+            this.simulator.executeInstruction("MOV", [
+              "EAX",
+              tempEAX.toString(),
+            ]);
+
+            // Jump to return address
+            this.instructionPointer = returnAddress;
+          } else {
+            console.error("[TonX86] RET called with empty call stack");
             this.instructionPointer++;
           }
         } else {
-          console.error(
-            `[TonX86] Jump target "${targetLabel}" not found in labels`,
-          );
-          this.instructionPointer++;
+          // Handle other jump instructions
+          const targetLabel = currentInstr.operands[0];
+          const targetIndex = this.labels.get(targetLabel);
+
+          if (targetIndex !== undefined) {
+            // For conditional jumps, check the Zero flag
+            const shouldJump =
+              currentInstr.mnemonic === "JMP" ||
+              (["JE", "JZ"].includes(currentInstr.mnemonic) &&
+                this.isZeroFlagSet()) ||
+              (["JNE", "JNZ"].includes(currentInstr.mnemonic) &&
+                !this.isZeroFlagSet());
+
+            if (shouldJump) {
+              this.instructionPointer = targetIndex;
+            } else {
+              this.instructionPointer++;
+            }
+          } else {
+            console.error(
+              `[TonX86] Jump target "${targetLabel}" not found in labels`,
+            );
+            this.instructionPointer++;
+          }
         }
       } else {
         this.instructionPointer++;
