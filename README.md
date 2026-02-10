@@ -17,6 +17,7 @@ Educational x86-like assembly environment for VS Code with integrated debugging,
 - **Keyboard Input** - Real-time key press/release capture with event queue
 - **Register/Memory Views** - Live inspection of CPU state
 - **CPU Speed Control** - 1-200% execution speed for debugging/visualization
+- **Output Panel** - Mirrors Debug Console output to VS Code Output (TonX86)
 - **Language Server** - Syntax highlighting, diagnostics, code completion
 
 ## Architecture
@@ -92,6 +93,8 @@ Students should start in **educational mode** to learn core concepts, then switc
 
 ### Registers
 `EAX` `ECX` `EDX` `EBX` `ESP` `EBP` `ESI` `EDI`
+
+8-bit aliases: `AL`/`AH`, `BL`/`BH`, `CL`/`CH`, `DL`/`DH` (low/high bytes of EAX, EBX, ECX, EDX)
 
 ### Architecture Note
 
@@ -191,6 +194,10 @@ Software interrupts enable system calls and I/O operations similar to DOS/BIOS.
 **INT num** - Software interrupt
 - Executes interrupt handler for the specified number
 - Output appears in VS Code Debug Console
+
+Notes:
+- `AL`/`AH` are used for INT 0x10 (teletype output)
+- `DL`/`AH` are used for INT 0x21 (DOS-style output)
 
 **Supported Interrupts:**
 - `INT 0x10` - Video services

@@ -8,6 +8,9 @@ main:
     HLT                ; EAX should be 20
 
 multiply_by_4:
+    PUSH EBP           ; Save base pointer
+    MOV EBP, ESP       ; Set up stack frame
     ADD EAX, EAX       ; Double it (EAX = 10)
     ADD EAX, EAX       ; Double again (EAX = 20)
+    POP EBP            ; Restore base pointer
     RET

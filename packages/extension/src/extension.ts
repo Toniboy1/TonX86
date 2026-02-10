@@ -556,6 +556,7 @@ const memoryProviderB = new MemoryProvider(0x0000, MEMORY_VIEW_SIZE);
 let lcdProvider: LCDViewProvider;
 let currentDebugSession: vscode.DebugSession | undefined;
 let client: LanguageClient;
+let outputChannel: vscode.OutputChannel;
 
 export function activate(context: vscode.ExtensionContext): void {
   console.log("TonX86 extension is now active");
@@ -594,6 +595,10 @@ export function activate(context: vscode.ExtensionContext): void {
   // Start the client (and the server)
   client.start();
   console.log("TonX86 Language Server started");
+
+  // Output channel for debug output
+  outputChannel = vscode.window.createOutputChannel("TonX86");
+  context.subscriptions.push(outputChannel);
 
   // Register tree data providers
   vscode.window.registerTreeDataProvider("tonx86.registers", registersProvider);
@@ -639,6 +644,8 @@ export function activate(context: vscode.ExtensionContext): void {
       if (session.type === "tonx86") {
         console.log("TonX86 debug session started, polling view states");
         currentDebugSession = session; // Store current session for keyboard events
+        outputChannel.appendLine("=== Program Output ===");
+        outputChannel.show(true);
         // Poll LCD and memory state every 50ms while debugging (20 FPS)
         viewUpdateInterval = setInterval(async () => {
           await updateLCDDisplay(session);
@@ -653,6 +660,7 @@ export function activate(context: vscode.ExtensionContext): void {
       if (session.type === "tonx86") {
         console.log("TonX86 debug session terminated, stopping view polling");
         currentDebugSession = undefined; // Clear session reference
+        outputChannel.appendLine("=== End of Program Output ===");
         if (viewUpdateInterval) {
           clearInterval(viewUpdateInterval);
           viewUpdateInterval = undefined;
@@ -688,6 +696,30 @@ export function activate(context: vscode.ExtensionContext): void {
       // Silently fail - session might not be ready yet
     }
   }
+
+  // Mirror Debug Console output to Output panel
+  context.subscriptions.push(
+    vscode.debug.registerDebugAdapterTrackerFactory("tonx86", {
+      createDebugAdapterTracker(session: vscode.DebugSession) {
+        if (session.type !== "tonx86") {
+          return undefined;
+        }
+        return {
+          onDidSendMessage(message) {
+            if (
+              message.type === "event" &&
+              message.event === "output" &&
+              message.body?.output &&
+              (message.body.category === "stdout" ||
+                message.body.category === "stderr")
+            ) {
+              outputChannel.append(message.body.output);
+            }
+          },
+        };
+      },
+    }),
+  );
 
   // Monitor configuration changes
   context.subscriptions.push(

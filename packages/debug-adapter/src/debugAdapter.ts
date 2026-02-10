@@ -940,7 +940,7 @@ export class TonX86DebugSession extends DebugSession {
   private emitConsoleOutput(): void {
     const output = this.simulator.getConsoleOutput();
     if (output.length > 0) {
-      this.sendEvent(new OutputEvent(output, "stdout"));
+      this.sendEvent(new OutputEvent(output + "\n", "stdout"));
       this.simulator.clearConsoleOutput();
     }
   }
