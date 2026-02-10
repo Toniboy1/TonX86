@@ -166,6 +166,12 @@ export class TonX86DebugSession extends DebugSession {
         "[TonX86] Stopping at first instruction at line",
         this.currentLine,
       );
+      this.sendEvent(
+        new OutputEvent(
+          `\n=== TonX86 Debug Session Started ===\nProgram: ${path.basename(this.programPath)}\nInstructions: ${this.instructions.length}\n`,
+          "console",
+        ),
+      );
       setTimeout(() => {
         this.sendEvent(new StoppedEvent("entry", 1));
       }, 100);
@@ -200,6 +206,17 @@ export class TonX86DebugSession extends DebugSession {
     let iterationCount = 0;
     let firstIteration = true; // Skip breakpoint check on first instruction
 
+    console.error(
+      "[TonX86] Starting continue execution from instruction pointer:",
+      this.instructionPointer,
+    );
+    console.error("[TonX86] Active breakpoints:", Array.from(this.breakpoints));
+
+    // Output to Debug Console
+    this.sendEvent(
+      new OutputEvent(`\n=== Continuing execution ===\n`, "console"),
+    );
+
     while (
       this.instructionPointer < this.instructions.length &&
       iterationCount < maxIterations
@@ -210,9 +227,19 @@ export class TonX86DebugSession extends DebugSession {
 
       // Check for breakpoint BEFORE executing the instruction
       // But skip the check on first iteration (we're continuing from that line)
+      console.error(
+        `[TonX86] Checking line ${currentInstr.line}, firstIteration=${firstIteration}, hasBreakpoint=${this.breakpoints.has(currentInstr.line)}`,
+      );
+
       if (!firstIteration && this.breakpoints.has(currentInstr.line)) {
         this.currentLine = currentInstr.line;
         console.error("[TonX86] Hit breakpoint at line", this.currentLine);
+        this.sendEvent(
+          new OutputEvent(
+            `\n*** Breakpoint hit at line ${this.currentLine} ***\n`,
+            "console",
+          ),
+        );
         // Send stopped event at breakpoint
         this.sendEvent(new StoppedEvent("breakpoint", 1));
         return;
@@ -231,6 +258,11 @@ export class TonX86DebugSession extends DebugSession {
       console.error(
         `[TonX86] Executing: ${currentInstr.mnemonic} ${currentInstr.operands.join(", ")}`,
       );
+
+      // Send execution step to Debug Console
+      const stepMsg = `[Line ${currentInstr.line}] ${currentInstr.mnemonic} ${currentInstr.operands.join(", ")}\n`;
+      this.sendEvent(new OutputEvent(stepMsg, "console"));
+
       try {
         this.simulator.executeInstruction(
           currentInstr.mnemonic,
@@ -240,6 +272,12 @@ export class TonX86DebugSession extends DebugSession {
         this.emitConsoleOutput();
       } catch (err) {
         console.error(`[TonX86] ERROR at line ${currentInstr.line}:`, err);
+        this.sendEvent(
+          new OutputEvent(
+            `ERROR at line ${currentInstr.line}: ${err}\n`,
+            "stderr",
+          ),
+        );
         this.sendEvent(new TerminatedEvent());
         return;
       }
@@ -251,6 +289,12 @@ export class TonX86DebugSession extends DebugSession {
         console.error(
           "[TonX86] Program halted at HLT instruction at line",
           currentInstr.line,
+        );
+        this.sendEvent(
+          new OutputEvent(
+            `\n=== Program halted at line ${currentInstr.line} ===\n`,
+            "console",
+          ),
         );
 
         // Terminate the debug session
@@ -541,6 +585,9 @@ export class TonX86DebugSession extends DebugSession {
     response: DebugProtocol.ContinueResponse,
     args: DebugProtocol.ContinueArguments,
   ): void {
+    console.error("======================================");
+    console.error("[TonX86] *** CONTINUE REQUEST (F5) ***");
+    console.error("======================================");
     console.error("[TonX86] Continue request for thread:", args.threadId);
     console.error(
       "[TonX86] Current state: instructionPointer=",
@@ -558,6 +605,9 @@ export class TonX86DebugSession extends DebugSession {
     response: DebugProtocol.NextResponse,
     args: DebugProtocol.NextArguments,
   ): void {
+    console.error("======================================");
+    console.error("[TonX86] *** NEXT REQUEST (F10 Step Over) ***");
+    console.error("======================================");
     console.error(
       "[TonX86] Next request for thread:",
       args.threadId,
@@ -574,6 +624,10 @@ export class TonX86DebugSession extends DebugSession {
       console.error(
         `[TonX86] Executing (next): ${currentInstr.mnemonic} ${currentInstr.operands.join(", ")}`,
       );
+
+      // Send execution step to Debug Console
+      const stepMsg = `[Line ${currentInstr.line}] ${currentInstr.mnemonic} ${currentInstr.operands.join(", ")}\n`;
+      this.sendEvent(new OutputEvent(stepMsg, "console"));
 
       // Execute the instruction
       try {
@@ -593,6 +647,12 @@ export class TonX86DebugSession extends DebugSession {
           }),
         );
         console.error(`[TonX86] ERROR during instruction execution:`, err);
+        this.sendEvent(
+          new OutputEvent(
+            `ERROR at line ${currentInstr.line}: ${err}\n`,
+            "stderr",
+          ),
+        );
         this.sendEvent(new TerminatedEvent());
         return;
       }

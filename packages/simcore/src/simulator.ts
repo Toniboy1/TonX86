@@ -217,7 +217,11 @@ export class Simulator {
     EDI: 7,
   };
 
-  constructor(lcdWidth: number = 8, lcdHeight: number = 8, compatibilityMode: CompatibilityMode = "educational") {
+  constructor(
+    lcdWidth: number = 8,
+    lcdHeight: number = 8,
+    compatibilityMode: CompatibilityMode = "educational",
+  ) {
     this.cpu = new CPUState();
     this.memory = new Memory();
     this.lcd = new LCDDisplay(lcdWidth, lcdHeight);
@@ -342,26 +346,28 @@ export class Simulator {
     // Check for memory addressing [REG] or [REG+offset] or [REG+REG]
     if (operand.startsWith("[") && operand.endsWith("]")) {
       const memExpr = operand.slice(1, -1).trim();
-      
+
       // Handle [REG+offset] or [REG-offset]
       const plusMatch = memExpr.match(/^([A-Z]+)\s*\+\s*(.+)$/);
       const minusMatch = memExpr.match(/^([A-Z]+)\s*-\s*(.+)$/);
-      
+
       if (plusMatch) {
         const baseReg = plusMatch[1];
         const offsetStr = plusMatch[2];
-        
+
         if (Object.prototype.hasOwnProperty.call(this.registerMap, baseReg)) {
           // Parse offset (could be number or another register)
           let offset = 0;
-          if (Object.prototype.hasOwnProperty.call(this.registerMap, offsetStr)) {
+          if (
+            Object.prototype.hasOwnProperty.call(this.registerMap, offsetStr)
+          ) {
             // [REG+REG] - use register value as offset
             offset = this.cpu.registers[this.registerMap[offsetStr]];
           } else {
             // [REG+immediate]
             offset = parseInt(offsetStr, 10);
           }
-          
+
           return {
             type: "memory",
             value: 0,
@@ -372,7 +378,7 @@ export class Simulator {
       } else if (minusMatch) {
         const baseReg = minusMatch[1];
         const offsetStr = minusMatch[2];
-        
+
         if (Object.prototype.hasOwnProperty.call(this.registerMap, baseReg)) {
           let offset = parseInt(offsetStr, 10);
           return {
@@ -434,8 +440,11 @@ export class Simulator {
 
         // In strict-x86 mode, memory-to-memory MOV is not allowed
         if (this.compatibilityMode === "strict-x86") {
-          const isDestMemory = dest.type === "immediate" || dest.type === "memory";
-          const isSrcMemory = (src.type === "immediate" && src.value >= 0xf000) || src.type === "memory";
+          const isDestMemory =
+            dest.type === "immediate" || dest.type === "memory";
+          const isSrcMemory =
+            (src.type === "immediate" && src.value >= 0xf000) ||
+            src.type === "memory";
 
           if (isDestMemory && isSrcMemory) {
             throw new Error(
@@ -450,7 +459,8 @@ export class Simulator {
           srcValue = this.cpu.registers[src.value];
         } else if (src.type === "memory") {
           // Read from memory address [base+offset]
-          const addr = (this.cpu.registers[src.base!] + (src.offset || 0)) & 0xffff;
+          const addr =
+            (this.cpu.registers[src.base!] + (src.offset || 0)) & 0xffff;
           srcValue = this.readMemory32(addr);
         } else {
           // src.type === "immediate"
@@ -468,7 +478,8 @@ export class Simulator {
           this.cpu.registers[dest.value] = srcValue;
         } else if (dest.type === "memory") {
           // Write to memory address [base+offset]
-          const addr = (this.cpu.registers[dest.base!] + (dest.offset || 0)) & 0xffff;
+          const addr =
+            (this.cpu.registers[dest.base!] + (dest.offset || 0)) & 0xffff;
           this.writeMemory32(addr, srcValue);
         } else if (dest.type === "immediate") {
           // Destination is a memory address (I/O write)
@@ -562,7 +573,8 @@ export class Simulator {
           if (src.type === "register") {
             srcValue = this.cpu.registers[src.value];
           } else if (src.type === "memory") {
-            const addr = (this.cpu.registers[src.base!] + (src.offset || 0)) & 0xffff;
+            const addr =
+              (this.cpu.registers[src.base!] + (src.offset || 0)) & 0xffff;
             srcValue = this.readMemory32(addr);
           } else {
             srcValue = src.value;
@@ -585,7 +597,8 @@ export class Simulator {
           if (src.type === "register") {
             srcValue = this.cpu.registers[src.value];
           } else if (src.type === "memory") {
-            const addr = (this.cpu.registers[src.base!] + (src.offset || 0)) & 0xffff;
+            const addr =
+              (this.cpu.registers[src.base!] + (src.offset || 0)) & 0xffff;
             srcValue = this.readMemory32(addr);
           } else {
             srcValue = src.value;
@@ -687,7 +700,7 @@ export class Simulator {
         const srcValue =
           src.type === "register" ? this.cpu.registers[src.value] : src.value;
         const divisor = srcValue | 0;
-        
+
         if (divisor === 0) {
           // Division by zero
           this.cpu.registers[0] = 0;
@@ -727,7 +740,7 @@ export class Simulator {
           const srcValue =
             src.type === "register" ? this.cpu.registers[src.value] : src.value;
           this.cpu.registers[dest.value] =
-            (this.cpu.registers[dest.value] & srcValue) & 0xffffffff;
+            this.cpu.registers[dest.value] & srcValue & 0xffffffff;
           this.updateFlags(this.cpu.registers[dest.value]);
         }
         break;
@@ -771,7 +784,8 @@ export class Simulator {
         const dest = this.parseOperand(operands[0]);
 
         if (dest.type === "register") {
-          this.cpu.registers[dest.value] = (~this.cpu.registers[dest.value]) & 0xffffffff;
+          this.cpu.registers[dest.value] =
+            ~this.cpu.registers[dest.value] & 0xffffffff;
           // NOT does not affect flags in x86
         }
         break;
@@ -784,7 +798,7 @@ export class Simulator {
 
         if (dest.type === "register") {
           this.cpu.registers[dest.value] =
-            (-this.cpu.registers[dest.value]) & 0xffffffff;
+            -this.cpu.registers[dest.value] & 0xffffffff;
           this.updateFlags(this.cpu.registers[dest.value]);
         }
         break;
@@ -800,7 +814,7 @@ export class Simulator {
           const destValue = this.cpu.registers[dest.value];
           const srcValue =
             src.type === "register" ? this.cpu.registers[src.value] : src.value;
-          const result = (destValue & srcValue) & 0xffffffff;
+          const result = destValue & srcValue & 0xffffffff;
           this.updateFlags(result);
         }
         break;
@@ -863,7 +877,9 @@ export class Simulator {
 
         if (dest.type === "register") {
           const count =
-            (src.type === "register" ? this.cpu.registers[src.value] : src.value) & 0x1f;
+            (src.type === "register"
+              ? this.cpu.registers[src.value]
+              : src.value) & 0x1f;
           const value = this.cpu.registers[dest.value];
           this.cpu.registers[dest.value] =
             ((value << count) | (value >>> (32 - count))) & 0xffffffff;
@@ -880,7 +896,9 @@ export class Simulator {
 
         if (dest.type === "register") {
           const count =
-            (src.type === "register" ? this.cpu.registers[src.value] : src.value) & 0x1f;
+            (src.type === "register"
+              ? this.cpu.registers[src.value]
+              : src.value) & 0x1f;
           const value = this.cpu.registers[dest.value];
           this.cpu.registers[dest.value] =
             ((value >>> count) | (value << (32 - count))) & 0xffffffff;
@@ -919,12 +937,13 @@ export class Simulator {
         } else if (src.type === "immediate") {
           value = src.value;
         } else if (src.type === "memory") {
-          const addr = (this.cpu.registers[src.base!] + (src.offset || 0)) & 0xffff;
+          const addr =
+            (this.cpu.registers[src.base!] + (src.offset || 0)) & 0xffff;
           value = this.readMemory32(addr);
         } else {
           break;
         }
-        
+
         this.pushStack(value);
         break;
       }
@@ -954,38 +973,37 @@ export class Simulator {
         // INT num - Software interrupt: Handle software interrupt by executing the appropriate interrupt handler
         if (operands.length !== 1) break;
         const intNum = this.parseOperand(operands[0]);
-        
+
         if (intNum.type === "immediate") {
-          
           switch (intNum.value) {
             case 0x10: {
               // Video services - write character to console
               // AH = 0x0E: Write character in AL to console
               const ah = (this.cpu.registers[0] >> 8) & 0xff; // High byte of EAX
               const al = this.cpu.registers[0] & 0xff; // Low byte of EAX
-              
+
               if (ah === 0x0e) {
                 // Teletype output - write character
                 this.consoleOutput += String.fromCharCode(al);
               }
               break;
             }
-            
+
             case 0x20: {
               // Program terminate
               this.cpu.halted = true;
               this.cpu.running = false;
               break;
             }
-            
+
             case 0x21: {
               // DOS-style services
               const ah = (this.cpu.registers[0] >> 8) & 0xff;
-              
+
               switch (ah) {
                 case 0x02: {
                   // Write character to stdout (DL contains character)
-                  const dl = (this.cpu.registers[2]) & 0xff; // Low byte of EDX
+                  const dl = this.cpu.registers[2] & 0xff; // Low byte of EDX
                   this.consoleOutput += String.fromCharCode(dl);
                   break;
                 }
