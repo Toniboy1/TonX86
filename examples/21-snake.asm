@@ -106,7 +106,7 @@ init_game:
     MOV ESI, 0           ; Direction = right
     
     ; Store initial snake body positions
-    MOV EAX, SNAKE_BODY
+    LEA EAX, SNAKE_BODY
     ; Position 0 (head): X=32, Y=32
     MOV [EAX], EBX
     ADD EAX, 1
@@ -138,7 +138,7 @@ clear_lcd:
     PUSH EAX
     PUSH EBX
     
-    MOV EAX, LCD_BASE
+    LEA EAX, LCD_BASE
     MOV EBX, 4096        ; 64*64 pixels
 clear_loop:
     MOV [EAX], 0
@@ -310,7 +310,7 @@ shift_body:
 
 shift_done:
     ; Store new head position
-    MOV ECX, SNAKE_BODY
+    LEA ECX, SNAKE_BODY
     MOV [ECX], EAX       ; New head X
     ADD ECX, 1
     MOV [ECX], EBX       ; New head Y
@@ -473,15 +473,15 @@ check_input:
     PUSH EBX
     
     ; Check if key available
-    MOV EAX, [KB_STATUS]
+    MOV EAX, KB_STATUS
     CMP EAX, 0
     JE no_input
     
     ; Read key code
-    MOV EAX, [KB_KEYCODE]
+    MOV EAX, KB_KEYCODE
     
     ; Check key state (only process key press)
-    MOV EBX, [KB_STATE]
+    MOV EBX, KB_STATE
     CMP EBX, 1
     JNE no_input
     
@@ -537,12 +537,12 @@ wait_for_space:
     PUSH EBX
     
 wait_space_loop:
-    MOV EAX, [KB_STATUS]
+    MOV EAX, KB_STATUS
     CMP EAX, 0
     JE wait_space_loop
     
-    MOV EAX, [KB_KEYCODE]
-    MOV EBX, [KB_STATE]
+    MOV EAX, KB_KEYCODE
+    MOV EBX, KB_STATE
     
     CMP EAX, KEY_SPACE
     JNE wait_space_loop
@@ -587,7 +587,7 @@ flash_screen:
     MOV ECX, 3           ; Flash 3 times
 flash_loop:
     ; Fill screen
-    MOV EAX, LCD_BASE
+    LEA EAX, LCD_BASE
     MOV EBX, 4096
 fill_loop:
     MOV [EAX], 1
