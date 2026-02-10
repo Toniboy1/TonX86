@@ -16,6 +16,18 @@ fs.copyFileSync(
 
 console.log('Debug adapter copied successfully');
 
+// Copy language server
+const languageServerSrc = '../language-server/dist';
+if (fs.existsSync(path.join(languageServerSrc, 'server.js'))) {
+  fs.copyFileSync(
+    path.join(languageServerSrc, 'server.js'),
+    path.join(dist, 'languageServer.js')
+  );
+  console.log('Language server copied successfully');
+} else {
+  console.warn('WARNING: Language server not found at ' + languageServerSrc);
+}
+
 // Copy LICENSE from root
 const licenseSrc = '../../LICENSE';
 const licenseDest = './LICENSE';

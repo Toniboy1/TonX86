@@ -778,6 +778,18 @@ export class TonX86DebugSession extends DebugSession {
         pixels: Array.from(lcdData),
       };
       this.sendResponse(response);
+    } else if (command === "getMemoryState") {
+      // Get memory state for both memory banks
+      // Default to showing first 16 bytes if not specified
+      const DEFAULT_MEMORY_VIEW_SIZE = 16;
+      const { start = 0, length = DEFAULT_MEMORY_VIEW_SIZE } = args || {};
+      const memoryA = this.simulator.getMemoryA(start, length);
+      const memoryB = this.simulator.getMemoryB(start, length);
+      response.body = {
+        memoryA: Array.from(memoryA),
+        memoryB: Array.from(memoryB),
+      };
+      this.sendResponse(response);
     } else if (command === "keyboardEvent") {
       // Forward keyboard event to simulator
       const { keyCode, pressed } = args;
