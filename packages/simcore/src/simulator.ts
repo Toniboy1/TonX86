@@ -262,10 +262,11 @@ export class Simulator {
    */
   private writeIO(address: number, value: number): void {
     const IO_LCD_BASE = 0xf000;
+    const IO_LCD_LIMIT = 0xf100;
     const IO_KEYBOARD_BASE = 0xf100;
     const lcdSize = this.lcd["width"] * this.lcd["height"];
 
-    if (address >= IO_LCD_BASE && address < IO_LCD_BASE + lcdSize) {
+    if (address >= IO_LCD_BASE && address < IO_LCD_LIMIT) {
       // LCD pixel write
       const pixelIndex = address - IO_LCD_BASE;
       const width = this.lcd["width"];
@@ -471,16 +472,6 @@ export class Simulator {
       value = parseInt(operand, 10);
     }
 
-    // If value is in I/O range (0xF000-0xF1FF), treat as memory address instead of immediate
-    if (value >= 0xf000 && value <= 0xf1ff) {
-      return {
-        type: "memory",
-        value: 0,
-        base: -1, // Special marker for absolute I/O address
-        offset: value, // Store the address in offset
-      };
-    }
-
     return {
       type: "immediate",
       value: value & 0xffffffff,
@@ -539,11 +530,7 @@ export class Simulator {
         if (this.compatibilityMode === "strict-x86") {
           const isDestMemory =
             dest.type === "immediate" || dest.type === "memory";
-          const isSrcMemory =
-            (src.type === "immediate" &&
-              src.value >= 0xf000 &&
-              src.value <= 0xf1ff) ||
-            src.type === "memory";
+          const isSrcMemory = src.type === "memory";
 
           if (isDestMemory && isSrcMemory) {
             throw new Error(
@@ -573,13 +560,8 @@ export class Simulator {
           }
         } else {
           // src.type === "immediate"
-          // Check if source is an I/O memory address (0xF000-0xF1FF)
-          if (src.value >= 0xf000 && src.value <= 0xf1ff) {
-            srcValue = this.readIO(src.value);
-          } else {
-            // Literal immediate value (e.g., MOV EAX, 42)
-            srcValue = src.value;
-          }
+          // Literal immediate value (e.g., MOV EAX, 42)
+          srcValue = src.value;
         }
 
         // Handle destination

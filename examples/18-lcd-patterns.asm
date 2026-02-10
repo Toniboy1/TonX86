@@ -1,42 +1,87 @@
 ; Test 18: LCD Display (Complete Testing)
 ; Tests: All LCD memory-mapped I/O operations
-; Expected: Pattern visible on LCD display
+; Expected: Border square with cross inside
 ; Default LCD size: 16x16 pixels
 
 main:
-    ; Draw horizontal line at top (y=0)
-    MOV ECX, 0         ; x counter
+    ; Draw top border (y=0, x=0-15)
+    MOV ECX, 0
 draw_top:
-    MOV EAX, 0xF000    ; Base address
-    ADD EAX, ECX       ; Add x offset (y*width + x, where y=0)
-    MOV [EAX], 1       ; Turn on pixel
-    INC ECX
-    CMP ECX, 16        ; Width = 16
-    JNE draw_top
-    
-    ; Draw vertical line at left (x=0)
-    MOV ECX, 0         ; y counter
-draw_left:
-    MOV EAX, ECX       ; y coordinate
-    MOV EBX, 16        ; Width
-    MUL EBX            ; EAX = y * width
-    ADD EAX, 0xF000    ; Add base address
-    MOV [EAX], 1       ; Turn on pixel
-    INC ECX
-    CMP ECX, 16        ; Height = 16
-    JNE draw_left
-    
-    ; Draw diagonal line
-    MOV ECX, 0         ; counter
-draw_diagonal:
-    MOV EAX, ECX       ; y = x
-    MOV EBX, 16        ; Width
-    MUL EBX            ; EAX = y * width
-    ADD EAX, ECX       ; Add x
-    ADD EAX, 0xF000    ; Add base address
-    MOV [EAX], 1       ; Turn on pixel
+    MOV EAX, 0xF000
+    ADD EAX, ECX
+    MOV [EAX], 1
     INC ECX
     CMP ECX, 16
-    JNE draw_diagonal
+    JNE draw_top
+    
+    ; Draw bottom border (y=15, x=0-15)
+    MOV ECX, 0
+draw_bottom:
+    MOV EAX, 15
+    MOV EDX, 16
+    MUL EDX
+    ADD EAX, ECX
+    ADD EAX, 0xF000
+    MOV [EAX], 1
+    INC ECX
+    CMP ECX, 16
+    JNE draw_bottom
+    
+    ; Draw left border (x=0, y=0-15)
+    MOV ECX, 0
+draw_left:
+    PUSH EBX
+    MOV EAX, ECX
+    MOV EBX, 16
+    MUL EBX
+    ADD EAX, 0xF000
+    MOV [EAX], 1
+    INC ECX
+    CMP ECX, 16
+    JNE draw_left
+    POP EBX
+    
+    ; Draw right border (x=15, y=0-15)
+    MOV ECX, 0
+draw_right:
+    PUSH EBX
+    MOV EAX, ECX
+    MOV EBX, 16
+    MUL EBX
+    ADD EAX, 15
+    ADD EAX, 0xF000
+    MOV [EAX], 1
+    INC ECX
+    CMP ECX, 16
+    JNE draw_right
+    POP EBX
+    
+    ; Draw horizontal line (y=8, middle)
+    MOV ECX, 0
+draw_h_cross:
+    MOV EAX, 8
+    MOV EDX, 16
+    MUL EDX
+    ADD EAX, ECX
+    ADD EAX, 0xF000
+    MOV [EAX], 1
+    INC ECX
+    CMP ECX, 16
+    JNE draw_h_cross
+    
+    ; Draw vertical line (x=8, middle)
+    MOV ECX, 0
+draw_v_cross:
+    PUSH EBX
+    MOV EAX, ECX
+    MOV EBX, 16
+    MUL EBX
+    ADD EAX, 8
+    ADD EAX, 0xF000
+    MOV [EAX], 1
+    INC ECX
+    CMP ECX, 16
+    JNE draw_v_cross
+    POP EBX
     
     HLT
