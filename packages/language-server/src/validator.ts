@@ -281,10 +281,7 @@ export function validateInstructions(
     const operands = tokens.slice(1);
 
     // Validate operand counts
-    if (
-      REQUIRES_TWO_OPERANDS.includes(instruction) &&
-      operands.length !== 2
-    ) {
+    if (REQUIRES_TWO_OPERANDS.includes(instruction) && operands.length !== 2) {
       diagnostics.push({
         severity: DiagnosticSeverity.Error,
         range: {
@@ -297,10 +294,7 @@ export function validateInstructions(
       return;
     }
 
-    if (
-      REQUIRES_ONE_OPERAND.includes(instruction) &&
-      operands.length !== 1
-    ) {
+    if (REQUIRES_ONE_OPERAND.includes(instruction) && operands.length !== 1) {
       diagnostics.push({
         severity: DiagnosticSeverity.Error,
         range: {
@@ -961,8 +955,11 @@ export function validateDocumentText(
   const lines = text.split(/\r?\n/);
 
   // First pass
-  const { labels, equConstants, diagnostics: labelDiags } =
-    collectLabelsAndConstants(lines);
+  const {
+    labels,
+    equConstants,
+    diagnostics: labelDiags,
+  } = collectLabelsAndConstants(lines);
 
   // Second pass
   const instrDiags = validateInstructions(

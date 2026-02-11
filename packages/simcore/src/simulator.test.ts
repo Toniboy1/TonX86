@@ -2040,4 +2040,370 @@ describe("x86 Flags and Instructions (UVA CS216 verification)", () => {
       expect(() => sim.executeInstruction("JBE", ["label"])).not.toThrow();
     });
   });
+
+  describe("Memory addressing modes", () => {
+    test("supports [REG-offset] addressing", () => {
+      sim.executeInstruction("MOV", ["EBP", "100"]);
+      sim.executeInstruction("MOV", ["[EBP-4]", "42"]);
+      sim.executeInstruction("MOV", ["EAX", "[EBP-4]"]);
+      const regs = sim.getRegisters();
+      expect(regs.EAX).toBe(42);
+    });
+
+    test("supports [REG+REG] addressing", () => {
+      sim.executeInstruction("MOV", ["EBX", "1000"]);
+      sim.executeInstruction("MOV", ["ECX", "50"]);
+      sim.executeInstruction("MOV", ["[EBX+ECX]", "99"]);
+      sim.executeInstruction("MOV", ["EAX", "[EBX+ECX]"]);
+      const regs = sim.getRegisters();
+      expect(regs.EAX).toBe(99);
+    });
+
+    test("supports binary literal addresses [0B...]", () => {
+      sim.executeInstruction("MOV", ["[0B1111101000]", "77"]); // Binary 1000
+      sim.executeInstruction("MOV", ["EDX", "[0B1111101000]"]);
+      const regs = sim.getRegisters();
+      expect(regs.EDX).toBe(77);
+    });
+
+    test("supports uppercase hex addresses [0X...]", () => {
+      sim.executeInstruction("MOV", ["[0X0500]", "88"]);
+      sim.executeInstruction("MOV", ["ESI", "[0X0500]"]);
+      const regs = sim.getRegisters();
+      expect(regs.ESI).toBe(88);
+    });
+
+    test("supports uppercase binary addresses [0B...]", () => {
+      sim.executeInstruction("MOV", ["[0B10000000]", "55"]); // Binary 128
+      sim.executeInstruction("MOV", ["EDI", "[0B10000000]"]);
+      const regs = sim.getRegisters();
+      expect(regs.EDI).toBe(55);
+    });
+  });
+
+  describe("Character literal operands", () => {
+    test("supports character literal in immediate values", () => {
+      sim.executeInstruction("MOV", ["EAX", "'A'"]);
+      const regs = sim.getRegisters();
+      expect(regs.EAX).toBe(65);
+    });
+
+    test("supports different character literals", () => {
+      sim.executeInstruction("MOV", ["EBX", "'Z'"]);
+      const regs = sim.getRegisters();
+      expect(regs.EBX).toBe(90);
+    });
+
+    test("supports space character literal", () => {
+      sim.executeInstruction("MOV", ["ECX", "' '"]);
+      const regs = sim.getRegisters();
+      expect(regs.ECX).toBe(32);
+    });
+  });
+
+  describe("I/O error handling", () => {
+    test("reading from LCD address returns 0 (write-only)", () => {
+      // LCD addresses are 0xF000-0xFFFF
+      sim.executeInstruction("MOV", ["EAX", "[0xF000]"]);
+      const regs = sim.getRegisters();
+      expect(regs.EAX).toBe(0); // LCD is write-only, reads return 0
+    });
+
+    test("reading from unknown keyboard I/O address throws error", () => {
+      // 0x10103 is in keyboard range but not a valid keyboard register
+      expect(() => {
+        sim.executeInstruction("MOV", ["EAX", "[0x10103]"]);
+      }).toThrow("Unknown I/O read address");
+    });
+
+    test("writing to keyboard registers is silently ignored", () => {
+      // Keyboard registers are read-only
+      sim.executeInstruction("MOV", ["EAX", "100"]);
+      expect(() => {
+        sim.executeInstruction("MOV", ["[0x10100]", "EAX"]);
+      }).not.toThrow(); // Should not throw, just ignore
+    });
+  });
+
+  describe("XCHG instruction", () => {
+    test("exchanges two register values", () => {
+      sim.executeInstruction("MOV", ["EAX", "10"]);
+      sim.executeInstruction("MOV", ["EBX", "20"]);
+      sim.executeInstruction("XCHG", ["EAX", "EBX"]);
+      const regs = sim.getRegisters();
+      expect(regs.EAX).toBe(20);
+      expect(regs.EBX).toBe(10);
+    });
+  });
+
+  describe("Additional edge cases", () => {
+    test("MOV with memory destination using I/O address", () => {
+      sim.executeInstruction("MOV", ["[0xF000]", "1"]); // Write to LCD
+      // Verify by reading display state
+      const display = sim.getLCDDisplay();
+      expect(display).toBeDefined();
+      expect(display[0]).toBe(1); // First pixel should be 1
+    });
+
+    test("8-bit register operations preserve upper bits", () => {
+      sim.executeInstruction("MOV", ["EAX", "0xAABBCCDD"]);
+      sim.executeInstruction("MOV", ["AL", "0x11"]); // Set low byte
+      const regs = sim.getRegisters();
+      expect(regs.EAX).toBe(0xaabbcc11);
+    });
+
+    test("8-bit high register operations", () => {
+      sim.executeInstruction("MOV", ["EAX", "0x12345678"]);
+      sim.executeInstruction("MOV", ["AH", "0xFF"]); // Set high byte of low word
+      const regs = sim.getRegisters();
+      expect(regs.EAX).toBe(0x1234ff78);
+    });
+
+    test("writing to unknown I/O address throws error", () => {
+      expect(() => {
+        // Address between LCD and keyboard ranges (0x10000-0x100FF)
+        sim.executeInstruction("MOV", ["0x10050", "1"]); // dest as immediate = I/O write
+      }).toThrow("Unknown I/O address");
+    });
+
+    test("simple [REG] memory addressing", () => {
+      sim.executeInstruction("MOV", ["EBX", "1000"]);
+      sim.executeInstruction("MOV", ["[EBX]", "42"]); // Simple [REG] addressing
+      sim.executeInstruction("MOV", ["EAX", "[EBX]"]);
+      const regs = sim.getRegisters();
+      expect(regs.EAX).toBe(42);
+    });
+
+    test("binary format in memory addressing [0B...]", () => {
+      sim.executeInstruction("MOV", ["[0B1111101000]", "123"]); // Binary address 1000
+      sim.executeInstruction("MOV", ["EAX", "[0B1111101000]"]);
+      const regs = sim.getRegisters();
+      expect(regs.EAX).toBe(123);
+    });
+
+    test("invalid hexadecimal immediate throws error", () => {
+      expect(() => {
+        sim.executeInstruction("MOV", ["EAX", "0XG123"]); // Invalid hex
+      }).toThrow("Invalid hexadecimal value");
+    });
+
+    test("invalid binary immediate throws error", () => {
+      expect(() => {
+        sim.executeInstruction("MOV", ["EAX", "0B1012"]); // Invalid binary (has '2')
+      }).toThrow("Invalid binary value");
+    });
+
+    test("invalid decimal immediate throws error", () => {
+      expect(() => {
+        sim.executeInstruction("MOV", ["EAX", "12ABC"]); // Invalid decimal
+      }).toThrow("Invalid operand");
+    });
+
+    test("LEA with absolute address", () => {
+      sim.executeInstruction("LEA", ["EAX", "[5000]"]); // Absolute address
+      const regs = sim.getRegisters();
+      expect(regs.EAX).toBe(5000);
+    });
+
+    test("MOVSX with immediate value", () => {
+      sim.executeInstruction("MOVSX", ["EAX", "0x80"]); // Negative 8-bit value
+      const regs = sim.getRegisters();
+      expect(regs.EAX).toBe(0xffffff80); // Sign-extended
+    });
+
+    test("ADD with memory source", () => {
+      sim.executeInstruction("MOV", ["EBX", "1000"]);
+      sim.executeInstruction("MOV", ["[EBX]", "5"]);
+      sim.executeInstruction("MOV", ["EAX", "10"]);
+      sim.executeInstruction("ADD", ["EAX", "[EBX]"]); // ADD reg, [mem]
+      const regs = sim.getRegisters();
+      expect(regs.EAX).toBe(15);
+    });
+
+    test("SUB with memory source", () => {
+      sim.executeInstruction("MOV", ["EBX", "1000"]);
+      sim.executeInstruction("MOV", ["[EBX]", "5"]);
+      sim.executeInstruction("MOV", ["EAX", "10"]);
+      sim.executeInstruction("SUB", ["EAX", "[EBX]"]); // SUB reg, [mem]
+      const regs = sim.getRegisters();
+      expect(regs.EAX).toBe(5);
+    });
+
+    test("IMUL two-operand with memory source", () => {
+      sim.executeInstruction("MOV", ["EBX", "1000"]);
+      sim.executeInstruction("MOV", ["[EBX]", "5"]);
+      sim.executeInstruction("MOV", ["EAX", "3"]);
+      sim.executeInstruction("IMUL", ["EAX", "[EBX]"]); // IMUL reg, [mem]
+      const regs = sim.getRegisters();
+      expect(regs.EAX).toBe(15);
+    });
+
+    test("IMUL three-operand with memory source", () => {
+      sim.executeInstruction("MOV", ["EBX", "1000"]);
+      sim.executeInstruction("MOV", ["[EBX]", "4"]);
+      sim.executeInstruction("IMUL", ["EAX", "[EBX]", "5"]); // IMUL reg, [mem], imm
+      const regs = sim.getRegisters();
+      expect(regs.EAX).toBe(20); // 4 * 5
+    });
+
+    test("MOD instruction with invalid operands does nothing", () => {
+      sim.executeInstruction("MOV", ["EAX", "10"]);
+      sim.executeInstruction("MOD", ["EAX"]); // Wrong number of operands
+      const regs = sim.getRegisters();
+      expect(regs.EAX).toBe(10); // Should remain unchanged
+    });
+
+    test("MOD instruction with register source", () => {
+      sim.executeInstruction("MOV", ["EAX", "10"]);
+      sim.executeInstruction("MOV", ["EBX", "3"]);
+      sim.executeInstruction("MOD", ["EAX", "EBX"]);
+      const regs = sim.getRegisters();
+      expect(regs.EAX).toBe(1); // 10 % 3 = 1
+    });
+
+    test("MOD instruction with immediate source", () => {
+      sim.executeInstruction("MOV", ["EAX", "17"]);
+      sim.executeInstruction("MOD", ["EAX", "5"]);
+      const regs = sim.getRegisters();
+      expect(regs.EAX).toBe(2); // 17 % 5 = 2
+    });
+
+    test("MOD instruction with zero divisor sets result to 0", () => {
+      sim.executeInstruction("MOV", ["EAX", "10"]);
+      sim.executeInstruction("MOD", ["EAX", "0"]);
+      const regs = sim.getRegisters();
+      expect(regs.EAX).toBe(0); // Division by zero handled gracefully
+    });
+
+    test("PUSH with memory source", () => {
+      sim.executeInstruction("MOV", ["EBX", "1000"]);
+      sim.executeInstruction("MOV", ["[EBX]", "42"]);
+      sim.executeInstruction("PUSH", ["[EBX]"]); // Push from memory
+      sim.executeInstruction("POP", ["EAX"]);
+      const regs = sim.getRegisters();
+      expect(regs.EAX).toBe(42);
+    });
+
+    test("RAND instruction with one operand generates default range", () => {
+      sim.executeInstruction("RAND", ["EAX"]); // No max value specified
+      const regs = sim.getRegisters();
+      expect(regs.EAX).toBeGreaterThanOrEqual(0);
+      expect(regs.EAX).toBeLessThan(0xffffffff);
+    });
+
+    test("RAND instruction with maxValue <= 0 sets maxValue to 1", () => {
+      sim.executeInstruction("RAND", ["EAX", "0"]); // maxValue = 0
+      const regs = sim.getRegisters();
+      expect(regs.EAX).toBe(0); // random in [0, 1) can only be 0
+    });
+
+    test("INT 0x21 function 0x09 (write string) is a no-op", () => {
+      sim.executeInstruction("MOV", ["EAX", "0x09"]); // Function 0x09
+      expect(() => {
+        sim.executeInstruction("INT", ["0x21"]);
+      }).not.toThrow(); // Should not throw, just do nothing
+    });
+
+    test("JMP instruction is a no-op in executeInstruction", () => {
+      sim.executeInstruction("MOV", ["EAX", "10"]);
+      expect(() => {
+        sim.executeInstruction("JMP", ["label"]);
+      }).not.toThrow(); // JMP is handled by debug adapter
+      const regs = sim.getRegisters();
+      expect(regs.EAX).toBe(10); // Should not affect registers
+    });
+
+    test("JE/JZ instruction is a no-op in executeInstruction", () => {
+      expect(() => {
+        sim.executeInstruction("JE", ["label"]);
+        sim.executeInstruction("JZ", ["label"]);
+      }).not.toThrow(); // JE/JZ handled by debug adapter
+    });
+
+    test("JNE/JNZ instruction is a no-op in executeInstruction", () => {
+      expect(() => {
+        sim.executeInstruction("JNE", ["label"]);
+        sim.executeInstruction("JNZ", ["label"]);
+      }).not.toThrow(); // JNE/JNZ handled by debug adapter
+    });
+
+    test("CALL/RET instructions are no-ops in executeInstruction", () => {
+      expect(() => {
+        sim.executeInstruction("CALL", ["function"]);
+        sim.executeInstruction("RET", []);
+      }).not.toThrow(); // CALL/RET handled by debug adapter
+    });
+
+    test("8-bit high register (AH) read with byteOffset", () => {
+      sim.executeInstruction("MOV", ["EAX", "0x12345678"]);
+      sim.executeInstruction("MOV", ["BL", "0"]); 
+      sim.executeInstruction("MOV", ["BL", "AH"]); // Read from AH (high byte)
+      const regs = sim.getRegisters();
+      expect(regs.EBX & 0xFF).toBe(0x56); // AH contains 0x56
+    });
+
+    test("MOVSX with immediate 8-bit negative value", () => {
+      sim.executeInstruction("MOVSX", ["EAX", "128"]); // 128 = 0x80, negative in 8-bit
+      const regs = sim.getRegisters();
+      expect(regs.EAX).toBe(0xffffff80); // Sign-extended to 32-bit
+    });
+
+    test("ADD with memory operand", () => {
+      sim.executeInstruction("MOV", ["EBX", "2000"]);
+      sim.executeInstruction("MOV", ["[EBX]", "15"]);
+      sim.executeInstruction("MOV", ["EAX", "10"]);
+      sim.executeInstruction("ADD", ["EAX", "[EBX]"]);
+      const regs = sim.getRegisters();
+      expect(regs.EAX).toBe(25);
+    });
+
+    test("SUB with memory operand", () => {
+      sim.executeInstruction("MOV", ["EBX", "2000"]);
+      sim.executeInstruction("MOV", ["[EBX]", "7"]);
+      sim.executeInstruction("MOV", ["EAX", "20"]);
+      sim.executeInstruction("SUB", ["EAX", "[EBX]"]);
+      const regs = sim.getRegisters();
+      expect(regs.EAX).toBe(13);
+    });
+
+    test("IMUL two-operand dest * memory", () => {
+      sim.executeInstruction("MOV", ["EBX", "3000"]);
+      sim.executeInstruction("MOV", ["[EBX]", "6"]);
+      sim.executeInstruction("MOV", ["EAX", "7"]);
+      sim.executeInstruction("IMUL", ["EAX", "[EBX]"]);
+      const regs = sim.getRegisters();
+      expect(regs.EAX).toBe(42); // 7 * 6
+    });
+
+    test("IMUL three-operand with memory and immediate", () => {
+      sim.executeInstruction("MOV", ["ECX", "3000"]);
+      sim.executeInstruction("MOV", ["[ECX]", "8"]);
+      sim.executeInstruction("IMUL", ["EDX", "[ECX]", "9"]);
+      const regs = sim.getRegisters();
+      expect(regs.EDX).toBe(72); // 8 * 9
+    });
+  });
+});
+
+describe("Simulator loadProgram and bytecode execution", () => {
+  let sim: Simulator;
+
+  beforeEach(() => {
+    sim = new Simulator();
+  });
+
+  test("loadProgram loads bytecode and resets CPU", () => {
+    const bytecode = new Uint8Array([0x01, 0x02, 0x03, 0x04]);
+    sim.loadProgram(bytecode);
+    const state = sim.getState();
+    expect(state.pc).toBe(0);
+    expect(state.halted).toBe(false);
+  });
+
+  test("loadProgram with empty bytecode", () => {
+    const bytecode = new Uint8Array([]);
+    sim.loadProgram(bytecode);
+    const state = sim.getState();
+    expect(state.pc).toBe(0);
+  });
 });

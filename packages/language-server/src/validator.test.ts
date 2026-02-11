@@ -23,17 +23,56 @@ import {
 
 // Mirror the instruction names from server.ts for testing
 const ALL_INSTRUCTION_NAMES = [
-  "MOV", "XCHG", "LEA", "MOVZX", "MOVSX",
-  "ADD", "SUB", "AND", "OR", "XOR", "NOT",
-  "SHL", "SHR", "SAR", "ROL", "ROR",
-  "MUL", "IMUL", "DIV", "IDIV", "MOD",
-  "CMP", "TEST", "INC", "DEC", "NEG",
-  "JMP", "JZ", "JE", "JNZ", "JNE",
-  "JG", "JGE", "JL", "JLE", "JS", "JNS",
-  "JA", "JAE", "JB", "JBE",
-  "NOP", "HLT", "RAND",
-  "PUSH", "POP", "CALL", "RET",
-  "INT", "IRET",
+  "MOV",
+  "XCHG",
+  "LEA",
+  "MOVZX",
+  "MOVSX",
+  "ADD",
+  "SUB",
+  "AND",
+  "OR",
+  "XOR",
+  "NOT",
+  "SHL",
+  "SHR",
+  "SAR",
+  "ROL",
+  "ROR",
+  "MUL",
+  "IMUL",
+  "DIV",
+  "IDIV",
+  "MOD",
+  "CMP",
+  "TEST",
+  "INC",
+  "DEC",
+  "NEG",
+  "JMP",
+  "JZ",
+  "JE",
+  "JNZ",
+  "JNE",
+  "JG",
+  "JGE",
+  "JL",
+  "JLE",
+  "JS",
+  "JNS",
+  "JA",
+  "JAE",
+  "JB",
+  "JBE",
+  "NOP",
+  "HLT",
+  "RAND",
+  "PUSH",
+  "POP",
+  "CALL",
+  "RET",
+  "INT",
+  "IRET",
 ];
 
 // Helper: run full validation on assembly text
@@ -135,27 +174,42 @@ describe("validateInstructions", () => {
     test("does not count comment words as operands", () => {
       const lines = ["main:", "  MOV EAX, 10  ; EAX = 10", "  HLT"];
       const labels = new Set(["main"]);
-      const diags = validateInstructions(lines, ALL_INSTRUCTION_NAMES, labels, new Set());
+      const diags = validateInstructions(
+        lines,
+        ALL_INSTRUCTION_NAMES,
+        labels,
+        new Set(),
+      );
       expect(errors(diags)).toHaveLength(0);
     });
 
     test("handles instruction with only a comment after it", () => {
       const lines = ["main:", "  HLT  ; Stop program", "end:"];
       const labels = new Set(["main", "end"]);
-      const diags = validateInstructions(lines, ALL_INSTRUCTION_NAMES, labels, new Set());
+      const diags = validateInstructions(
+        lines,
+        ALL_INSTRUCTION_NAMES,
+        labels,
+        new Set(),
+      );
       expect(errors(diags)).toHaveLength(0);
     });
 
     test("comment containing EQU does not trigger EQU validation", () => {
       const lines = [
         "main:",
-        '  CMP EAX, EBX',
-        '  JNE not_equal      ; Should NOT jump (they are equal)',
+        "  CMP EAX, EBX",
+        "  JNE not_equal      ; Should NOT jump (they are equal)",
         "not_equal:",
         "  HLT",
       ];
       const labels = new Set(["main", "not_equal"]);
-      const diags = validateInstructions(lines, ALL_INSTRUCTION_NAMES, labels, new Set());
+      const diags = validateInstructions(
+        lines,
+        ALL_INSTRUCTION_NAMES,
+        labels,
+        new Set(),
+      );
       expect(errors(diags)).toHaveLength(0);
     });
   });
@@ -163,7 +217,12 @@ describe("validateInstructions", () => {
   describe("unknown instructions", () => {
     test("reports unknown instruction", () => {
       const lines = ["main:", "  BLAH EAX", "  HLT"];
-      const diags = validateInstructions(lines, ALL_INSTRUCTION_NAMES, new Set(["main"]), new Set());
+      const diags = validateInstructions(
+        lines,
+        ALL_INSTRUCTION_NAMES,
+        new Set(["main"]),
+        new Set(),
+      );
       const errs = errors(diags);
       expect(errs).toHaveLength(1);
       expect(errs[0].message).toContain("Unknown instruction 'BLAH'");
@@ -179,7 +238,12 @@ describe("validateInstructions", () => {
         "  NOP",
         "  HLT",
       ];
-      const diags = validateInstructions(lines, ALL_INSTRUCTION_NAMES, new Set(["main"]), new Set());
+      const diags = validateInstructions(
+        lines,
+        ALL_INSTRUCTION_NAMES,
+        new Set(["main"]),
+        new Set(),
+      );
       expect(errors(diags)).toHaveLength(0);
     });
   });
@@ -187,34 +251,59 @@ describe("validateInstructions", () => {
   describe("operand count validation", () => {
     test("MOV requires 2 operands", () => {
       const lines = ["main:", "  MOV EAX"];
-      const diags = validateInstructions(lines, ALL_INSTRUCTION_NAMES, new Set(["main"]), new Set());
+      const diags = validateInstructions(
+        lines,
+        ALL_INSTRUCTION_NAMES,
+        new Set(["main"]),
+        new Set(),
+      );
       expect(errors(diags)).toHaveLength(1);
       expect(errors(diags)[0].message).toContain("requires exactly 2 operands");
     });
 
     test("PUSH requires 1 operand", () => {
       const lines = ["main:", "  PUSH"];
-      const diags = validateInstructions(lines, ALL_INSTRUCTION_NAMES, new Set(["main"]), new Set());
+      const diags = validateInstructions(
+        lines,
+        ALL_INSTRUCTION_NAMES,
+        new Set(["main"]),
+        new Set(),
+      );
       expect(errors(diags)).toHaveLength(1);
       expect(errors(diags)[0].message).toContain("requires exactly 1 operand");
     });
 
     test("HLT takes no operands", () => {
       const lines = ["main:", "  HLT EAX"];
-      const diags = validateInstructions(lines, ALL_INSTRUCTION_NAMES, new Set(["main"]), new Set());
+      const diags = validateInstructions(
+        lines,
+        ALL_INSTRUCTION_NAMES,
+        new Set(["main"]),
+        new Set(),
+      );
       expect(errors(diags)).toHaveLength(1);
       expect(errors(diags)[0].message).toContain("does not take operands");
     });
 
     test("NOP takes no operands", () => {
       const lines = ["main:", "  NOP EAX"];
-      const diags = validateInstructions(lines, ALL_INSTRUCTION_NAMES, new Set(["main"]), new Set());
+      const diags = validateInstructions(
+        lines,
+        ALL_INSTRUCTION_NAMES,
+        new Set(["main"]),
+        new Set(),
+      );
       expect(errors(diags)).toHaveLength(1);
     });
 
     test("RET takes no operands", () => {
       const lines = ["main:", "  RET EAX"];
-      const diags = validateInstructions(lines, ALL_INSTRUCTION_NAMES, new Set(["main"]), new Set());
+      const diags = validateInstructions(
+        lines,
+        ALL_INSTRUCTION_NAMES,
+        new Set(["main"]),
+        new Set(),
+      );
       expect(errors(diags)).toHaveLength(1);
     });
 
@@ -224,10 +313,46 @@ describe("validateInstructions", () => {
       const lines3 = ["main:", "  IMUL EAX, EBX, 10"];
       const lines0 = ["main:", "  IMUL"];
       const labels = new Set(["main"]);
-      expect(errors(validateInstructions(lines1, ALL_INSTRUCTION_NAMES, labels, new Set()))).toHaveLength(0);
-      expect(errors(validateInstructions(lines2, ALL_INSTRUCTION_NAMES, labels, new Set()))).toHaveLength(0);
-      expect(errors(validateInstructions(lines3, ALL_INSTRUCTION_NAMES, labels, new Set()))).toHaveLength(0);
-      expect(errors(validateInstructions(lines0, ALL_INSTRUCTION_NAMES, labels, new Set()))).toHaveLength(1);
+      expect(
+        errors(
+          validateInstructions(
+            lines1,
+            ALL_INSTRUCTION_NAMES,
+            labels,
+            new Set(),
+          ),
+        ),
+      ).toHaveLength(0);
+      expect(
+        errors(
+          validateInstructions(
+            lines2,
+            ALL_INSTRUCTION_NAMES,
+            labels,
+            new Set(),
+          ),
+        ),
+      ).toHaveLength(0);
+      expect(
+        errors(
+          validateInstructions(
+            lines3,
+            ALL_INSTRUCTION_NAMES,
+            labels,
+            new Set(),
+          ),
+        ),
+      ).toHaveLength(0);
+      expect(
+        errors(
+          validateInstructions(
+            lines0,
+            ALL_INSTRUCTION_NAMES,
+            labels,
+            new Set(),
+          ),
+        ),
+      ).toHaveLength(1);
     });
 
     test("RAND accepts 1 or 2 operands", () => {
@@ -235,16 +360,48 @@ describe("validateInstructions", () => {
       const lines2 = ["main:", "  RAND EAX, 64"];
       const lines0 = ["main:", "  RAND"];
       const labels = new Set(["main"]);
-      expect(errors(validateInstructions(lines1, ALL_INSTRUCTION_NAMES, labels, new Set()))).toHaveLength(0);
-      expect(errors(validateInstructions(lines2, ALL_INSTRUCTION_NAMES, labels, new Set()))).toHaveLength(0);
-      expect(errors(validateInstructions(lines0, ALL_INSTRUCTION_NAMES, labels, new Set()))).toHaveLength(1);
+      expect(
+        errors(
+          validateInstructions(
+            lines1,
+            ALL_INSTRUCTION_NAMES,
+            labels,
+            new Set(),
+          ),
+        ),
+      ).toHaveLength(0);
+      expect(
+        errors(
+          validateInstructions(
+            lines2,
+            ALL_INSTRUCTION_NAMES,
+            labels,
+            new Set(),
+          ),
+        ),
+      ).toHaveLength(0);
+      expect(
+        errors(
+          validateInstructions(
+            lines0,
+            ALL_INSTRUCTION_NAMES,
+            labels,
+            new Set(),
+          ),
+        ),
+      ).toHaveLength(1);
     });
   });
 
   describe("register validation", () => {
     test("reports invalid register-like names", () => {
       const lines = ["main:", "  MOV EXX, 10"];
-      const diags = validateInstructions(lines, ALL_INSTRUCTION_NAMES, new Set(["main"]), new Set());
+      const diags = validateInstructions(
+        lines,
+        ALL_INSTRUCTION_NAMES,
+        new Set(["main"]),
+        new Set(),
+      );
       expect(errors(diags)).toHaveLength(1);
       expect(errors(diags)[0].message).toContain("Invalid register 'EXX'");
     });
@@ -253,7 +410,12 @@ describe("validateInstructions", () => {
       const regs = ["EAX", "EBX", "ECX", "EDX", "ESI", "EDI", "EBP", "ESP"];
       for (const reg of regs) {
         const lines = ["main:", `  MOV ${reg}, 10`];
-        const diags = validateInstructions(lines, ALL_INSTRUCTION_NAMES, new Set(["main"]), new Set());
+        const diags = validateInstructions(
+          lines,
+          ALL_INSTRUCTION_NAMES,
+          new Set(["main"]),
+          new Set(),
+        );
         expect(errors(diags)).toHaveLength(0);
       }
     });
@@ -262,7 +424,12 @@ describe("validateInstructions", () => {
       const regs = ["AL", "AH", "BL", "BH", "CL", "CH", "DL", "DH"];
       for (const reg of regs) {
         const lines = ["main:", `  MOV ${reg}, 10`];
-        const diags = validateInstructions(lines, ALL_INSTRUCTION_NAMES, new Set(["main"]), new Set());
+        const diags = validateInstructions(
+          lines,
+          ALL_INSTRUCTION_NAMES,
+          new Set(["main"]),
+          new Set(),
+        );
         expect(errors(diags)).toHaveLength(0);
       }
     });
@@ -270,7 +437,12 @@ describe("validateInstructions", () => {
     test("does not flag labels as invalid registers", () => {
       const lines = ["main:", "  JMP loop", "loop:", "  HLT"];
       const labels = new Set(["main", "loop"]);
-      const diags = validateInstructions(lines, ALL_INSTRUCTION_NAMES, labels, new Set());
+      const diags = validateInstructions(
+        lines,
+        ALL_INSTRUCTION_NAMES,
+        labels,
+        new Set(),
+      );
       expect(errors(diags)).toHaveLength(0);
     });
 
@@ -278,7 +450,12 @@ describe("validateInstructions", () => {
       const lines = ["main:", "  MOV EAX, SIZE"];
       const labels = new Set(["main"]);
       const equConstants = new Set(["SIZE"]);
-      const diags = validateInstructions(lines, ALL_INSTRUCTION_NAMES, labels, equConstants);
+      const diags = validateInstructions(
+        lines,
+        ALL_INSTRUCTION_NAMES,
+        labels,
+        equConstants,
+      );
       expect(errors(diags)).toHaveLength(0);
     });
   });
@@ -287,40 +464,96 @@ describe("validateInstructions", () => {
     test("warns on undefined label in JMP", () => {
       const lines = ["main:", "  JMP undefined_label", "  HLT"];
       const labels = new Set(["main"]);
-      const diags = validateInstructions(lines, ALL_INSTRUCTION_NAMES, labels, new Set());
+      const diags = validateInstructions(
+        lines,
+        ALL_INSTRUCTION_NAMES,
+        labels,
+        new Set(),
+      );
       const warns = warnings(diags);
       expect(warns).toHaveLength(1);
-      expect(warns[0].message).toContain("Label 'undefined_label' is not defined");
+      expect(warns[0].message).toContain(
+        "Label 'undefined_label' is not defined",
+      );
+    });
+
+    test("errors on JMP without label operand", () => {
+      const lines = ["main:", "  JMP", "  HLT"];
+      const labels = new Set(["main"]);
+      const diags = validateInstructions(
+        lines,
+        ALL_INSTRUCTION_NAMES,
+        labels,
+        new Set(),
+      );
+      const errs = errors(diags);
+      expect(errs.length).toBeGreaterThanOrEqual(1);
+      expect(errs[0].message).toContain("requires exactly 1 operand");
     });
 
     test("does not warn on defined label", () => {
       const lines = ["main:", "  JMP loop", "loop:", "  HLT"];
       const labels = new Set(["main", "loop"]);
-      const diags = validateInstructions(lines, ALL_INSTRUCTION_NAMES, labels, new Set());
+      const diags = validateInstructions(
+        lines,
+        ALL_INSTRUCTION_NAMES,
+        labels,
+        new Set(),
+      );
       expect(warnings(diags)).toHaveLength(0);
     });
 
     test("does not warn on hex addresses", () => {
       const lines = ["main:", "  JMP 0x1000"];
       const labels = new Set(["main"]);
-      const diags = validateInstructions(lines, ALL_INSTRUCTION_NAMES, labels, new Set());
+      const diags = validateInstructions(
+        lines,
+        ALL_INSTRUCTION_NAMES,
+        labels,
+        new Set(),
+      );
       expect(warnings(diags)).toHaveLength(0);
     });
 
     test("validates CALL targets", () => {
       const lines = ["main:", "  CALL my_func", "  HLT"];
       const labels = new Set(["main"]);
-      const diags = validateInstructions(lines, ALL_INSTRUCTION_NAMES, labels, new Set());
+      const diags = validateInstructions(
+        lines,
+        ALL_INSTRUCTION_NAMES,
+        labels,
+        new Set(),
+      );
       expect(warnings(diags)).toHaveLength(1);
       expect(warnings(diags)[0].message).toContain("'my_func' is not defined");
     });
 
     test("validates all conditional jump instructions", () => {
-      const jumps = ["JZ", "JE", "JNZ", "JNE", "JG", "JGE", "JL", "JLE", "JS", "JNS", "JA", "JAE", "JB", "JBE"];
+      const jumps = [
+        "JZ",
+        "JE",
+        "JNZ",
+        "JNE",
+        "JG",
+        "JGE",
+        "JL",
+        "JLE",
+        "JS",
+        "JNS",
+        "JA",
+        "JAE",
+        "JB",
+        "JBE",
+      ];
       for (const jmp of jumps) {
         const lines = ["main:", `  ${jmp} target`, "  HLT"];
         const labels = new Set(["main"]);
-        const diags = validateInstructions(lines, ALL_INSTRUCTION_NAMES, labels, new Set());
+        const diags = validateInstructions(
+          lines,
+          ALL_INSTRUCTION_NAMES,
+          labels,
+          new Set(),
+        );
         expect(warnings(diags).length).toBeGreaterThanOrEqual(1);
       }
     });
@@ -329,22 +562,39 @@ describe("validateInstructions", () => {
   describe("EQU directives", () => {
     test("valid EQU does not produce errors", () => {
       const lines = ["GRID_SIZE EQU 64", "main:", "  HLT"];
-      const diags = validateInstructions(lines, ALL_INSTRUCTION_NAMES, new Set(["main"]), new Set(["GRID_SIZE"]));
+      const diags = validateInstructions(
+        lines,
+        ALL_INSTRUCTION_NAMES,
+        new Set(["main"]),
+        new Set(["GRID_SIZE"]),
+      );
       expect(errors(diags)).toHaveLength(0);
     });
 
     test("EQU with missing value produces error", () => {
-      // This is tricky — the regex needs to match but value empty
-      // In practice the value field is always captured by (.+)
-      // so an actually empty value is hard to produce
-      const lines = ["main:", "  HLT"];
-      const diags = validateInstructions(lines, ALL_INSTRUCTION_NAMES, new Set(["main"]), new Set());
-      expect(errors(diags)).toHaveLength(0);
+      // Test with EQU format that has invalid structure
+      const lines = ["VALUE: EQU", "main:", "  HLT"];
+      const diags = validateInstructions(
+        lines,
+        ALL_INSTRUCTION_NAMES,
+        new Set(["main"]),
+        new Set(),
+      );
+      const equErrors = diags.filter(
+        (d) =>
+          d.severity === DiagnosticSeverity.Error && d.message.includes("EQU"),
+      );
+      expect(equErrors.length).toBeGreaterThanOrEqual(1);
     });
 
     test("invalid EQU format produces error", () => {
       const lines = ["EQU 123", "main:", "  HLT"];
-      const diags = validateInstructions(lines, ALL_INSTRUCTION_NAMES, new Set(["main"]), new Set());
+      const diags = validateInstructions(
+        lines,
+        ALL_INSTRUCTION_NAMES,
+        new Set(["main"]),
+        new Set(),
+      );
       const errs = errors(diags);
       expect(errs).toHaveLength(1);
       expect(errs[0].message).toContain("Invalid EQU directive format");
@@ -354,19 +604,34 @@ describe("validateInstructions", () => {
   describe("skips lines correctly", () => {
     test("skips empty lines", () => {
       const lines = ["main:", "", "  MOV EAX, 10", "", "  HLT"];
-      const diags = validateInstructions(lines, ALL_INSTRUCTION_NAMES, new Set(["main"]), new Set());
+      const diags = validateInstructions(
+        lines,
+        ALL_INSTRUCTION_NAMES,
+        new Set(["main"]),
+        new Set(),
+      );
       expect(errors(diags)).toHaveLength(0);
     });
 
     test("skips comment-only lines", () => {
       const lines = ["main:", "; comment", "  MOV EAX, 10", "  HLT"];
-      const diags = validateInstructions(lines, ALL_INSTRUCTION_NAMES, new Set(["main"]), new Set());
+      const diags = validateInstructions(
+        lines,
+        ALL_INSTRUCTION_NAMES,
+        new Set(["main"]),
+        new Set(),
+      );
       expect(errors(diags)).toHaveLength(0);
     });
 
     test("skips label lines", () => {
       const lines = ["main:", "loop:", "  HLT"];
-      const diags = validateInstructions(lines, ALL_INSTRUCTION_NAMES, new Set(["main", "loop"]), new Set());
+      const diags = validateInstructions(
+        lines,
+        ALL_INSTRUCTION_NAMES,
+        new Set(["main", "loop"]),
+        new Set(),
+      );
       expect(errors(diags)).toHaveLength(0);
     });
   });
@@ -378,7 +643,9 @@ describe("validateControlFlow", () => {
     const lines = ["main:", "  HLT", "  MOV EAX, 10"];
     const diags: any[] = [];
     validateControlFlow(lines, new Set(["main"]), diags);
-    const warns = diags.filter((d) => d.severity === DiagnosticSeverity.Warning);
+    const warns = diags.filter(
+      (d) => d.severity === DiagnosticSeverity.Warning,
+    );
     expect(warns.length).toBeGreaterThanOrEqual(1);
     expect(warns[0].message).toContain("Unreachable code");
   });
@@ -387,18 +654,29 @@ describe("validateControlFlow", () => {
     const lines = ["main:", "  JMP end", "  MOV EAX, 10", "end:", "  HLT"];
     const diags: any[] = [];
     validateControlFlow(lines, new Set(["main", "end"]), diags);
-    const warns = diags.filter((d) => d.severity === DiagnosticSeverity.Warning);
+    const warns = diags.filter(
+      (d) => d.severity === DiagnosticSeverity.Warning,
+    );
     expect(warns.length).toBeGreaterThanOrEqual(1);
     expect(warns[0].message).toContain("Unreachable code");
   });
 
   test("labels reset unreachable state", () => {
-    const lines = ["main:", "  JMP end", "middle:", "  MOV EAX, 10", "end:", "  HLT"];
+    const lines = [
+      "main:",
+      "  JMP end",
+      "middle:",
+      "  MOV EAX, 10",
+      "end:",
+      "  HLT",
+    ];
     const diags: any[] = [];
     validateControlFlow(lines, new Set(["main", "middle", "end"]), diags);
     // middle: resets unreachable, so MOV EAX shouldn't be warned as unreachable
     const unreachWarns = diags.filter(
-      (d) => d.severity === DiagnosticSeverity.Warning && d.message.includes("Unreachable")
+      (d) =>
+        d.severity === DiagnosticSeverity.Warning &&
+        d.message.includes("Unreachable"),
     );
     expect(unreachWarns).toHaveLength(0);
   });
@@ -412,7 +690,7 @@ describe("validateControlFlow", () => {
       "  HLT",
       "orphaned_code:",
       "  MOV EAX, 10",
-      "  RET",  // This RET is in orphaned_code which is never CALLed
+      "  RET", // This RET is in orphaned_code which is never CALLed
     ];
     const diags: any[] = [];
     // The validator identifies orphaned_code as having RET → it's a "function"
@@ -421,7 +699,9 @@ describe("validateControlFlow", () => {
     // any label containing RET will be treated as a function. We verify this behavior.
     validateControlFlow(lines, new Set(["main", "orphaned_code"]), diags);
     // orphaned_code has a RET, so it's identified as a function - no warning
-    const retWarns = diags.filter((d) => d.message.includes("RET instruction outside"));
+    const retWarns = diags.filter((d) =>
+      d.message.includes("RET instruction outside"),
+    );
     expect(retWarns).toHaveLength(0);
   });
 
@@ -436,7 +716,9 @@ describe("validateControlFlow", () => {
     ];
     const diags: any[] = [];
     validateControlFlow(lines, new Set(["main", "my_func"]), diags);
-    const retWarns = diags.filter((d) => d.message.includes("RET instruction outside"));
+    const retWarns = diags.filter((d) =>
+      d.message.includes("RET instruction outside"),
+    );
     expect(retWarns).toHaveLength(0);
   });
 
@@ -452,15 +734,26 @@ describe("validateControlFlow", () => {
   });
 
   test("skips EQU directives", () => {
-    const lines = [
-      "SIZE EQU 64",
-      "main:",
-      "  HLT",
-    ];
+    const lines = ["SIZE EQU 64", "main:", "  HLT"];
     const diags: any[] = [];
     validateControlFlow(lines, new Set(["main"]), diags);
     // EQU should not be treated as unreachable code or instruction
     expect(diags).toHaveLength(0);
+  });
+
+  test("warns about RET after HLT without function context", () => {
+    const lines = [
+      "start:",
+      "  MOV EAX, 10",
+      "  HLT",
+      "  RET", // This RET comes after HLT, not in a function
+    ];
+    const diags: any[] = [];
+    validateControlFlow(lines, new Set(["start"]), diags);
+    const retWarns = diags.filter((d) =>
+      d.message.includes("RET instruction outside"),
+    );
+    expect(retWarns.length).toBeGreaterThanOrEqual(1);
   });
 });
 
@@ -478,8 +771,12 @@ describe("validateCallingConventions", () => {
     const labels = new Set(["main", "my_func"]);
     const diags: any[] = [];
     validateCallingConventions(lines, labels, diags);
-    const infoMsgs = diags.filter((d) => d.severity === DiagnosticSeverity.Information);
-    expect(infoMsgs.some((d) => d.message.includes("should start with 'PUSH EBP'"))).toBe(true);
+    const infoMsgs = diags.filter(
+      (d) => d.severity === DiagnosticSeverity.Information,
+    );
+    expect(
+      infoMsgs.some((d) => d.message.includes("should start with 'PUSH EBP'")),
+    ).toBe(true);
   });
 
   test("no warning for proper prologue/epilogue", () => {
@@ -500,7 +797,7 @@ describe("validateCallingConventions", () => {
     const funcWarns = diags.filter(
       (d) =>
         d.severity === DiagnosticSeverity.Warning &&
-        d.message.includes("my_func")
+        d.message.includes("my_func"),
     );
     expect(funcWarns).toHaveLength(0);
   });
@@ -540,7 +837,9 @@ describe("validateCallingConventions", () => {
     const labels = new Set(["main", "my_func"]);
     const diags: any[] = [];
     validateCallingConventions(lines, labels, diags);
-    const regWarns = diags.filter((d) => d.message.includes("callee-saved register EBX"));
+    const regWarns = diags.filter((d) =>
+      d.message.includes("callee-saved register EBX"),
+    );
     expect(regWarns).toHaveLength(1);
   });
 
@@ -561,16 +860,14 @@ describe("validateCallingConventions", () => {
     const labels = new Set(["main", "my_func"]);
     const diags: any[] = [];
     validateCallingConventions(lines, labels, diags);
-    const regWarns = diags.filter((d) => d.message.includes("callee-saved register EBX"));
+    const regWarns = diags.filter((d) =>
+      d.message.includes("callee-saved register EBX"),
+    );
     expect(regWarns).toHaveLength(0);
   });
 
   test("skips main function for convention checks", () => {
-    const lines = [
-      "main:",
-      "  MOV EBX, 42",
-      "  HLT",
-    ];
+    const lines = ["main:", "  MOV EBX, 42", "  HLT"];
     const labels = new Set(["main"]);
     const diags: any[] = [];
     validateCallingConventions(lines, labels, diags);
@@ -579,7 +876,7 @@ describe("validateCallingConventions", () => {
       (d) =>
         (d.severity === DiagnosticSeverity.Warning ||
           d.severity === DiagnosticSeverity.Information) &&
-        d.message.includes("main")
+        d.message.includes("main"),
     );
     expect(funcWarns).toHaveLength(0);
   });
@@ -635,9 +932,74 @@ describe("validateCallingConventions", () => {
     const funcWarns = diags.filter(
       (d) =>
         d.severity === DiagnosticSeverity.Warning &&
-        d.message.includes("my_func")
+        d.message.includes("my_func"),
     );
     expect(funcWarns).toHaveLength(0);
+  });
+
+  test("warns about PUSH EBP without MOV EBP, ESP", () => {
+    const lines = [
+      "main:",
+      "  CALL my_func",
+      "  HLT",
+      "my_func:",
+      "  PUSH EBP",
+      "  MOV EAX, 10",
+      "  POP EBP",
+      "  RET",
+    ];
+    const labels = new Set(["main", "my_func"]);
+    const diags: any[] = [];
+    validateCallingConventions(lines, labels, diags);
+    const movWarns = diags.filter((d) =>
+      d.message.includes("should follow 'PUSH EBP' with 'MOV EBP, ESP'"),
+    );
+    expect(movWarns.length).toBeGreaterThanOrEqual(1);
+  });
+
+  test("warns about missing POP EBP when PUSH EBP exists", () => {
+    const lines = [
+      "main:",
+      "  CALL my_func",
+      "  HLT",
+      "my_func:",
+      "  PUSH EBP",
+      "  MOV EBP, ESP",
+      "  MOV EAX, 10",
+      "  RET",
+    ];
+    const labels = new Set(["main", "my_func"]);
+    const diags: any[] = [];
+    validateCallingConventions(lines, labels, diags);
+    const popWarns = diags.filter((d) =>
+      d.message.includes("has 'PUSH EBP' but missing 'POP EBP'"),
+    );
+    expect(popWarns.length).toBeGreaterThanOrEqual(1);
+  });
+
+  test("detects cdecl calling convention with ADD ESP after CALL", () => {
+    const lines = [
+      "main:",
+      "  PUSH 10",
+      "  PUSH 20",
+      "  CALL add_func",
+      "  ADD ESP, 8",
+      "  HLT",
+      "add_func:",
+      "  PUSH EBP",
+      "  MOV EBP, ESP",
+      "  MOV EAX, [EBP+8]",
+      "  ADD EAX, [EBP+12]",
+      "  POP EBP",
+      "  RET",
+    ];
+    const labels = new Set(["main", "add_func"]);
+    const diags: any[] = [];
+    validateCallingConventions(lines, labels, diags);
+    const cdeclHints = diags.filter((d) =>
+      d.message.includes("uses cdecl convention"),
+    );
+    expect(cdeclHints.length).toBeGreaterThanOrEqual(1);
   });
 });
 
@@ -775,12 +1137,7 @@ describe("validateDocumentText (integration)", () => {
   });
 
   test("detects multiple errors at once", () => {
-    const text = [
-      "main:",
-      "  BLAH EAX",
-      "  MOV EAX",
-      "  HLT",
-    ].join("\n");
+    const text = ["main:", "  BLAH EAX", "  MOV EAX", "  HLT"].join("\n");
     const diags = validate(text);
     const errs = errors(diags);
     expect(errs.length).toBeGreaterThanOrEqual(2);
@@ -837,17 +1194,18 @@ describe("functional: example file validation", () => {
 
   // These examples are known to have intentional warnings
   const KNOWN_WARNING_EXAMPLES = new Set([
-    "15-all-jumps.asm",         // Unreachable code by design
-    "21-snake.asm",             // Complex game - calling convention hints
-    "26-snake-debug.asm",       // Snake variant with debug features
+    "15-all-jumps.asm", // Unreachable code by design
+    "21-snake.asm", // Complex game - calling convention hints
+    "26-snake-debug.asm", // Snake variant with debug features
     "98-control-flow-test.asm", // Tests designed to trigger warnings
-    "99-test-errors.asm",       // Error test file
+    "99-test-errors.asm", // Error test file
   ]);
 
   let exampleFiles: string[];
 
   beforeAll(() => {
-    exampleFiles = fs.readdirSync(examplesDir)
+    exampleFiles = fs
+      .readdirSync(examplesDir)
       .filter((f) => f.endsWith(".asm"))
       .sort();
   });
@@ -859,7 +1217,10 @@ describe("functional: example file validation", () => {
   // Test each example file individually for no errors
   const examplesForEachDir = path.resolve(__dirname, "../../../examples");
   const asmFiles = fs.existsSync(examplesForEachDir)
-    ? fs.readdirSync(examplesForEachDir).filter((f) => f.endsWith(".asm")).sort()
+    ? fs
+        .readdirSync(examplesForEachDir)
+        .filter((f) => f.endsWith(".asm"))
+        .sort()
     : [];
 
   for (const file of asmFiles) {
@@ -876,7 +1237,7 @@ describe("functional: example file validation", () => {
       // NO example should ever produce errors
       if (errs.length > 0) {
         const errMessages = errs.map(
-          (d) => `  Line ${d.range.start.line + 1}: ${d.message}`
+          (d) => `  Line ${d.range.start.line + 1}: ${d.message}`,
         );
         fail(`${file} has ${errs.length} error(s):\n${errMessages.join("\n")}`);
       }
@@ -885,9 +1246,11 @@ describe("functional: example file validation", () => {
         const warns = warnings(diags);
         if (warns.length > 0) {
           const warnMessages = warns.map(
-            (d) => `  Line ${d.range.start.line + 1}: ${d.message}`
+            (d) => `  Line ${d.range.start.line + 1}: ${d.message}`,
           );
-          fail(`${file} has ${warns.length} unexpected warning(s):\n${warnMessages.join("\n")}`);
+          fail(
+            `${file} has ${warns.length} unexpected warning(s):\n${warnMessages.join("\n")}`,
+          );
         }
       }
     });
