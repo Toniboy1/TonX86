@@ -621,10 +621,139 @@ function validateDocument(document: TextDocument): void {
     }
   });
 
-  // Third pass: Calling convention validation
+  // Third pass: Control flow analysis
+  validateControlFlow(lines, labels, diagnostics);
+
+  // Fourth pass: Calling convention validation
   validateCallingConventions(lines, labels, diagnostics);
 
   connection.sendDiagnostics({ uri: document.uri, diagnostics });
+}
+
+/**
+ * Validate control flow issues
+ */
+function validateControlFlow(
+  lines: string[],
+  labels: Set<string>,
+  diagnostics: Diagnostic[],
+): void {
+  let unreachableAfterLine = -1;
+  const terminationInstructions = ["HLT", "RET", "JMP"];
+  const functionLabels = new Set<string>();
+  
+  // Identify function labels (labels that have RET before the next label)
+  let currentLabel: string | null = null;
+  for (let i = 0; i < lines.length; i++) {
+    const trimmed = lines[i].trim();
+    
+    // Remove comments
+    const commentIndex = trimmed.indexOf(";");
+    const cleanLine = commentIndex >= 0 ? trimmed.substring(0, commentIndex).trim() : trimmed;
+    
+    if (!cleanLine) continue;
+    
+    // Check for label
+    if (cleanLine.endsWith(":")) {
+      currentLabel = cleanLine.substring(0, cleanLine.length - 1);
+      continue;
+    }
+    
+    // Check if we see a RET
+    const tokens = cleanLine.split(/[\s,]+/);
+    if (tokens.length > 0 && tokens[0].toUpperCase() === "RET" && currentLabel) {
+      functionLabels.add(currentLabel);
+    }
+  }
+  
+  // Check for unreachable code and misplaced RET
+  for (let i = 0; i < lines.length; i++) {
+    const trimmed = lines[i].trim();
+    
+    // Remove comments
+    const commentIndex = trimmed.indexOf(";");
+    const cleanLine = commentIndex >= 0 ? trimmed.substring(0, commentIndex).trim() : trimmed;
+    
+    if (!cleanLine || cleanLine.startsWith(";")) continue;
+    
+    // Labels reset unreachable state (can be jump targets)
+    if (cleanLine.endsWith(":")) {
+      unreachableAfterLine = -1;
+      continue;
+    }
+    
+    // Skip EQU directives
+    if (/EQU/i.test(cleanLine)) {
+      continue;
+    }
+    
+    const tokens = cleanLine.split(/[\s,]+/);
+    if (tokens.length === 0) continue;
+    
+    const instruction = tokens[0].toUpperCase();
+    
+    // Warn about unreachable code
+    if (unreachableAfterLine >= 0) {
+      diagnostics.push({
+        severity: DiagnosticSeverity.Warning,
+        range: {
+          start: { line: i, character: 0 },
+          end: { line: i, character: trimmed.length },
+        },
+        message: `Unreachable code: instruction follows ${terminationInstructions.includes(instruction) ? instruction : "terminating instruction"} on line ${unreachableAfterLine + 1}`,
+        source: "tonx86",
+      });
+    }
+    
+    // Check for RET outside of function context
+    if (instruction === "RET") {
+      // Look backwards to see if we're inside a function (after a CALL target label)
+      let inFunction = false;
+      for (let j = i - 1; j >= 0; j--) {
+        const prevLine = lines[j].trim();
+        const prevComment = prevLine.indexOf(";");
+        const prevClean = prevComment >= 0 ? prevLine.substring(0, prevComment).trim() : prevLine;
+        
+        if (!prevClean) continue;
+        
+        // If we hit a label, check if it's a function label
+        if (prevClean.endsWith(":")) {
+          const labelName = prevClean.substring(0, prevClean.length - 1);
+          if (functionLabels.has(labelName)) {
+            inFunction = true;
+          }
+          break;
+        }
+        
+        // If we hit HLT or another RET, we're not in a function
+        const prevTokens = prevClean.split(/[\s,]+/);
+        if (prevTokens.length > 0 && (prevTokens[0].toUpperCase() === "HLT" || prevTokens[0].toUpperCase() === "RET")) {
+          break;
+        }
+      }
+      
+      if (!inFunction) {
+        diagnostics.push({
+          severity: DiagnosticSeverity.Warning,
+          range: {
+            start: { line: i, character: 0 },
+            end: { line: i, character: trimmed.length },
+          },
+          message: `RET instruction outside of function context (no preceding CALL target)`,
+          source: "tonx86",
+        });
+      }
+    }
+    
+    // Mark code after terminating instructions as unreachable
+    if (instruction === "HLT") {
+      unreachableAfterLine = i;
+    } else if (instruction === "RET") {
+      unreachableAfterLine = i;
+    } else if (instruction === "JMP") {
+      unreachableAfterLine = i;
+    }
+  }
 }
 
 /**
