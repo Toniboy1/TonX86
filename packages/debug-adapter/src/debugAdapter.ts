@@ -37,6 +37,7 @@ export class TonX86DebugSession extends DebugSession {
   private configurationDone = false; // Track if configuration is done
   private shouldAutoStart = false; // Track if we should auto-start after config
   private simulator: Simulator; // CPU simulator instance
+  private constants: Map<string, number> = new Map(); // EQU constants
   private cpuSpeed: number = 100; // CPU speed percentage (1-200)
   private callStack: number[] = []; // Call stack for tracking return addresses
 
@@ -47,15 +48,48 @@ export class TonX86DebugSession extends DebugSession {
   }
 
   /**
-   * Detect required LCD dimensions by scanning for LCD I/O addresses
+   * Detect required LCD dimensions by scanning EQU constants and instructions.
+   * Strategy:
+   *   1. Check EQU constants for LCD_BASE (0xF000) and GRID_SIZE to determine dimensions
+   *   2. Fall back to scanning instructions for hardcoded LCD addresses
+   *   3. Default to 8x8 if no LCD access detected
    */
-  private detectLCDDimensions(instructions: Instruction[]): [number, number] {
+  private detectLCDDimensions(
+    instructions: Instruction[],
+    constants: Map<string, number>,
+  ): [number, number] {
+    // Strategy 1: Use EQU constants for reliable detection
+    let hasLCDBase = false;
+    let gridSize = 0;
+
+    for (const [name, value] of constants) {
+      const upperName = name.toUpperCase();
+      // Detect LCD base address constant (e.g., LCD_BASE EQU 0xF000)
+      if (value >= 0xf000 && value <= 0xffff) {
+        hasLCDBase = true;
+      }
+      // Detect grid size constant (e.g., GRID_SIZE EQU 64)
+      if (
+        upperName.includes("GRID") ||
+        upperName.includes("LCD_W") ||
+        upperName.includes("LCD_H") ||
+        upperName.includes("SCREEN") ||
+        upperName.includes("DISPLAY_SIZE")
+      ) {
+        gridSize = Math.max(gridSize, value);
+      }
+    }
+
+    if (hasLCDBase && gridSize > 0) {
+      // Use the grid size from constants
+      return [gridSize, gridSize];
+    }
+
+    // Strategy 2: Scan instructions for LCD I/O addresses
     let maxAddress = 0;
     let foundLCDAccess = false;
 
-    // Scan all instructions for LCD I/O operations
     for (const instr of instructions) {
-      // Look for any operand containing 0xF000-0xF0FF addresses
       for (const operand of instr.operands) {
         if (typeof operand === "string") {
           const opUpper = operand.toUpperCase();
@@ -65,19 +99,28 @@ export class TonX86DebugSession extends DebugSession {
             const addressStr = opUpper.slice(1, -1).replace(/[[\]]/g, "");
             if (addressStr.startsWith("0XF")) {
               const address = parseInt(addressStr, 16);
-              if (address >= 0xf000 && address <= 0xf0ff) {
+              if (address >= 0xf000 && address <= 0xffff) {
                 maxAddress = Math.max(maxAddress, address);
                 foundLCDAccess = true;
               }
             }
           }
 
-          // Check for 0xF000 base constant (indicates computed LCD addressing)
-          if (opUpper.includes("0XF0")) {
-            const match = opUpper.match(/0X(F0[0-9A-F][0-9A-F])/);
+          // Check for LCD base as immediate operand (after EQU substitution: 61440 = 0xF000)
+          const numMatch = operand.match(/\b(\d+)\b/);
+          if (numMatch) {
+            const num = parseInt(numMatch[1], 10);
+            if (num >= 0xf000 && num <= 0xffff) {
+              foundLCDAccess = true;
+            }
+          }
+
+          // Check for hex LCD references
+          if (opUpper.includes("0XF")) {
+            const match = opUpper.match(/0X(F[0-9A-F]{3})/);
             if (match) {
               const address = parseInt(match[0], 16);
-              if (address >= 0xf000 && address <= 0xf0ff) {
+              if (address >= 0xf000 && address <= 0xffff) {
                 maxAddress = Math.max(maxAddress, address);
                 foundLCDAccess = true;
               }
@@ -87,15 +130,16 @@ export class TonX86DebugSession extends DebugSession {
       }
     }
 
-    // If we found LCD access, default to 16x16 for better compatibility
-    // (16x16 can display 8x8 content, but computed addresses might not be visible during static analysis)
     if (foundLCDAccess) {
       const offset = maxAddress - 0xf000;
-      if (offset >= 64) {
-        // Found addresses beyond 8x8 range, definitely use 16x16
+      if (offset >= 4096) {
+        return [64, 64];
+      } else if (offset >= 256) {
+        return [64, 64]; // Computed addressing likely needs larger display
+      } else if (offset >= 64) {
         return [16, 16];
       }
-      // Default to 16x16 when LCD is used (safer choice for computed addresses)
+      // Default to 16x16 when LCD is used
       return [16, 16];
     }
 
@@ -182,6 +226,7 @@ export class TonX86DebugSession extends DebugSession {
         const parseResult = parseAssembly(lines);
         this.instructions = parseResult.instructions;
         this.labels = parseResult.labels;
+        this.constants = parseResult.constants;
         console.error(
           "[TonX86] Parsed",
           this.instructions.length,
@@ -193,9 +238,10 @@ export class TonX86DebugSession extends DebugSession {
           );
         });
 
-        // Detect required LCD dimensions from code
+        // Detect required LCD dimensions from code and EQU constants
         const [lcdWidth, lcdHeight] = this.detectLCDDimensions(
           this.instructions,
+          this.constants,
         );
         this.simulator = new Simulator(lcdWidth, lcdHeight);
         console.error(`[TonX86] Detected LCD size: ${lcdWidth}x${lcdHeight}`);
@@ -270,45 +316,40 @@ export class TonX86DebugSession extends DebugSession {
    * Execute the program until a breakpoint or program end
    */
   private async continueExecution(): Promise<void> {
-    console.error("[TonX86] continueExecution called");
-    console.error("[TonX86]   instructionPointer=", this.instructionPointer);
-    console.error("[TonX86]   total instructions=", this.instructions.length);
-    console.error("[TonX86]   breakpoints set=", Array.from(this.breakpoints));
-
-    // Run to end of program, stepping through each instruction until HLT or breakpoint
-    // Add a max iterations limit to prevent infinite loops from hanging the debugger
-    const maxIterations = 100000;
-    let iterationCount = 0;
-    let firstIteration = true; // Skip breakpoint check on first instruction
-
-    console.error(
-      "[TonX86] Starting continue execution from instruction pointer:",
-      this.instructionPointer,
+    logToFile(
+      `continueExecution called, IP=${this.instructionPointer}, breakpoints=${Array.from(this.breakpoints)}`,
     );
-    console.error("[TonX86] Active breakpoints:", Array.from(this.breakpoints));
+
+    let firstIteration = true; // Skip breakpoint check on first instruction
 
     // Output to Debug Console
     this.sendEvent(
       new OutputEvent(`\n=== Continuing execution ===\n`, "console"),
     );
 
-    while (
-      this.instructionPointer < this.instructions.length &&
-      iterationCount < maxIterations
-    ) {
-      iterationCount++;
+    // Yield interval: yield to event loop every N instructions
+    // This allows incoming DAP messages (keyboard events, pause requests, etc.)
+    // to be processed. Use a small real delay (1ms) to ensure the I/O layer
+    // has time to parse and dispatch incoming protocol messages.
+    const yieldInterval = 1000;
+    let sinceLastYield = 0;
+
+    while (this.instructionPointer < this.instructions.length) {
+      // Periodically yield to the event loop so incoming DAP messages
+      // (keyboard events, pause, etc.) can be processed
+      sinceLastYield++;
+      if (sinceLastYield >= yieldInterval) {
+        sinceLastYield = 0;
+        await this.sleep(1);
+      }
 
       const currentInstr = this.instructions[this.instructionPointer];
 
       // Check for breakpoint BEFORE executing the instruction
       // But skip the check on first iteration (we're continuing from that line)
-      console.error(
-        `[TonX86] Checking line ${currentInstr.line}, firstIteration=${firstIteration}, hasBreakpoint=${this.breakpoints.has(currentInstr.line)}`,
-      );
-
       if (!firstIteration && this.breakpoints.has(currentInstr.line)) {
         this.currentLine = currentInstr.line;
-        console.error("[TonX86] Hit breakpoint at line", this.currentLine);
+        logToFile(`Hit breakpoint at line ${this.currentLine}`);
         this.sendEvent(
           new OutputEvent(
             `\n*** Breakpoint hit at line ${this.currentLine} ***\n`,
@@ -328,15 +369,6 @@ export class TonX86DebugSession extends DebugSession {
         const delayMs = (100 - this.cpuSpeed) / 2; // Scale delay inversely
         await this.sleep(delayMs);
       }
-
-      // Execute the instruction through simulator
-      console.error(
-        `[TonX86] Executing: ${currentInstr.mnemonic} ${currentInstr.operands.join(", ")}`,
-      );
-
-      // Send execution step to Debug Console
-      const stepMsg = `[Line ${currentInstr.line}] ${currentInstr.mnemonic} ${currentInstr.operands.join(", ")}\n`;
-      this.sendEvent(new OutputEvent(stepMsg, "console"));
 
       try {
         this.simulator.executeInstruction(
@@ -404,13 +436,6 @@ export class TonX86DebugSession extends DebugSession {
           const targetLabel = currentInstr.operands[0];
           const targetIndex = this.labels.get(targetLabel);
 
-          this.sendEvent(
-            new OutputEvent(
-              `[CALL] target="${targetLabel}", resolvedIndex=${targetIndex}\n`,
-              "stdout",
-            ),
-          );
-
           if (targetIndex !== undefined) {
             // Push return address onto call stack
             const returnAddress = this.instructionPointer + 1;
@@ -421,11 +446,8 @@ export class TonX86DebugSession extends DebugSession {
 
             // Jump to target
             this.instructionPointer = targetIndex;
-            this.sendEvent(
-              new OutputEvent(
-                `[CALL] jumping to instruction index ${targetIndex}, return=${returnAddress}\n`,
-                "stdout",
-              ),
+            logToFile(
+              `CALL ${targetLabel} -> index ${targetIndex}, return=${returnAddress}`,
             );
           } else {
             console.error(
@@ -477,15 +499,6 @@ export class TonX86DebugSession extends DebugSession {
       } else {
         this.instructionPointer++;
       }
-    }
-
-    // Check if we hit the iteration limit
-    if (iterationCount >= maxIterations) {
-      console.error(
-        "[TonX86] Reached maximum iteration limit (possible infinite loop)",
-      );
-      this.sendEvent(new StoppedEvent("pause", 1));
-      return;
     }
 
     // If we reach here, no HLT was found - program ended

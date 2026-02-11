@@ -27,7 +27,7 @@ The debug adapter supports setting and managing breakpoints:
 - **Set Breakpoints**: Breakpoints can be set on any line containing an instruction
 - **Breakpoint Validation**: The adapter validates breakpoints and only accepts those on valid instruction lines
 - **Breakpoint Detection**: During execution, the adapter stops when a breakpoint is hit
-- **Safety Limit**: Max 100,000 iterations to prevent infinite loops from hanging the debugger
+- **Event Loop Yielding**: Every 1000 instructions, yields to the event loop with a 1ms sleep for responsive UI
 
 ### ✅ Execution Control
 
@@ -105,7 +105,7 @@ npm test
 
 ## Example Usage
 
-See `examples/dap-test.asm` for a comprehensive test program that exercises:
+See `examples/test-dap.js` for a DAP protocol test utility that exercises:
 - Basic stepping through instructions
 - Arithmetic operations and flag setting
 - Conditional jumps (JE, JNE)

@@ -342,17 +342,17 @@ MOV 0xF000, 1      ; Turn on pixel (0,0)
 MOV 0xF008, 0      ; Turn off pixel (0,1) in 8x8 grid
 ```
 
-### Keyboard (0xF100-0xF102)
+### Keyboard (0x10100-0x10102)
 **Read-only** - Keyboard input
 
-- `0xF100` - Status register (1=key available, 0=empty)
-- `0xF101` - Key code register (reading pops from queue)
-- `0xF102` - Key state register (1=pressed, 0=released)
+- `0x10100` - Status register (1=key available, 0=empty)
+- `0x10101` - Key code register (reading pops from queue)
+- `0x10102` - Key state register (1=pressed, 0=released)
 
 ```asm
-MOV EAX, 0xF100    ; Check keyboard status
-MOV EBX, 0xF101    ; Read key code
-MOV ECX, 0xF102    ; Read key state
+MOV EAX, 0x10100    ; Check keyboard status
+MOV EBX, 0x10101    ; Read key code
+MOV ECX, 0x10102    ; Read key state
 ```
 
 **Key Codes:**
@@ -393,12 +393,12 @@ HLT
 ### Keyboard Input
 ```asm
 loop:
-  MOV EAX, 0xF100   ; Check keyboard
+  MOV EAX, 0x10100   ; Check keyboard
   CMP EAX, 1
   JNE loop          ; Wait for key
   
-  MOV EBX, 0xF101   ; Read key code
-  MOV ECX, 0xF102   ; Read key state
+  MOV EBX, 0x10101   ; Read key code
+  MOV ECX, 0x10102   ; Read key state
   HLT
 ```
 
@@ -426,4 +426,4 @@ TonX86 supports standard x86 calling conventions. See [CALLING_CONVENTIONS.md](C
 - **stdcall** - Standard call (callee cleans stack)
 - **fastcall** - Fast call (first 2 params in registers)
 
-Example programs demonstrating each convention are available in `/examples/calling-conventions/`.
+Example programs demonstrating each convention are available in the `examples/` folder.

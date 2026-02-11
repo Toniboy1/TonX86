@@ -425,7 +425,7 @@ function:
 
 - [ISA.md](ISA.md) - Instruction Set Architecture reference
 - [README.md](../../README.md) - TonX86 overview and examples
-- Example programs in `/examples/calling-conventions/`
+- Example programs in the `examples/` folder
 
 ## Verification Sources
 

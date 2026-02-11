@@ -547,6 +547,40 @@ export class Simulator {
   }
 
   /**
+   * Resolve the value of a source operand (register, immediate, or memory).
+   * Use this instead of inline ternaries to properly handle memory operands.
+   */
+  private resolveSourceValue(src: {
+    type: string;
+    value: number;
+    base?: number;
+    offset?: number;
+    byteOffset?: number;
+  }): number {
+    if (src.type === "register") {
+      return this.cpu.registers[src.value];
+    } else if (src.type === "register8") {
+      return this.readRegisterValue(src as any);
+    } else if (src.type === "memory") {
+      let addr: number;
+      if (src.base === -1) {
+        addr = src.offset || 0;
+      } else {
+        addr = (this.cpu.registers[src.base!] + (src.offset || 0)) & 0xffff;
+      }
+      if (
+        (addr >= 0xf000 && addr <= 0xffff) ||
+        (addr >= 0x10100 && addr <= 0x101ff)
+      ) {
+        return this.readIO(addr);
+      }
+      return this.readMemory32(addr);
+    }
+    // immediate
+    return src.value;
+  }
+
+  /**
    * Execute a single instruction
    */
   executeInstruction(mnemonic: string, operands: string[]): void {
@@ -735,16 +769,7 @@ export class Simulator {
         const src = this.parseOperand(operands[1]);
 
         if (dest.type === "register") {
-          let srcValue: number;
-          if (src.type === "register") {
-            srcValue = this.cpu.registers[src.value];
-          } else if (src.type === "memory") {
-            const addr =
-              (this.cpu.registers[src.base!] + (src.offset || 0)) & 0xffff;
-            srcValue = this.readMemory32(addr);
-          } else {
-            srcValue = src.value;
-          }
+          const srcValue = this.resolveSourceValue(src);
           const destVal = this.cpu.registers[dest.value];
           const result = (destVal + srcValue) & 0xffffffff;
           this.cpu.registers[dest.value] = result;
@@ -760,16 +785,7 @@ export class Simulator {
         const src = this.parseOperand(operands[1]);
 
         if (dest.type === "register") {
-          let srcValue: number;
-          if (src.type === "register") {
-            srcValue = this.cpu.registers[src.value];
-          } else if (src.type === "memory") {
-            const addr =
-              (this.cpu.registers[src.base!] + (src.offset || 0)) & 0xffff;
-            srcValue = this.readMemory32(addr);
-          } else {
-            srcValue = src.value;
-          }
+          const srcValue = this.resolveSourceValue(src);
           const destVal = this.cpu.registers[dest.value];
           const result = (destVal - srcValue) & 0xffffffff;
           this.cpu.registers[dest.value] = result;
@@ -818,8 +834,7 @@ export class Simulator {
         if (operands.length !== 1) break;
         const src = this.parseOperand(operands[0]);
 
-        const srcValue =
-          src.type === "register" ? this.cpu.registers[src.value] : src.value;
+        const srcValue = this.resolveSourceValue(src);
         const result = (this.cpu.registers[0] >>> 0) * (srcValue >>> 0);
         // Store lower 32 bits in EAX, upper 32 bits in EDX
         this.cpu.registers[0] = (result & 0xffffffff) >>> 0;
@@ -833,8 +848,7 @@ export class Simulator {
         if (operands.length === 1) {
           // Single operand: EAX * src -> EDX:EAX
           const src = this.parseOperand(operands[0]);
-          const srcValue =
-            src.type === "register" ? this.cpu.registers[src.value] : src.value;
+          const srcValue = this.resolveSourceValue(src);
           const eaxSigned = this.cpu.registers[0] | 0;
           const srcSigned = srcValue | 0;
           const result = eaxSigned * srcSigned;
@@ -847,16 +861,7 @@ export class Simulator {
           const src = this.parseOperand(operands[1]);
           if (dest.type !== "register") break;
           const destSigned = this.cpu.registers[dest.value] | 0;
-          let srcValue: number;
-          if (src.type === "register") {
-            srcValue = this.cpu.registers[src.value] | 0;
-          } else if (src.type === "memory") {
-            const addr =
-              (this.cpu.registers[src.base!] + (src.offset || 0)) & 0xffff;
-            srcValue = this.readMemory32(addr) | 0;
-          } else {
-            srcValue = src.value | 0;
-          }
+          const srcValue = this.resolveSourceValue(src) | 0;
           const result = destSigned * srcValue;
           this.cpu.registers[dest.value] = (result & 0xffffffff) >>> 0;
           this.updateFlags(this.cpu.registers[dest.value]);
@@ -866,16 +871,7 @@ export class Simulator {
           const src = this.parseOperand(operands[1]);
           const con = this.parseOperand(operands[2]);
           if (dest.type !== "register") break;
-          let srcValue: number;
-          if (src.type === "register") {
-            srcValue = this.cpu.registers[src.value] | 0;
-          } else if (src.type === "memory") {
-            const addr =
-              (this.cpu.registers[src.base!] + (src.offset || 0)) & 0xffff;
-            srcValue = this.readMemory32(addr) | 0;
-          } else {
-            srcValue = src.value | 0;
-          }
+          const srcValue = this.resolveSourceValue(src) | 0;
           const constValue = con.value | 0;
           const result = srcValue * constValue;
           this.cpu.registers[dest.value] = (result & 0xffffffff) >>> 0;
@@ -890,8 +886,7 @@ export class Simulator {
         if (operands.length !== 1) break;
         const src = this.parseOperand(operands[0]);
 
-        const srcValue =
-          src.type === "register" ? this.cpu.registers[src.value] : src.value;
+        const srcValue = this.resolveSourceValue(src);
         if (srcValue === 0) {
           // Division by zero - in real x86 this would trigger an exception
           // For simplicity, we'll just set result to 0
@@ -912,8 +907,7 @@ export class Simulator {
         if (operands.length !== 1) break;
         const src = this.parseOperand(operands[0]);
 
-        const srcValue =
-          src.type === "register" ? this.cpu.registers[src.value] : src.value;
+        const srcValue = this.resolveSourceValue(src);
         const divisor = srcValue | 0;
 
         if (divisor === 0) {
@@ -938,8 +932,7 @@ export class Simulator {
 
         if (dest.type !== "register") break;
 
-        const srcValue =
-          src.type === "register" ? this.cpu.registers[src.value] : src.value;
+        const srcValue = this.resolveSourceValue(src);
 
         if (srcValue === 0) {
           // Modulo by zero - set to 0
@@ -961,8 +954,7 @@ export class Simulator {
 
         if (dest.type === "register") {
           const destValue = this.cpu.registers[dest.value];
-          const srcValue =
-            src.type === "register" ? this.cpu.registers[src.value] : src.value;
+          const srcValue = this.resolveSourceValue(src);
           const result = (destValue - srcValue) & 0xffffffff;
           this.updateFlagsArith(result, destValue, srcValue, true);
         }
@@ -976,8 +968,7 @@ export class Simulator {
         const src = this.parseOperand(operands[1]);
 
         if (dest.type === "register") {
-          const srcValue =
-            src.type === "register" ? this.cpu.registers[src.value] : src.value;
+          const srcValue = this.resolveSourceValue(src);
           this.cpu.registers[dest.value] =
             this.cpu.registers[dest.value] & srcValue & 0xffffffff;
           this.updateFlags(this.cpu.registers[dest.value]);
@@ -992,8 +983,7 @@ export class Simulator {
         const src = this.parseOperand(operands[1]);
 
         if (dest.type === "register") {
-          const srcValue =
-            src.type === "register" ? this.cpu.registers[src.value] : src.value;
+          const srcValue = this.resolveSourceValue(src);
           this.cpu.registers[dest.value] =
             (this.cpu.registers[dest.value] | srcValue) & 0xffffffff;
           this.updateFlags(this.cpu.registers[dest.value]);
@@ -1008,8 +998,7 @@ export class Simulator {
         const src = this.parseOperand(operands[1]);
 
         if (dest.type === "register") {
-          const srcValue =
-            src.type === "register" ? this.cpu.registers[src.value] : src.value;
+          const srcValue = this.resolveSourceValue(src);
           this.cpu.registers[dest.value] =
             (this.cpu.registers[dest.value] ^ srcValue) & 0xffffffff;
           this.updateFlags(this.cpu.registers[dest.value]);
@@ -1053,8 +1042,7 @@ export class Simulator {
 
         if (dest.type === "register") {
           const destValue = this.cpu.registers[dest.value];
-          const srcValue =
-            src.type === "register" ? this.cpu.registers[src.value] : src.value;
+          const srcValue = this.resolveSourceValue(src);
           const result = destValue & srcValue & 0xffffffff;
           this.updateFlags(result);
         }

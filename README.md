@@ -3,7 +3,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![CI](https://github.com/Toniboy1/TonX86/workflows/CI/badge.svg)](https://github.com/Toniboy1/TonX86/actions)
 [![CodeQL](https://github.com/Toniboy1/TonX86/workflows/CodeQL/badge.svg)](https://github.com/Toniboy1/TonX86/security/code-scanning)
-[![Tests](https://img.shields.io/badge/tests-156%20passing-brightgreen)](https://github.com/Toniboy1/TonX86/actions)
+[![Tests](https://img.shields.io/badge/tests-417%20passing-brightgreen)](https://github.com/Toniboy1/TonX86/actions)
 [![Coverage](https://img.shields.io/badge/coverage-92%25-brightgreen)](https://github.com/Toniboy1/TonX86/actions)
 
 Educational x86-like assembly environment for VS Code with integrated debugging, memory visualization, LCD display, and keyboard input.
@@ -55,7 +55,8 @@ Extension (UI/LCD/Keyboard) ←→ Debug Adapter (DAP) ←→ Simulator Core
      - [08-lcd.asm](examples/08-lcd.asm) - LCD display programming
      - [14-keyboard.asm](examples/14-keyboard.asm) - Keyboard input handling
      - [20-flags.asm](examples/20-flags.asm) - Flag register operations
-     - ...and more! See the `examples/` folder for all 20 examples
+     - [21-snake.asm](examples/21-snake.asm) - Snake game on 64x64 LCD
+     - ...and more! See the `examples/` folder for all 27 examples
 
 3. **Start Debugging**:
    - Open any `.asm` file
@@ -228,7 +229,7 @@ The language server provides real-time diagnostics for:
 - Callee-saved register violations
 - Stack cleanup pattern detection
 
-See [CALLING_CONVENTIONS.md](packages/docs/CALLING_CONVENTIONS.md) and [examples/calling-conventions/](examples/calling-conventions/) for detailed documentation and examples.
+See [CALLING_CONVENTIONS.md](packages/docs/CALLING_CONVENTIONS.md) for detailed documentation.
 
 ### Flags
 **Z** (Zero) | **C** (Carry) | **O** (Overflow) | **S** (Sign)
@@ -390,7 +391,7 @@ The project includes automated workflows:
   - Build verification (Node 18 & 20)
   - TypeScript compilation
   - Linting
-  - Test execution with coverage (156 tests)
+  - Test execution with coverage (417 tests)
   - Security audit
   - Coverage reports uploaded as artifacts
   - Coverage comments on PRs (free service)
@@ -415,7 +416,7 @@ The project includes automated workflows:
 
 All contributions must:
 - ✅ Pass TypeScript compilation
-- ✅ Pass all tests (156/156 currently)
+- ✅ Pass all tests (417/417 currently)
 - ✅ Maintain 80%+ code coverage
 - ✅ Pass ESLint checks
 - ✅ Include tests for new features

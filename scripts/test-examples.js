@@ -13,7 +13,7 @@ const { Simulator } = require('../packages/simcore/out/simulator.js');
 
 const EXAMPLES_DIR = path.join(__dirname, '..', 'examples');
 const MAX_STEPS = 100000; // Maximum instruction steps before timeout
-const SKIP_FILES = ['test-dap.js']; // Non-ASM files to skip
+const SKIP_FILES = ['test-dap.js', 'tonx86-debug.log']; // Non-ASM files to skip
 
 // All valid instruction mnemonics (must match simulator switch cases)
 const VALID_MNEMONICS = new Set([

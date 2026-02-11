@@ -2336,10 +2336,10 @@ describe("x86 Flags and Instructions (UVA CS216 verification)", () => {
 
     test("8-bit high register (AH) read with byteOffset", () => {
       sim.executeInstruction("MOV", ["EAX", "0x12345678"]);
-      sim.executeInstruction("MOV", ["BL", "0"]); 
+      sim.executeInstruction("MOV", ["BL", "0"]);
       sim.executeInstruction("MOV", ["BL", "AH"]); // Read from AH (high byte)
       const regs = sim.getRegisters();
-      expect(regs.EBX & 0xFF).toBe(0x56); // AH contains 0x56
+      expect(regs.EBX & 0xff).toBe(0x56); // AH contains 0x56
     });
 
     test("MOVSX with immediate 8-bit negative value", () => {

@@ -1196,9 +1196,8 @@ describe("functional: example file validation", () => {
   const KNOWN_WARNING_EXAMPLES = new Set([
     "15-all-jumps.asm", // Unreachable code by design
     "21-snake.asm", // Complex game - calling convention hints
-    "26-snake-debug.asm", // Snake variant with debug features
-    "98-control-flow-test.asm", // Tests designed to trigger warnings
-    "99-test-errors.asm", // Error test file
+    "98-control-flow.asm", // Tests designed to trigger warnings
+    "99-error-handling.asm", // Error handling examples
   ]);
 
   let exampleFiles: string[];
