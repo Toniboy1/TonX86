@@ -15,6 +15,28 @@ const EXAMPLES_DIR = path.join(__dirname, '..', 'examples');
 const MAX_STEPS = 100000; // Maximum instruction steps before timeout
 const SKIP_FILES = ['test-dap.js']; // Non-ASM files to skip
 
+// All valid instruction mnemonics (must match simulator switch cases)
+const VALID_MNEMONICS = new Set([
+  'MOV', 'XCHG', 'LEA', 'MOVZX', 'MOVSX',
+  'ADD', 'SUB', 'INC', 'DEC', 'MUL', 'IMUL', 'DIV', 'IDIV', 'MOD',
+  'CMP', 'AND', 'OR', 'XOR', 'NOT', 'NEG', 'TEST',
+  'SHL', 'SHR', 'SAR', 'ROL', 'ROR',
+  'NOP',
+  'JMP', 'JE', 'JZ', 'JNE', 'JNZ',
+  'JG', 'JGE', 'JL', 'JLE', 'JS', 'JNS',
+  'JA', 'JAE', 'JB', 'JBE',
+  'PUSH', 'POP', 'CALL', 'RET',
+  'INT', 'IRET', 'RAND', 'HLT',
+]);
+
+// Instructions that take a label operand (jump/call targets)
+const LABEL_INSTRUCTIONS = new Set([
+  'JMP', 'JE', 'JZ', 'JNE', 'JNZ',
+  'JG', 'JGE', 'JL', 'JLE', 'JS', 'JNS',
+  'JA', 'JAE', 'JB', 'JBE',
+  'CALL',
+]);
+
 /**
  * Parse an ASM file into instructions
  */
@@ -86,6 +108,36 @@ function parseASM(content) {
 }
 
 /**
+ * Validate all parsed instructions for correctness
+ * - Check all mnemonics are valid
+ * - Check all jump/call targets reference existing labels
+ */
+function validateASM(instructions, labels, fileName) {
+  const errors = [];
+
+  for (const { line, lineNumber } of instructions) {
+    const parts = line.split(/\s+/);
+    const mnemonic = parts[0].toUpperCase();
+
+    // Check valid mnemonic
+    if (!VALID_MNEMONICS.has(mnemonic)) {
+      errors.push(`Line ${lineNumber}: Unknown instruction '${mnemonic}'`);
+      continue;
+    }
+
+    // Check label targets for jump/call instructions
+    if (LABEL_INSTRUCTIONS.has(mnemonic)) {
+      const operand = parts.slice(1).join(' ').trim();
+      if (operand && !(operand in labels)) {
+        errors.push(`Line ${lineNumber}: ${mnemonic} references undefined label '${operand}'`);
+      }
+    }
+  }
+
+  return errors;
+}
+
+/**
  * Execute a single ASM file
  */
 function testASMFile(filePath) {
@@ -93,11 +145,17 @@ function testASMFile(filePath) {
   
   try {
     const content = fs.readFileSync(filePath, 'utf-8');
-    const { instructions } = parseASM(content);
+    const { instructions, labels } = parseASM(content);
 
     if (instructions.length === 0) {
       console.log(`⚠️  ${fileName}: No instructions found`);
       return { success: true, skipped: true };
+    }
+
+    // Validate all instructions before execution
+    const validationErrors = validateASM(instructions, labels, fileName);
+    if (validationErrors.length > 0) {
+      throw new Error(`Validation failed:\n  ${validationErrors.join('\n  ')}`);
     }
 
     // Create simulator with appropriate LCD size

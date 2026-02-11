@@ -1366,6 +1366,10 @@ export class Simulator {
         this.cpu.running = false;
         break;
       }
+
+      default: {
+        throw new Error(`Unknown instruction: ${mnemonic}`);
+      }
     }
   }
 

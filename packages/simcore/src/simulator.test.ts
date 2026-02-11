@@ -1089,9 +1089,10 @@ describe("Simulator - executeInstruction", () => {
   });
 
   describe("error handling", () => {
-    test("silently ignores unknown instruction", () => {
-      // Unknown instructions don't throw - they're silently ignored (switch default)
-      expect(() => sim.executeInstruction("UNKNOWN", [])).not.toThrow();
+    test("throws on unknown instruction", () => {
+      expect(() => sim.executeInstruction("UNKNOWN", [])).toThrow(
+        "Unknown instruction: UNKNOWN",
+      );
     });
 
     test("silently ignores MOV with wrong operands", () => {
