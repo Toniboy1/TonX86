@@ -1,5 +1,5 @@
 ; Test 14: Keyboard Input
-; Tests: Keyboard memory-mapped I/O (0xF100-0xF102)
+; Tests: Keyboard memory-mapped I/O (0x10100-0x10102)
 ; Expected: Reads keyboard input and displays on LCD
 ; Instructions: 
 ; 1. Set breakpoint on line 8
@@ -9,13 +9,13 @@
 
 main_loop:
     PUSH EBX           ; Save callee-saved register
-    MOV EAX, 0xF100    ; Read keyboard status
+    MOV EAX, 0x10100    ; Read keyboard status
     CMP EAX, 1         ; Key available?
     JNE main_loop_end  ; No - keep waiting
     
     ; Key available - read it
-    MOV EBX, 0xF101    ; Read key code (pops from queue)
-    MOV ECX, 0xF102    ; Read key state (1=pressed, 0=released)
+    MOV EBX, 0x10101    ; Read key code (pops from queue)
+    MOV ECX, 0x10102    ; Read key state (1=pressed, 0=released)
     
     CMP ECX, 1         ; Key pressed?
     JE key_pressed

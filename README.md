@@ -12,7 +12,7 @@ Educational x86-like assembly environment for VS Code with integrated debugging,
 
 - **Assembly Debugging** - Full DAP support with breakpoints, stepping, pause/continue
 - **CPU Simulator** - 8 general-purpose 32-bit registers with flags (Z, C, O, S)
-- **Memory-Mapped I/O** - LCD display (0xF000-0xF0FF) and keyboard input (0xF100-0xF102)
+- **Memory-Mapped I/O** - LCD display (0xF000-0xFFFF, up to 64x64) and keyboard input (0x10100-0x10102)
 - **LCD Display** - Configurable 2x2 to 256x256 pixel grid with pop-out support
 - **Keyboard Input** - Real-time key press/release capture with event queue
 - **Register/Memory Views** - Live inspection of CPU state
@@ -260,10 +260,10 @@ Notes:
 - Write pixel: `MOV 0xF000 + (y*width + x), value`
 - Example: `MOV 0xF000, 1` turns on pixel (0,0)
 
-### Keyboard (0xF100-0xF102)
-- `0xF100` - Status (1=key available, 0=empty)
-- `0xF101` - Key code (read pops from queue)
-- `0xF102` - Key state (1=pressed, 0=released)
+### Keyboard (0x10100-0x10102)
+- `0x10100` - Status (1=key available, 0=empty)
+- `0x10101` - Key code (read pops from queue)
+- `0x10102` - Key state (1=pressed, 0=released)
 
 **Key Codes:**
 - Letters: A-Z=65-90, a-z=97-122
@@ -310,12 +310,12 @@ main:
 ```asm
 ; Keyboard-controlled pixel
 main_loop:
-    MOV EAX, 0xF100        ; Read keyboard status
+    MOV EAX, 0x10100        ; Read keyboard status
     CMP EAX, 1             ; Key available?
     JNE main_loop          ; No - keep waiting
     
-    MOV EBX, 0xF101        ; Read key code (pops key)
-    MOV ECX, 0xF102        ; Read key state
+    MOV EBX, 0x10101        ; Read key code (pops key)
+    MOV ECX, 0x10102        ; Read key state
     
     CMP ECX, 1             ; Key pressed?
     JE key_pressed

@@ -4,10 +4,11 @@ VS Code extension UI for TonX86 assembly debugging.
 
 ## Components
 - **Debug Type**: `tonx86` with DAP integration
-- **Commands**: Assemble, Run, Pause, Step, Reset, LCD Pop-out
-- **Tree Views**: Registers (EAX-EDI), Memory A, Memory B
-- **Webviews**: LCD Display (canvas-based), ISA Docs
+- **Commands**: Assemble, Run, Pause, Step (Over/In/Out), Reset, LCD Pop-out/Pop-in
+- **Tree Views**: Registers (EAX-EDI + 8-bit), Memory A, Memory B
+- **Webviews**: LCD Display (canvas-based, up to 64x64), ISA Docs
 - **Keyboard Capture**: LCD webview captures keydown/keyup events
+- **Output Panel**: Mirrors Debug Console to VS Code Output (TonX86)
 
 ## Settings (tonx86.*)
 
@@ -23,13 +24,21 @@ VS Code extension UI for TonX86 assembly debugging.
 ### CPU
 - `cpu.speed` (number, 1-200, default: 100) - Execution speed percentage
 
+### Assembly
+- `assembly.autoAssemble` (boolean, default: true) - Auto-assemble on save
+- `assembly.showDiagnostics` (boolean, default: true) - Show diagnostics
+
+### Compatibility
+- `compatibility.mode` (string, default: "educational") - Mode: "educational" or "strict-x86"
+
 ## Launch Configuration
 ```json
 {
   "type": "tonx86",
   "request": "launch",
-  "program": "${workspaceFolder}/program.asm",
+  "program": "${workspaceFolder}/${fileBasename}",
   "stopOnEntry": true,
+  "console": "internalConsole",
   "cpuSpeed": 100,
   "enableLogging": false
 }
@@ -39,6 +48,14 @@ VS Code extension UI for TonX86 assembly debugging.
 - **LCD Updates**: Poll debug adapter via `customRequest("getLCDState")` every 50ms
 - **Keyboard Events**: Forward via `customRequest("keyboardEvent", {keyCode, pressed})`
 - **Register/Memory**: Update on `StoppedEvent` from debug adapter
+- **Output Panel**: Listens to debug console and mirrors to Output channel
 
 ## Key Mappings
-Letters (A-Z=65-90, a-z=97-122), Numbers (0-9=48-57), Arrows (128-131), Special keys (Space=32, Enter=13, Esc=27)
+Letters (A-Z=65-90, a-z=97-122), Numbers (0-9=48-57), Arrows (Up=128, Down=129, Left=130, Right=131), Special keys (Space=32, Enter=13, Esc=27, Tab=9, Backspace=8)
+
+## Memory-Mapped I/O Addresses
+- **LCD**: 0xF000-0xFFFF (write-only, 4096 bytes for 64x64 pixels)
+- **Keyboard**: 0x10100-0x10102 (read-only)
+  - 0x10100: Status (1=key available)
+  - 0x10101: Key code (pops from queue)
+  - 0x10102: Key state (1=pressed, 0=released)

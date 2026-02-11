@@ -26,9 +26,7 @@
       "description": "Exchange values between two registers",
       "cycles": 1,
       "flags": [],
-      "examples": [
-        "XCHG EAX, ECX      ; Swap EAX and ECX"
-      ]
+      "examples": ["XCHG EAX, ECX      ; Swap EAX and ECX"]
     },
     {
       "mnemonic": "LEA",
@@ -37,9 +35,7 @@
       "description": "Load effective address",
       "cycles": 1,
       "flags": [],
-      "examples": [
-        "LEA EAX, 0x1000    ; Load address into EAX"
-      ]
+      "examples": ["LEA EAX, 0x1000    ; Load address into EAX"]
     },
     {
       "mnemonic": "MOVZX",
@@ -70,9 +66,7 @@
       "description": "Add two registers and store result",
       "cycles": 1,
       "flags": ["Z", "C", "O", "S"],
-      "examples": [
-        "ADD EAX, ECX       ; EAX = EAX + ECX"
-      ]
+      "examples": ["ADD EAX, ECX       ; EAX = EAX + ECX"]
     },
     {
       "mnemonic": "SUB",
@@ -81,9 +75,7 @@
       "description": "Subtract two registers",
       "cycles": 1,
       "flags": ["Z", "C", "O", "S"],
-      "examples": [
-        "SUB EAX, ECX       ; EAX = EAX - ECX"
-      ]
+      "examples": ["SUB EAX, ECX       ; EAX = EAX - ECX"]
     },
     {
       "mnemonic": "CMP",
@@ -104,9 +96,7 @@
       "description": "Bitwise AND two registers",
       "cycles": 1,
       "flags": ["Z", "S"],
-      "examples": [
-        "AND EAX, ECX       ; EAX = EAX & ECX"
-      ]
+      "examples": ["AND EAX, ECX       ; EAX = EAX & ECX"]
     },
     {
       "mnemonic": "OR",
@@ -139,9 +129,7 @@
       "description": "Bitwise NOT (one's complement)",
       "cycles": 1,
       "flags": [],
-      "examples": [
-        "NOT EAX            ; EAX = ~EAX"
-      ]
+      "examples": ["NOT EAX            ; EAX = ~EAX"]
     },
     {
       "mnemonic": "NEG",
@@ -150,9 +138,7 @@
       "description": "Two's complement negation",
       "cycles": 1,
       "flags": ["Z", "C", "O", "S"],
-      "examples": [
-        "NEG EAX            ; EAX = -EAX"
-      ]
+      "examples": ["NEG EAX            ; EAX = -EAX"]
     },
     {
       "mnemonic": "TEST",
@@ -173,9 +159,7 @@
       "description": "Shift left",
       "cycles": 1,
       "flags": ["Z", "S"],
-      "examples": [
-        "SHL EAX, 4         ; Shift left by 4 positions"
-      ]
+      "examples": ["SHL EAX, 4         ; Shift left by 4 positions"]
     },
     {
       "mnemonic": "SHR",
@@ -184,9 +168,7 @@
       "description": "Shift right (logical, zero-fill)",
       "cycles": 1,
       "flags": ["Z", "S"],
-      "examples": [
-        "SHR EAX, 2         ; Shift right by 2 positions"
-      ]
+      "examples": ["SHR EAX, 2         ; Shift right by 2 positions"]
     },
     {
       "mnemonic": "SAR",
@@ -195,9 +177,7 @@
       "description": "Shift arithmetic right (sign-extend)",
       "cycles": 1,
       "flags": ["Z", "S"],
-      "examples": [
-        "SAR EAX, 3         ; Arithmetic shift right by 3"
-      ]
+      "examples": ["SAR EAX, 3         ; Arithmetic shift right by 3"]
     },
     {
       "mnemonic": "ROL",
@@ -206,9 +186,7 @@
       "description": "Rotate left",
       "cycles": 1,
       "flags": ["Z", "S"],
-      "examples": [
-        "ROL EAX, 8         ; Rotate left by 8 positions"
-      ]
+      "examples": ["ROL EAX, 8         ; Rotate left by 8 positions"]
     },
     {
       "mnemonic": "ROR",
@@ -217,9 +195,7 @@
       "description": "Rotate right",
       "cycles": 1,
       "flags": ["Z", "S"],
-      "examples": [
-        "ROR EAX, 8         ; Rotate right by 8 positions"
-      ]
+      "examples": ["ROR EAX, 8         ; Rotate right by 8 positions"]
     },
     {
       "mnemonic": "CMP",
@@ -236,9 +212,7 @@
       "description": "Increment register by 1",
       "cycles": 1,
       "flags": ["Z", "O", "S"],
-      "examples": [
-        "INC EAX            ; EAX = EAX + 1"
-      ]
+      "examples": ["INC EAX            ; EAX = EAX + 1"]
     },
     {
       "mnemonic": "DEC",
@@ -247,9 +221,7 @@
       "description": "Decrement register by 1",
       "cycles": 1,
       "flags": ["Z", "O", "S"],
-      "examples": [
-        "DEC ECX            ; ECX = ECX - 1"
-      ]
+      "examples": ["DEC ECX            ; ECX = ECX - 1"]
     },
     {
       "mnemonic": "MUL",
@@ -258,9 +230,7 @@
       "description": "Unsigned multiply (EAX * src -> EDX:EAX)",
       "cycles": 1,
       "flags": ["Z", "S"],
-      "examples": [
-        "MUL ECX            ; EAX = EAX * ECX, overflow in EDX"
-      ]
+      "examples": ["MUL ECX            ; EAX = EAX * ECX, overflow in EDX"]
     },
     {
       "mnemonic": "IMUL",
@@ -269,9 +239,7 @@
       "description": "Signed multiply (EAX * src -> EAX)",
       "cycles": 1,
       "flags": ["Z", "S"],
-      "examples": [
-        "IMUL ECX           ; EAX = EAX * ECX (signed)"
-      ]
+      "examples": ["IMUL ECX           ; EAX = EAX * ECX (signed)"]
     },
     {
       "mnemonic": "DIV",
@@ -280,9 +248,7 @@
       "description": "Unsigned divide (EAX / src -> quotient in EAX, remainder in EDX)",
       "cycles": 1,
       "flags": ["Z", "S"],
-      "examples": [
-        "DIV ECX            ; EAX = EAX / ECX, EDX = remainder"
-      ]
+      "examples": ["DIV ECX            ; EAX = EAX / ECX, EDX = remainder"]
     },
     {
       "mnemonic": "IDIV",
@@ -314,9 +280,7 @@
       "description": "Unconditional jump to address",
       "cycles": 1,
       "flags": [],
-      "examples": [
-        "JMP loop_start     ; Jump to label"
-      ]
+      "examples": ["JMP loop_start     ; Jump to label"]
     },
     {
       "mnemonic": "JE",
@@ -325,9 +289,7 @@
       "description": "Jump if equal (zero flag set)",
       "cycles": 1,
       "flags": [],
-      "examples": [
-        "JE end_loop        ; Jump if Z flag is set"
-      ]
+      "examples": ["JE end_loop        ; Jump if Z flag is set"]
     },
     {
       "mnemonic": "JZ",
@@ -336,9 +298,7 @@
       "description": "Jump if zero (zero flag set)",
       "cycles": 1,
       "flags": [],
-      "examples": [
-        "JZ is_zero         ; Jump if Z flag is set"
-      ]
+      "examples": ["JZ is_zero         ; Jump if Z flag is set"]
     },
     {
       "mnemonic": "JNE",
@@ -347,9 +307,7 @@
       "description": "Jump if not equal (zero flag clear)",
       "cycles": 1,
       "flags": [],
-      "examples": [
-        "JNE loop_start     ; Jump if Z flag is clear"
-      ]
+      "examples": ["JNE loop_start     ; Jump if Z flag is clear"]
     },
     {
       "mnemonic": "JNZ",
@@ -358,9 +316,7 @@
       "description": "Jump if not zero (zero flag clear)",
       "cycles": 1,
       "flags": [],
-      "examples": [
-        "JNZ loop_start     ; Jump if Z flag is clear"
-      ]
+      "examples": ["JNZ loop_start     ; Jump if Z flag is clear"]
     },
     {
       "mnemonic": "PUSH",
@@ -381,9 +337,7 @@
       "description": "Pop from stack into register",
       "cycles": 1,
       "flags": [],
-      "examples": [
-        "POP EAX            ; Pop from stack into EAX (ESP += 4)"
-      ]
+      "examples": ["POP EAX            ; Pop from stack into EAX (ESP += 4)"]
     },
     {
       "mnemonic": "CALL",
@@ -392,9 +346,7 @@
       "description": "Call subroutine - pushes return address and jumps to label",
       "cycles": 2,
       "flags": [],
-      "examples": [
-        "CALL my_function   ; Push return address, jump to function"
-      ]
+      "examples": ["CALL my_function   ; Push return address, jump to function"]
     },
     {
       "mnemonic": "RET",
@@ -403,9 +355,7 @@
       "description": "Return from subroutine - pops return address and jumps to it",
       "cycles": 2,
       "flags": [],
-      "examples": [
-        "RET                ; Pop return address and jump"
-      ]
+      "examples": ["RET                ; Pop return address and jump"]
     },
     {
       "mnemonic": "INT",
@@ -433,9 +383,7 @@
       "description": "Return from interrupt handler",
       "cycles": 2,
       "flags": ["All restored from stack"],
-      "examples": [
-        "IRET               ; Return from interrupt"
-      ]
+      "examples": ["IRET               ; Return from interrupt"]
     },
     {
       "mnemonic": "HLT",
@@ -444,9 +392,7 @@
       "description": "Halt execution",
       "cycles": 1,
       "flags": [],
-      "examples": [
-        "HLT                ; Stop execution"
-      ]
+      "examples": ["HLT                ; Stop execution"]
     },
     {
       "mnemonic": "RAND",

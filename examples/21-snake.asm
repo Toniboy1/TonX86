@@ -18,9 +18,9 @@
 GRID_SIZE:      EQU 64
 LCD_BASE:       EQU 0xF000
 SNAKE_BODY:     EQU 0x1000
-KB_STATUS:      EQU 0xF100
-KB_KEYCODE:     EQU 0xF101
-KB_STATE:       EQU 0xF102
+KB_STATUS:      EQU 0x10100
+KB_KEYCODE:     EQU 0x10101
+KB_STATE:       EQU 0x10102
 
 ; Key codes
 KEY_SPACE:      EQU 32
@@ -108,22 +108,25 @@ init_game:
     ; Store initial snake body positions
     LEA EAX, SNAKE_BODY
     ; Position 0 (head): X=32, Y=32
-    MOV [EAX], EBX
-    ADD EAX, 1
-    MOV [EAX], ECX
-    ADD EAX, 1
+    MOV [EAX], 32
+    ADD EAX, 4
+    MOV [EAX], 32
+    ADD EAX, 4
     ; Position 1: X=31, Y=32
     MOV [EAX], 31
-    ADD EAX, 1
+    ADD EAX, 4
     MOV [EAX], 32
-    ADD EAX, 1
+    ADD EAX, 4
     ; Position 2 (tail): X=30, Y=32
     MOV [EAX], 30
-    ADD EAX, 1
+    ADD EAX, 4
     MOV [EAX], 32
     
     ; Spawn initial food
     CALL spawn_food
+    
+    ; Draw initial game state
+    CALL draw_game
     
     MOV ESP, EBP
     POP EBP
@@ -177,18 +180,18 @@ draw_snake_loop:
     PUSH EAX
     MOV EBX, EAX
     ADD EBX, EBX         ; Multiply by 2 (X,Y pair)
-    ADD EBX, SNAKE_BODY
+    ADD EBX, EBX         ; Multiply by 4 (each coord is 4 bytes)
+    LEA ECX, SNAKE_BODY
+    ADD EBX, ECX
     
     ; Get X,Y coordinates
     MOV ECX, [EBX]       ; X
-    ADD EBX, 1
-    PUSH EBX
+    ADD EBX, 4
     MOV EBX, [EBX]       ; Y
     
     ; Draw pixel at (ECX, EBX) - X, Y
     CALL draw_pixel
     
-    POP EBX
     POP EAX
     ADD EAX, 1
     JMP draw_snake_loop
@@ -217,16 +220,19 @@ draw_pixel:
     PUSH EBP
     MOV EBP, ESP
     PUSH EAX
+    PUSH EDX
     
     ; Calculate LCD address: LCD_BASE + (Y * GRID_SIZE + X)
     MOV EAX, EBX
-    MUL GRID_SIZE
+    MOV EDX, GRID_SIZE
+    MUL EDX
     ADD EAX, ECX
     ADD EAX, LCD_BASE
     
     ; Set pixel
     MOV [EAX], 1
     
+    POP EDX
     POP EAX
     MOV ESP, EBP
     POP EBP
@@ -290,17 +296,19 @@ shift_body:
     
     MOV EAX, EDI
     SUB EAX, 1
-    ADD EAX, EAX         ; *2
-    ADD EAX, SNAKE_BODY
+    ADD EAX, EAX         ; *2 for X,Y pair
+    ADD EAX, EAX         ; *4 for byte offset
+    LEA ECX, SNAKE_BODY
+    ADD EAX, ECX
     
     MOV EBX, [EAX]       ; Get X of previous segment
-    ADD EAX, 1
+    ADD EAX, 4
     MOV ECX, [EAX]       ; Get Y of previous segment
     
     ; Write to current segment
-    ADD EAX, 1
+    ADD EAX, 4           ; Move to current segment X
     MOV [EAX], EBX       ; Store X
-    ADD EAX, 1
+    ADD EAX, 4
     MOV [EAX], ECX       ; Store Y
     
     POP EBX
@@ -312,16 +320,14 @@ shift_done:
     ; Store new head position
     LEA ECX, SNAKE_BODY
     MOV [ECX], EAX       ; New head X
-    ADD ECX, 1
+    ADD ECX, 4
     MOV [ECX], EBX       ; New head Y
     
     ; Update global head coordinates
-    PUSH EAX
-    MOV EAX, [SNAKE_BODY]
-    MOV EBX, EAX         ; EBX = new head X
-    MOV EAX, [SNAKE_BODY + 1]
-    MOV ECX, EAX         ; ECX = new head Y
-    POP EAX
+    LEA EAX, SNAKE_BODY
+    MOV EBX, [EAX]       ; EBX = new head X
+    ADD EAX, 4
+    MOV ECX, [EAX]       ; ECX = new head Y
     
     POP EDI
 
@@ -344,8 +350,12 @@ check_collision:
     PUSH ECX
     
     ; Get head position
-    MOV EAX, [SNAKE_BODY]
-    MOV EBX, [SNAKE_BODY + 1]
+    LEA EAX, SNAKE_BODY
+    MOV EBX, [EAX]       ; Head X
+    ADD EAX, 4
+    PUSH EAX
+    MOV EAX, [EAX]       ; Head Y
+    PUSH EAX             ; Save head Y
     
     ; Check if head hit body (skip first segment)
     PUSH EDI
@@ -357,35 +367,42 @@ check_body_loop:
     
     ; Get segment position
     PUSH EAX
+    PUSH EBX
     MOV EAX, EDI
-    ADD EAX, EAX         ; *2
-    ADD EAX, SNAKE_BODY
+    ADD EAX, EAX         ; *2 for X,Y pair
+    ADD EAX, EAX         ; *4 for byte offset
+    LEA ECX, SNAKE_BODY
+    ADD EAX, ECX
     MOV ECX, [EAX]       ; Segment X
-    ADD EAX, 1
-    PUSH EAX
+    ADD EAX, 4
     MOV EAX, [EAX]       ; Segment Y
     
     ; Compare with head
-    CMP ECX, [SNAKE_BODY]
+    POP EBX              ; Restore head X
+    CMP ECX, EBX
+    PUSH EBX
     JNE not_this_segment
-    CMP EAX, [SNAKE_BODY + 1]
+    MOV EBX, [ESP+8]     ; Get saved head Y from stack
+    CMP EAX, EBX
     JNE not_this_segment
     
     ; Collision detected!
-    POP EAX
+    POP EBX
     POP EAX
     POP EDI
+    ADD ESP, 8           ; Clean up saved head coords
     MOV EAX, 1
     JMP collision_done
 
 not_this_segment:
-    POP EAX
+    POP EBX
     POP EAX
     ADD EDI, 1
     JMP check_body_loop
 
 no_collision:
     POP EDI
+    ADD ESP, 8           ; Clean up saved head coords
     MOV EAX, 0
 
 collision_done:
@@ -406,28 +423,33 @@ check_food:
     PUSH ECX
     
     ; Get head position
-    MOV EAX, [SNAKE_BODY]
-    MOV EBX, [SNAKE_BODY + 1]
+    LEA EAX, SNAKE_BODY
+    MOV EBX, [EAX]       ; Head X
+    ADD EAX, 4
+    MOV ECX, [EAX]       ; Head Y
     
     ; Get food position
-    MOV ECX, EDI
-    AND ECX, 0xFF        ; Food X
+    PUSH EDI
+    MOV EAX, EDI
+    AND EAX, 0xFF        ; Food X
     
-    CMP EAX, ECX
+    CMP EBX, EAX
     JNE food_not_eaten
     
-    MOV ECX, EDI
-    SHR ECX, 16
-    AND ECX, 0xFF        ; Food Y
+    MOV EAX, EDI
+    SHR EAX, 16
+    AND EAX, 0xFF        ; Food Y
     
-    CMP EBX, ECX
+    CMP ECX, EAX
     JNE food_not_eaten
     
     ; Food eaten!
+    POP EDI
     MOV EAX, 1
     JMP food_check_done
 
 food_not_eaten:
+    POP EDI
     MOV EAX, 0
 
 food_check_done:

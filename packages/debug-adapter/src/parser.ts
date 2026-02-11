@@ -68,14 +68,14 @@ export function parseAssembly(lines: string[]): ParseResult {
     const operandString = parts.slice(1).join(" ");
     // Strip comments before parsing operands (comments start with ;)
     const operandStringWithoutComment = operandString.split(";")[0];
-    
+
     // Replace constants in operand string
     let processedOperands = operandStringWithoutComment;
     constants.forEach((value, name) => {
-      const regex = new RegExp(`\\b${name}\\b`, 'g');
+      const regex = new RegExp(`\\b${name}\\b`, "g");
       processedOperands = processedOperands.replace(regex, value.toString());
     });
-    
+
     const operands = processedOperands
       .split(",")
       .map((op) => op.trim())

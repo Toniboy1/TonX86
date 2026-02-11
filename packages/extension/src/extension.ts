@@ -212,13 +212,7 @@ class LCDViewProvider implements vscode.WebviewViewProvider {
       localResourceRoots: [],
     };
 
-    // Refresh config to ensure latest settings
-    this.updateLCDConfig();
-    this.keyboardConfig = getKeyboardConfig();
-
-    webviewView.webview.html = this.getHtmlForWebview();
-
-    // Handle messages from webview
+    // Keep webview alive when hidden to maintain keyboard state
     webviewView.webview.onDidReceiveMessage((message) => {
       if (message.type === "keyboardEvent" && this.keyboardConfig.enabled) {
         if (this.onKeyboardEvent) {
@@ -226,6 +220,12 @@ class LCDViewProvider implements vscode.WebviewViewProvider {
         }
       }
     });
+
+    // Refresh config to ensure latest settings
+    this.updateLCDConfig();
+    this.keyboardConfig = getKeyboardConfig();
+
+    webviewView.webview.html = this.getHtmlForWebview();
   }
 
   /**
@@ -280,6 +280,11 @@ class LCDViewProvider implements vscode.WebviewViewProvider {
 						padding: 10px; 
 						background: #f0f0f0;
 						width: fit-content;
+						outline: none;
+					}
+					#lcd:focus {
+						border-color: #007acc;
+						box-shadow: 0 0 5px rgba(0, 122, 204, 0.5);
 					}
 					.pixel { width: ${pixelSize}px; height: ${pixelSize}px; background: #ddd; cursor: pointer; }
 					.pixel.on { background: #333; }
@@ -292,6 +297,7 @@ class LCDViewProvider implements vscode.WebviewViewProvider {
 				<div id="lcd" tabindex="0"></div>
 				<div class="info">Pixel Size: ${pixelSize}px ${configPixelSize === "auto" ? "(auto)" : "(manual)"}</div>
 				<div class="keyboard-status">Keyboard: ${keyboardEnabled ? "Enabled (click LCD to focus)" : "Disabled"}</div>
+				<div id="debug" style="font-size: 0.7em; color: #999; margin-top: 5px; font-family: monospace;">Last key: none</div>
 				<script>
 					const vscode = acquireVsCodeApi();
 					const lcd = document.getElementById('lcd');
@@ -327,14 +333,22 @@ class LCDViewProvider implements vscode.WebviewViewProvider {
 							lcd.focus();
 						});
 						
-						// Capture keydown events
-						lcd.addEventListener('keydown', (e) => {
+						// Auto-focus on load
+						setTimeout(() => lcd.focus(), 100);
+						
+						// Helper function to send keyboard event
+						const sendKeyEvent = (e, pressed) => {
+							// Don't capture debugger function keys
+							if (e.key.startsWith('F') && e.key.length <= 3) {
+								// Allow F1-F12 for debugging
+								return;
+							}
+							
 							let keyCode = 0;
 							
 							// Check for special keys first
 							if (specialKeys[e.key]) {
 								keyCode = specialKeys[e.key];
-								e.preventDefault(); // Prevent default arrow key behavior
 							} else if (e.key.length === 1) {
 								// Single character (letter, number, symbol)
 								keyCode = e.key.charCodeAt(0);
@@ -344,57 +358,36 @@ class LCDViewProvider implements vscode.WebviewViewProvider {
 								keyCode = 27;
 							} else if (e.key === 'Tab') {
 								keyCode = 9;
-								e.preventDefault();
 							} else if (e.key === 'Backspace') {
 								keyCode = 8;
-								e.preventDefault();
 							} else if (e.key === ' ' || e.key === 'Space') {
 								keyCode = 32;
-								e.preventDefault();
 							}
 							
 							if (keyCode > 0) {
+								// Prevent default only for keys we handle
+								e.preventDefault();
+								e.stopPropagation();
+								
+								// Update debug info
+								const debugEl = document.getElementById('debug');
+								if (debugEl) {
+									debugEl.textContent = \`Last key: \${e.key} (code:\${keyCode}) \${pressed ? 'DOWN' : 'UP'}\`;
+								}
+								
 								vscode.postMessage({
 									type: 'keyboardEvent',
 									keyCode: keyCode,
-									pressed: true
+									pressed: pressed
 								});
 							}
-						});
+						};
 						
-						// Capture keyup events
-						lcd.addEventListener('keyup', (e) => {
-							let keyCode = 0;
-							
-							// Check for special keys first
-							if (specialKeys[e.key]) {
-								keyCode = specialKeys[e.key];
-								e.preventDefault();
-							} else if (e.key.length === 1) {
-								keyCode = e.key.charCodeAt(0);
-							} else if (e.key === 'Enter') {
-								keyCode = 13;
-							} else if (e.key === 'Escape') {
-								keyCode = 27;
-							} else if (e.key === 'Tab') {
-								keyCode = 9;
-								e.preventDefault();
-							} else if (e.key === 'Backspace') {
-								keyCode = 8;
-								e.preventDefault();
-							} else if (e.key === ' ' || e.key === 'Space') {
-								keyCode = 32;
-								e.preventDefault();
-							}
-							
-							if (keyCode > 0) {
-								vscode.postMessage({
-									type: 'keyboardEvent',
-									keyCode: keyCode,
-									pressed: false
-								});
-							}
-						});
+						// Capture at both LCD and document level
+						lcd.addEventListener('keydown', (e) => sendKeyEvent(e, true), true);
+						lcd.addEventListener('keyup', (e) => sendKeyEvent(e, false), true);
+						document.addEventListener('keydown', (e) => sendKeyEvent(e, true), true);
+						document.addEventListener('keyup', (e) => sendKeyEvent(e, false), true);
 					}
 					
 					// Listen for pixel updates from extension
@@ -731,16 +724,31 @@ export function activate(context: vscode.ExtensionContext): void {
 
   // Set keyboard event handler to forward to debug adapter
   lcdProvider.setKeyboardEventHandler((keyCode: number, pressed: boolean) => {
-    if (currentDebugSession) {
-      currentDebugSession
-        .customRequest("keyboardEvent", {
-          keyCode,
-          pressed,
-        })
-        .then(undefined, (err: unknown) => {
-          console.error("Failed to send keyboard event:", err);
-        });
+    if (!currentDebugSession) {
+      console.log(
+        "Keyboard event ignored - no active debug session. Start debugging (F5) first.",
+      );
+      return;
     }
+    currentDebugSession
+      .customRequest("keyboardEvent", {
+        keyCode,
+        pressed,
+      })
+      .then(
+        (response) => {
+          // Success
+          console.log(
+            `Keyboard event sent: keyCode=${keyCode}, pressed=${pressed}`,
+          );
+        },
+        (err: unknown) => {
+          console.error(
+            `Failed to send keyboard event (keyCode=${keyCode}):`,
+            err,
+          );
+        },
+      );
   });
 
   context.subscriptions.push(

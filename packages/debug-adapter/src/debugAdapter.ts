@@ -1037,6 +1037,13 @@ export class TonX86DebugSession extends DebugSession {
       this.sendResponse(response);
     } else if (command === "keyboardEvent") {
       // Forward keyboard event to simulator
+      if (!this.simulator) {
+        console.error("[TonX86] Keyboard event received but simulator not initialized");
+        response.success = false;
+        response.message = "Simulator not initialized";
+        this.sendResponse(response);
+        return;
+      }
       const { keyCode, pressed } = args;
       this.simulator.pushKeyboardEvent(keyCode, pressed);
       console.error(

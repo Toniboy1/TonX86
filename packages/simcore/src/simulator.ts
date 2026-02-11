@@ -241,23 +241,35 @@ export class Simulator {
 
   /**
    * Read from memory-mapped I/O addresses
-   * 0xF100: Keyboard status register
-   * 0xF101: Keyboard key code register
-   * 0xF102: Keyboard key state register
+   * 0xF000-0xFFFF: LCD display (write-only, returns 0)
+   * 0x10100: Keyboard status register
+   * 0x10101: Keyboard key code register
+   * 0x10102: Keyboard key state register
    */
   private readIO(address: number): number {
-    const IO_KEYBOARD_STATUS = 0xf100;
-    const IO_KEYBOARD_KEYCODE = 0xf101;
-    const IO_KEYBOARD_KEYSTATE = 0xf102;
+    const IO_LCD_BASE = 0xf000;
+    const IO_LCD_LIMIT = 0x10000;
+    const IO_KEYBOARD_STATUS = 0x10100;
+    const IO_KEYBOARD_KEYCODE = 0x10101;
+    const IO_KEYBOARD_KEYSTATE = 0x10102;
 
-    if (address === IO_KEYBOARD_STATUS) {
-      return this.keyboard.getStatus();
+    // LCD is write-only, return 0 if read
+    if (address >= IO_LCD_BASE && address < IO_LCD_LIMIT) {
+      return 0;
+    } else if (address === IO_KEYBOARD_STATUS) {
+      const status = this.keyboard.getStatus();
+      console.error(`[Simulator] readIO KB_STATUS: ${status}, queue size: ${this.keyboard["keyQueue"].length}`);
+      return status;
     } else if (address === IO_KEYBOARD_KEYCODE) {
-      // Reading key code pops the key from queue
+      // Pop the key first, then return the keycode that was just popped
       this.keyboard.popKey();
-      return this.keyboard.getKeyCode();
+      const keyCode = this.keyboard.getKeyCode();
+      console.error(`[Simulator] readIO KB_KEYCODE (after pop): ${keyCode}, state: ${this.keyboard.getKeyState()}`);
+      return keyCode;
     } else if (address === IO_KEYBOARD_KEYSTATE) {
-      return this.keyboard.getKeyState();
+      const state = this.keyboard.getKeyState();
+      console.error(`[Simulator] readIO KB_KEYSTATE: ${state}`);
+      return state;
     } else {
       throw new Error(`Unknown I/O read address: 0x${address.toString(16)}`);
     }
@@ -265,17 +277,18 @@ export class Simulator {
 
   /**
    * Write to memory-mapped I/O addresses
-   * 0xF000-0xF0FF: LCD display
-   * 0xF100-0xF1FF: Keyboard (read-only, writes ignored)
+   * 0xF000-0xFFFF: LCD display (4096 pixels for 64x64)
+   * 0x10100-0x101FF: Keyboard (read-only, writes ignored)
    */
   private writeIO(address: number, value: number): void {
     const IO_LCD_BASE = 0xf000;
-    const IO_LCD_LIMIT = 0xf100;
-    const IO_KEYBOARD_BASE = 0xf100;
+    const IO_LCD_LIMIT = 0x10000;
+    const IO_KEYBOARD_BASE = 0x10100;
+    const IO_KEYBOARD_LIMIT = 0x10200;
     const lcdSize = this.lcd.getWidth() * this.lcd.getHeight();
 
     if (address >= IO_LCD_BASE && address < IO_LCD_LIMIT) {
-      // LCD pixel write
+      // LCD pixel write (0xF000-0xFFFF)
       const pixelIndex = address - IO_LCD_BASE;
       const width = this.lcd.getWidth();
       const x = pixelIndex % width;
@@ -286,10 +299,7 @@ export class Simulator {
         this.lcd.setPixel(x, y, value);
       }
       // Silently ignore out-of-bounds writes instead of throwing
-    } else if (
-      address >= IO_KEYBOARD_BASE &&
-      address < IO_KEYBOARD_BASE + 0x100
-    ) {
+    } else if (address >= IO_KEYBOARD_BASE && address < IO_KEYBOARD_LIMIT) {
       // Keyboard registers are read-only, ignore writes
       return;
     } else {
@@ -541,8 +551,8 @@ export class Simulator {
           const isSrcMemory =
             src.type === "memory" ||
             (src.type === "immediate" &&
-              src.value >= 0xf000 &&
-              src.value <= 0xf1ff);
+              ((src.value >= 0xf000 && src.value <= 0xffff) ||
+                (src.value >= 0x10100 && src.value <= 0x101ff)));
 
           if (isDestMemory && isSrcMemory) {
             throw new Error(
@@ -565,20 +575,19 @@ export class Simulator {
             addr = (this.cpu.registers[src.base!] + (src.offset || 0)) & 0xffff;
           }
 
-          if (addr >= 0xf000 && addr <= 0xf1ff) {
+          if (
+            (addr >= 0xf000 && addr <= 0xffff) ||
+            (addr >= 0x10100 && addr <= 0x101ff)
+          ) {
             srcValue = this.readIO(addr);
           } else {
             srcValue = this.readMemory32(addr);
           }
         } else {
           // src.type === "immediate"
-          // Check if this is an I/O address being read (0xF000-0xF1FF)
-          if (src.value >= 0xf000 && src.value <= 0xf1ff) {
-            srcValue = this.readIO(src.value);
-          } else {
-            // Literal immediate value (e.g., MOV EAX, 42)
-            srcValue = src.value;
-          }
+          // Immediate values are literal values, not I/O reads
+          // Use [address] syntax for I/O reads
+          srcValue = src.value;
         }
 
         // Handle destination
@@ -595,7 +604,10 @@ export class Simulator {
               (this.cpu.registers[dest.base!] + (dest.offset || 0)) & 0xffff;
           }
 
-          if (addr >= 0xf000 && addr <= 0xf1ff) {
+          if (
+            (addr >= 0xf000 && addr <= 0xffff) ||
+            (addr >= 0x10100 && addr <= 0x101ff)
+          ) {
             this.writeIO(addr, srcValue);
           } else {
             this.writeMemory32(addr, srcValue);
@@ -850,7 +862,7 @@ export class Simulator {
 
         const srcValue =
           src.type === "register" ? this.cpu.registers[src.value] : src.value;
-        
+
         if (srcValue === 0) {
           // Modulo by zero - set to 0
           this.cpu.registers[dest.value] = 0;
@@ -1181,21 +1193,22 @@ export class Simulator {
         // RAND dest, max - Generate random number from 0 to max-1, store in dest
         // Educational instruction for easier random number generation
         if (operands.length < 1) break;
-        
+
         const dest = this.parseOperand(operands[0]);
         if (dest.type !== "register") break;
 
-        let maxValue = 0xFFFFFFFF; // Default to full 32-bit range
-        
+        let maxValue = 0xffffffff; // Default to full 32-bit range
+
         if (operands.length === 2) {
           const maxOp = this.parseOperand(operands[1]);
-          maxValue = maxOp.type === "register" 
-            ? this.cpu.registers[maxOp.value] 
-            : maxOp.value;
+          maxValue =
+            maxOp.type === "register"
+              ? this.cpu.registers[maxOp.value]
+              : maxOp.value;
         }
 
         if (maxValue <= 0) maxValue = 1; // Ensure positive max
-        
+
         // Generate random number in range [0, maxValue)
         const randomValue = Math.floor(Math.random() * maxValue) >>> 0;
         this.cpu.registers[dest.value] = randomValue;
@@ -1319,7 +1332,13 @@ export class Simulator {
    * Push a keyboard event
    */
   pushKeyboardEvent(keyCode: number, pressed: boolean): void {
+    console.error(
+      `[Simulator] pushKeyboardEvent: keyCode=${keyCode}, pressed=${pressed}`,
+    );
     this.keyboard.pushKey(keyCode, pressed);
+    console.error(
+      `[Simulator] Keyboard queue size: ${this.keyboard["keyQueue"].length}`,
+    );
   }
 
   /**

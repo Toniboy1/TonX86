@@ -118,18 +118,18 @@ MOV 0xF000, 1
 MOV 0xF035, 1
 ```
 
-### Keyboard Input (0xF100-0xF102)
+### Keyboard Input (0x10100-0x10102)
 
 Read keyboard events from memory-mapped registers:
 
 ```asm
 keyboard_loop:
-    MOV EAX, 0xF100      ; Read status (1=key available, 0=empty)
+    MOV EAX, 0x10100      ; Read status (1=key available, 0=empty)
     CMP EAX, 0
     JE keyboard_loop     ; Wait for key
     
-    MOV EBX, 0xF101      ; Read key code (pops from queue)
-    MOV ECX, 0xF102      ; Read key state (1=pressed, 0=released)
+    MOV EBX, 0x10101      ; Read key code (pops from queue)
+    MOV ECX, 0x10102      ; Read key state (1=pressed, 0=released)
     
     ; Process key press...
     JMP keyboard_loop
@@ -178,7 +178,7 @@ draw_loop:
 ```asm
 ; Simple keyboard echo to LCD
 main:
-    MOV EAX, 0xF100      ; Check keyboard status
+    MOV EAX, 0x10100      ; Check keyboard status
     CMP EAX, 1
     JNE main             ; Wait for key
     
