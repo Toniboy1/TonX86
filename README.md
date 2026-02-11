@@ -3,7 +3,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![CI](https://github.com/Toniboy1/TonX86/workflows/CI/badge.svg)](https://github.com/Toniboy1/TonX86/actions)
 [![CodeQL](https://github.com/Toniboy1/TonX86/workflows/CodeQL/badge.svg)](https://github.com/Toniboy1/TonX86/security/code-scanning)
-[![Tests](https://img.shields.io/badge/tests-156%20passing-brightgreen)](https://github.com/Toniboy1/TonX86/actions)
+[![Tests](https://img.shields.io/badge/tests-417%20passing-brightgreen)](https://github.com/Toniboy1/TonX86/actions)
 [![Coverage](https://img.shields.io/badge/coverage-92%25-brightgreen)](https://github.com/Toniboy1/TonX86/actions)
 
 Educational x86-like assembly environment for VS Code with integrated debugging, memory visualization, LCD display, and keyboard input.
@@ -12,7 +12,7 @@ Educational x86-like assembly environment for VS Code with integrated debugging,
 
 - **Assembly Debugging** - Full DAP support with breakpoints, stepping, pause/continue
 - **CPU Simulator** - 8 general-purpose 32-bit registers with flags (Z, C, O, S)
-- **Memory-Mapped I/O** - LCD display (0xF000-0xF0FF) and keyboard input (0xF100-0xF102)
+- **Memory-Mapped I/O** - LCD display (0xF000-0xFFFF, up to 64x64) and keyboard input (0x10100-0x10102)
 - **LCD Display** - Configurable 2x2 to 256x256 pixel grid with pop-out support
 - **Keyboard Input** - Real-time key press/release capture with event queue
 - **Register/Memory Views** - Live inspection of CPU state
@@ -55,7 +55,8 @@ Extension (UI/LCD/Keyboard) ←→ Debug Adapter (DAP) ←→ Simulator Core
      - [08-lcd.asm](examples/08-lcd.asm) - LCD display programming
      - [14-keyboard.asm](examples/14-keyboard.asm) - Keyboard input handling
      - [20-flags.asm](examples/20-flags.asm) - Flag register operations
-     - ...and more! See the `examples/` folder for all 20 examples
+     - [21-snake.asm](examples/21-snake.asm) - Snake game on 64x64 LCD
+     - ...and more! See the `examples/` folder for all 27 examples
 
 3. **Start Debugging**:
    - Open any `.asm` file
@@ -228,7 +229,7 @@ The language server provides real-time diagnostics for:
 - Callee-saved register violations
 - Stack cleanup pattern detection
 
-See [CALLING_CONVENTIONS.md](packages/docs/CALLING_CONVENTIONS.md) and [examples/calling-conventions/](examples/calling-conventions/) for detailed documentation and examples.
+See [CALLING_CONVENTIONS.md](packages/docs/CALLING_CONVENTIONS.md) for detailed documentation.
 
 ### Flags
 **Z** (Zero) | **C** (Carry) | **O** (Overflow) | **S** (Sign)
@@ -260,10 +261,10 @@ Notes:
 - Write pixel: `MOV 0xF000 + (y*width + x), value`
 - Example: `MOV 0xF000, 1` turns on pixel (0,0)
 
-### Keyboard (0xF100-0xF102)
-- `0xF100` - Status (1=key available, 0=empty)
-- `0xF101` - Key code (read pops from queue)
-- `0xF102` - Key state (1=pressed, 0=released)
+### Keyboard (0x10100-0x10102)
+- `0x10100` - Status (1=key available, 0=empty)
+- `0x10101` - Key code (read pops from queue)
+- `0x10102` - Key state (1=pressed, 0=released)
 
 **Key Codes:**
 - Letters: A-Z=65-90, a-z=97-122
@@ -310,12 +311,12 @@ main:
 ```asm
 ; Keyboard-controlled pixel
 main_loop:
-    MOV EAX, 0xF100        ; Read keyboard status
+    MOV EAX, 0x10100        ; Read keyboard status
     CMP EAX, 1             ; Key available?
     JNE main_loop          ; No - keep waiting
     
-    MOV EBX, 0xF101        ; Read key code (pops key)
-    MOV ECX, 0xF102        ; Read key state
+    MOV EBX, 0x10101        ; Read key code (pops key)
+    MOV ECX, 0x10102        ; Read key state
     
     CMP ECX, 1             ; Key pressed?
     JE key_pressed
@@ -390,7 +391,7 @@ The project includes automated workflows:
   - Build verification (Node 18 & 20)
   - TypeScript compilation
   - Linting
-  - Test execution with coverage (156 tests)
+  - Test execution with coverage (417 tests)
   - Security audit
   - Coverage reports uploaded as artifacts
   - Coverage comments on PRs (free service)
@@ -415,7 +416,7 @@ The project includes automated workflows:
 
 All contributions must:
 - ✅ Pass TypeScript compilation
-- ✅ Pass all tests (156/156 currently)
+- ✅ Pass all tests (417/417 currently)
 - ✅ Maintain 80%+ code coverage
 - ✅ Pass ESLint checks
 - ✅ Include tests for new features
@@ -455,3 +456,12 @@ MIT License - Free to use for educational and commercial purposes.
 Example: `"Built with TonX86 by Anthony (Toniboy1)"`
 
 See [LICENSE](LICENSE) for full details.
+
+## Verification Sources
+
+The TonX86 instruction set and behavior have been verified against:
+
+- **x86 Assembly Guide** — University of Virginia CS216, by David Evans
+  (originally created by Adam Ferrari, updated by Alan Batson, Mike Lack, and Anita Jones)
+  https://www.cs.virginia.edu/~evans/cs216/guides/x86.html
+  Licensed under [Creative Commons BY-NC-SA 3.0 US](https://creativecommons.org/licenses/by-nc-sa/3.0/us/)

@@ -30,7 +30,7 @@ The DAP (Debug Adapter Protocol) implementation in TonX86 was **already fully fu
    - `pauseRequest()` - Pause execution
    - `continueExecution()` - Async execution with breakpoint checking
    - HLT instruction handling (program termination)
-   - Infinite loop protection (100k iteration limit)
+   - Event loop yielding (1000-instruction intervals with 1ms sleep)
 
 4. **Debug Information** ✅
    - Register inspection (EAX, ECX, EDX, EBX, ESP, EBP, ESI, EDI)
@@ -89,14 +89,15 @@ Since the implementation was already complete, this PR focuses on **verification
 ### 5. Test Assets
 
 - `dap-test.asm` - Test program with all DAP features
-- `test-dap.js` - DAP protocol test script (for future use)
+- `test-dap.js` - DAP protocol test utility
 
 ## Test Results
 
 ```
-Total Tests: 115
-- Debug Adapter: 13 tests ✅
-- Simulator Core: 102 tests ✅
+Total Tests: 417
+- Debug Adapter: 25 tests ✅
+- Language Server: 104 tests ✅
+- Simulator Core: 288 tests ✅
 
 Build: ✅ SUCCESS
 Code Review: ✅ CLEAN

@@ -134,6 +134,7 @@
         "id": "tonx86",
         "aliases": [
           "TonX86 Assembly",
+          "Assembly",
           "tonx86"
         ],
         "extensions": [

@@ -45,7 +45,7 @@ MOV EAX, EBX  ; Copy EBX to EAX
 
 #### Code Completion
 Auto-completion with documentation for:
-- All 14 instructions (MOV, ADD, SUB, AND, OR, CMP, INC, DEC, JMP, JZ, JE, JNZ, JNE, HLT)
+- All supported instructions (MOV, ADD, SUB, MUL, DIV, AND, OR, XOR, CMP, INC, DEC, JMP, JZ, JE, JNZ, JNE, HLT, and more)
 - All 8 registers (EAX, ECX, EDX, EBX, ESP, EBP, ESI, EDI)
 - Triggered on space and comma
 
@@ -73,7 +73,7 @@ Updated ISA documentation to include complete instruction set:
 - Added CMP (compare) instruction
 - Added INC/DEC (increment/decrement) instructions  
 - Added JE/JNE/JNZ (conditional jump) instructions
-- Total: 14 instructions documented
+- Total: Full instruction set documented (see ISA.md)
 
 ## Instruction Set
 
@@ -135,7 +135,7 @@ VS Code Editor
 ## Testing
 
 ### Validation
-✅ All existing tests pass (102/102)
+✅ All existing tests pass (417/417)
 ✅ Build succeeds without errors
 ✅ Linting passes with no new warnings
 ✅ CodeQL security scan - no vulnerabilities

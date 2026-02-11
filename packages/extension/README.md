@@ -36,7 +36,7 @@ Educational x86-like assembly language environment for learning low-level progra
 - Click Install
 
 ### Step 2: Explore Examples
-The extension includes 20 example programs to help you learn. Find them in the [examples folder on GitHub](https://github.com/Toniboy1/TonX86/tree/main/examples):
+The extension includes 27 example programs to help you learn. Find them in the [examples folder on GitHub](https://github.com/Toniboy1/TonX86/tree/main/examples):
 
 - **[01-basic-instructions.asm](https://github.com/Toniboy1/TonX86/blob/main/examples/01-basic-instructions.asm)** - MOV, ADD, SUB operations
 - **[02-jumps.asm](https://github.com/Toniboy1/TonX86/blob/main/examples/02-jumps.asm)** - Conditional and unconditional jumps
@@ -46,7 +46,7 @@ The extension includes 20 example programs to help you learn. Find them in the [
 - **[14-keyboard.asm](https://github.com/Toniboy1/TonX86/blob/main/examples/14-keyboard.asm)** - Keyboard input handling
 - **[20-flags.asm](https://github.com/Toniboy1/TonX86/blob/main/examples/20-flags.asm)** - CPU flag operations
 
-...and 13 more examples covering interrupts, memory modes, bitwise operations, and more!
+...and 20 more examples covering interrupts, memory modes, bitwise operations, and more!
 
 ### Step 3: Write Your First Program
 Create a new `.asm` file and start coding. The Language Server provides syntax highlighting, IntelliSense, and diagnostics as you type.
@@ -118,18 +118,18 @@ MOV 0xF000, 1
 MOV 0xF035, 1
 ```
 
-### Keyboard Input (0xF100-0xF102)
+### Keyboard Input (0x10100-0x10102)
 
 Read keyboard events from memory-mapped registers:
 
 ```asm
 keyboard_loop:
-    MOV EAX, 0xF100      ; Read status (1=key available, 0=empty)
+    MOV EAX, 0x10100      ; Read status (1=key available, 0=empty)
     CMP EAX, 0
     JE keyboard_loop     ; Wait for key
     
-    MOV EBX, 0xF101      ; Read key code (pops from queue)
-    MOV ECX, 0xF102      ; Read key state (1=pressed, 0=released)
+    MOV EBX, 0x10101      ; Read key code (pops from queue)
+    MOV ECX, 0x10102      ; Read key state (1=pressed, 0=released)
     
     ; Process key press...
     JMP keyboard_loop
@@ -178,12 +178,12 @@ draw_loop:
 ```asm
 ; Simple keyboard echo to LCD
 main:
-    MOV EAX, 0xF100      ; Check keyboard status
+    MOV EAX, 0x10100      ; Check keyboard status
     CMP EAX, 1
     JNE main             ; Wait for key
     
-    MOV EBX, 0xF101      ; Get key code
-    MOV ECX, 0xF102      ; Get key state
+    MOV EBX, 0x10101      ; Get key code
+    MOV ECX, 0x10102      ; Get key state
     
     CMP ECX, 1           ; Key pressed?
     JE key_press

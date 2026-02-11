@@ -1,4 +1,4 @@
-/**
+﻿/**
  * TonX86 Language Server Protocol implementation
  * Provides syntax highlighting, completion, and diagnostics for assembly code
  */
@@ -12,13 +12,13 @@ import {
   InitializeResult,
   CompletionItem,
   CompletionItemKind,
-  Diagnostic,
-  DiagnosticSeverity,
   Hover,
   MarkupKind,
 } from "vscode-languageserver/node";
 
 import { TextDocument } from "vscode-languageserver-textdocument";
+
+import { validateDocumentText } from "./validator";
 
 // Create a connection for the server
 const connection = createConnection(ProposedFeatures.all);
@@ -166,8 +166,9 @@ const INSTRUCTIONS = [
   },
   {
     name: "IMUL",
-    description: "Signed multiply (EAX *= source)",
-    syntax: "IMUL source",
+    description:
+      "Signed multiply (supports 1, 2, and 3 operand forms per x86 spec)",
+    syntax: "IMUL source | IMUL dest, src | IMUL dest, src, const",
     cycles: 2,
     flags: ["Z", "C", "O", "S"],
     example: "IMUL EBX  ; EAX = EAX * EBX (signed)",
@@ -187,6 +188,14 @@ const INSTRUCTIONS = [
     cycles: 2,
     flags: ["Z", "C", "O", "S"],
     example: "IDIV EBX  ; EAX = EAX / EBX (signed)",
+  },
+  {
+    name: "MOD",
+    description: "Modulo operation (dest = dest % src)",
+    syntax: "MOD destination, source",
+    cycles: 1,
+    flags: ["Z", "S"],
+    example: "MOD EAX, 64  ; EAX = EAX % 64",
   },
   {
     name: "CMP",
@@ -269,12 +278,108 @@ const INSTRUCTIONS = [
     example: "JNE not_equal  ; Jump if Z=0",
   },
   {
+    name: "JG",
+    description: "Jump if greater (signed): SF == OF and ZF == 0",
+    syntax: "JG label",
+    cycles: 1,
+    flags: [],
+    example: "JG greater  ; Jump if dest > src (signed)",
+  },
+  {
+    name: "JGE",
+    description: "Jump if greater or equal (signed): SF == OF",
+    syntax: "JGE label",
+    cycles: 1,
+    flags: [],
+    example: "JGE ge_handler  ; Jump if dest >= src (signed)",
+  },
+  {
+    name: "JL",
+    description: "Jump if less (signed): SF != OF",
+    syntax: "JL label",
+    cycles: 1,
+    flags: [],
+    example: "JL less  ; Jump if dest < src (signed)",
+  },
+  {
+    name: "JLE",
+    description: "Jump if less or equal (signed): SF != OF or ZF == 1",
+    syntax: "JLE label",
+    cycles: 1,
+    flags: [],
+    example: "JLE le_handler  ; Jump if dest <= src (signed)",
+  },
+  {
+    name: "JS",
+    description: "Jump if sign flag set (result is negative)",
+    syntax: "JS label",
+    cycles: 1,
+    flags: [],
+    example: "JS negative  ; Jump if SF=1",
+  },
+  {
+    name: "JNS",
+    description: "Jump if sign flag not set (result is non-negative)",
+    syntax: "JNS label",
+    cycles: 1,
+    flags: [],
+    example: "JNS positive  ; Jump if SF=0",
+  },
+  {
+    name: "JA",
+    description: "Jump if above (unsigned): CF == 0 and ZF == 0",
+    syntax: "JA label",
+    cycles: 1,
+    flags: [],
+    example: "JA above  ; Jump if dest > src (unsigned)",
+  },
+  {
+    name: "JAE",
+    description: "Jump if above or equal (unsigned): CF == 0",
+    syntax: "JAE label",
+    cycles: 1,
+    flags: [],
+    example: "JAE ae_handler  ; Jump if dest >= src (unsigned)",
+  },
+  {
+    name: "JB",
+    description: "Jump if below (unsigned): CF == 1",
+    syntax: "JB label",
+    cycles: 1,
+    flags: [],
+    example: "JB below  ; Jump if dest < src (unsigned)",
+  },
+  {
+    name: "JBE",
+    description: "Jump if below or equal (unsigned): CF == 1 or ZF == 1",
+    syntax: "JBE label",
+    cycles: 1,
+    flags: [],
+    example: "JBE be_handler  ; Jump if dest <= src (unsigned)",
+  },
+  {
+    name: "NOP",
+    description: "No operation - does nothing",
+    syntax: "NOP",
+    cycles: 1,
+    flags: [],
+    example: "NOP  ; Do nothing",
+  },
+  {
     name: "HLT",
     description: "Halt execution",
     syntax: "HLT",
     cycles: 1,
     flags: [],
     example: "HLT  ; Stop program",
+  },
+  {
+    name: "RAND",
+    description: "Generate random number from 0 to max-1",
+    syntax: "RAND destination, max",
+    cycles: 1,
+    flags: ["Z", "S"],
+    example: "RAND EAX, 64  ; EAX = random(0..63)",
   },
   {
     name: "PUSH",
@@ -383,525 +488,10 @@ connection.onInitialized(() => {
 
 // Analyze document and provide diagnostics
 function validateDocument(document: TextDocument): void {
-  const diagnostics: Diagnostic[] = [];
   const text = document.getText();
-  const lines = text.split(/\r?\n/);
-  const labels = new Set<string>();
-
-  // First pass: collect all labels
-  lines.forEach((line) => {
-    const trimmed = line.trim();
-    if (trimmed.endsWith(":") || trimmed.includes(":")) {
-      // Extract label name (handle inline comments)
-      const colonIndex = trimmed.indexOf(":");
-      if (colonIndex > 0) {
-        const label = trimmed.substring(0, colonIndex).trim();
-        if (label && !label.includes(" ")) {
-          labels.add(label);
-        }
-      }
-    }
-  });
-
-  // Second pass: validate instructions
-  lines.forEach((line, lineIndex) => {
-    const trimmed = line.trim();
-
-    // Skip empty lines and comments
-    if (!trimmed || trimmed.startsWith(";")) {
-      return;
-    }
-
-    // Skip labels
-    if (trimmed.endsWith(":")) {
-      return;
-    }
-
-    // Parse instruction
-    const tokens = trimmed.split(/[\s,]+/).filter((t) => !t.startsWith(";"));
-    if (tokens.length === 0) {
-      return;
-    }
-
-    const instruction = tokens[0].toUpperCase();
-    const validInstructionNames = INSTRUCTIONS.map((i) => i.name);
-
-    // Check if instruction is valid
-    if (!validInstructionNames.includes(instruction)) {
-      const diagnostic: Diagnostic = {
-        severity: DiagnosticSeverity.Error,
-        range: {
-          start: { line: lineIndex, character: 0 },
-          end: { line: lineIndex, character: trimmed.length },
-        },
-        message: `Unknown instruction '${instruction}'`,
-        source: "tonx86",
-      };
-      diagnostics.push(diagnostic);
-      return;
-    }
-
-    // Basic operand validation
-    const instructionDef = INSTRUCTIONS.find((i) => i.name === instruction);
-    if (instructionDef) {
-      // Check for jump instructions with undefined labels
-      if (["JMP", "JZ", "JE", "JNZ", "JNE"].includes(instruction)) {
-        if (tokens.length < 2) {
-          const diagnostic: Diagnostic = {
-            severity: DiagnosticSeverity.Error,
-            range: {
-              start: { line: lineIndex, character: 0 },
-              end: { line: lineIndex, character: trimmed.length },
-            },
-            message: `${instruction} requires a label operand`,
-            source: "tonx86",
-          };
-          diagnostics.push(diagnostic);
-        } else {
-          const label = tokens[1];
-          // Check if it's a hex address or a label
-          if (!label.startsWith("0x") && !labels.has(label)) {
-            const diagnostic: Diagnostic = {
-              severity: DiagnosticSeverity.Warning,
-              range: {
-                start: { line: lineIndex, character: 0 },
-                end: { line: lineIndex, character: trimmed.length },
-              },
-              message: `Label '${label}' is not defined`,
-              source: "tonx86",
-            };
-            diagnostics.push(diagnostic);
-          }
-        }
-      }
-    }
-  });
-
-  // Third pass: Calling convention validation
-  validateCallingConventions(lines, labels, diagnostics);
-
+  const validInstructionNames = INSTRUCTIONS.map((i) => i.name);
+  const diagnostics = validateDocumentText(text, validInstructionNames);
   connection.sendDiagnostics({ uri: document.uri, diagnostics });
-}
-
-/**
- * Analyze calling conventions and detect potential violations
- * Provides helpful warnings for common mistakes
- */
-function validateCallingConventions(
-  lines: string[],
-  labels: Set<string>,
-  diagnostics: Diagnostic[],
-): void {
-  // Track function boundaries and their properties
-  interface FunctionInfo {
-    name: string;
-    startLine: number;
-    endLine: number;
-    prologuePushEBPLine: number;
-    prologueMovEBPLine: number;
-    epiloguePopEBPLine: number;
-    pushCount: number;
-    popCount: number;
-    callInstructions: number[];
-    retInstructions: number[];
-    modifiesCalleeSavedRegs: Set<string>;
-    savesCalleeSavedRegs: Set<string>;
-  }
-
-  const functions: FunctionInfo[] = [];
-  const calleeSavedRegs = new Set(["EBX", "ESI", "EDI", "EBP"]);
-  const controlFlowInstructions = [
-    "JMP",
-    "JE",
-    "JZ",
-    "JNE",
-    "JNZ",
-    "RET",
-    "HLT",
-  ];
-
-  // Instructions that can modify a destination register
-  const modifyingInstructions = [
-    "ADD",
-    "SUB",
-    "INC",
-    "DEC",
-    "AND",
-    "OR",
-    "XOR",
-    "SHL",
-    "SHR",
-    "MOV",
-    "MUL",
-    "DIV",
-    "IMUL",
-    "IDIV",
-    "NEG",
-    "NOT",
-  ];
-
-  // First pass: identify which labels are actual functions (CALL targets + first label)
-  const functionLabels = new Set<string>();
-  let firstLabel: string | null = null;
-
-  for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
-    const line = lines[lineIndex];
-    const trimmed = line.trim();
-
-    if (!trimmed || trimmed.startsWith(";")) {
-      continue;
-    }
-
-    // Check for label
-    if (trimmed.includes(":")) {
-      const colonIndex = trimmed.indexOf(":");
-      if (colonIndex > 0) {
-        const labelName = trimmed.substring(0, colonIndex).trim();
-        if (labelName && !labelName.includes(" ") && !firstLabel) {
-          firstLabel = labelName;
-          functionLabels.add(labelName);
-        }
-      }
-      continue;
-    }
-
-    // Check for CALL instructions
-    const tokens = trimmed.split(/[\s,]+/).filter((t) => !t.startsWith(";"));
-    if (tokens.length > 0 && tokens[0].toUpperCase() === "CALL") {
-      if (tokens.length > 1) {
-        const target = tokens[1];
-        if (labels.has(target)) {
-          functionLabels.add(target);
-        }
-      }
-    }
-  }
-
-  // Parse functions (only function labels)
-  let currentFunction: FunctionInfo | null = null;
-  let firstInstructionAfterLabel = true;
-
-  for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
-    const line = lines[lineIndex];
-    const trimmed = line.trim();
-
-    // Skip empty lines and comments
-    if (!trimmed || trimmed.startsWith(";")) {
-      continue;
-    }
-
-    // Check for function start (label that is a function)
-    if (trimmed.includes(":")) {
-      const colonIndex = trimmed.indexOf(":");
-      if (colonIndex > 0) {
-        const labelName = trimmed.substring(0, colonIndex).trim();
-
-        // Only process if this is a function label, not a loop label
-        if (
-          labelName &&
-          !labelName.includes(" ") &&
-          functionLabels.has(labelName)
-        ) {
-          if (currentFunction) {
-            currentFunction.endLine = lineIndex - 1;
-            functions.push(currentFunction);
-          }
-
-          currentFunction = {
-            name: labelName,
-            startLine: lineIndex,
-            endLine: -1,
-            prologuePushEBPLine: -1,
-            prologueMovEBPLine: -1,
-            epiloguePopEBPLine: -1,
-            pushCount: 0,
-            popCount: 0,
-            callInstructions: [],
-            retInstructions: [],
-            modifiesCalleeSavedRegs: new Set(),
-            savesCalleeSavedRegs: new Set(),
-          };
-          firstInstructionAfterLabel = true;
-        }
-      }
-      continue;
-    }
-
-    if (!currentFunction) {
-      continue;
-    }
-
-    // Parse instruction
-    const tokens = trimmed.split(/[\s,]+/).filter((t) => !t.startsWith(";"));
-    if (tokens.length === 0) {
-      continue;
-    }
-
-    const instruction = tokens[0].toUpperCase();
-
-    // Track stack operations
-    if (instruction === "PUSH") {
-      currentFunction.pushCount++;
-      if (tokens.length > 1) {
-        const reg = tokens[1].toUpperCase();
-        if (reg === "EBP" && firstInstructionAfterLabel) {
-          currentFunction.prologuePushEBPLine = lineIndex;
-        }
-        if (calleeSavedRegs.has(reg)) {
-          currentFunction.savesCalleeSavedRegs.add(reg);
-        }
-      }
-    } else if (instruction === "POP") {
-      currentFunction.popCount++;
-      if (tokens.length > 1) {
-        const reg = tokens[1].toUpperCase();
-        if (reg === "EBP") {
-          currentFunction.epiloguePopEBPLine = lineIndex;
-        }
-      }
-    } else if (instruction === "MOV") {
-      if (tokens.length >= 3) {
-        const dest = tokens[1].toUpperCase();
-        const src = tokens[2].toUpperCase();
-
-        // Check for prologue: MOV EBP, ESP (should follow PUSH EBP)
-        if (
-          dest === "EBP" &&
-          src === "ESP" &&
-          currentFunction.prologuePushEBPLine !== -1
-        ) {
-          currentFunction.prologueMovEBPLine = lineIndex;
-        }
-
-        // Track modifications to callee-saved registers
-        if (calleeSavedRegs.has(dest) && dest !== "EBP") {
-          currentFunction.modifiesCalleeSavedRegs.add(dest);
-        }
-      }
-    } else if (instruction === "CALL") {
-      currentFunction.callInstructions.push(lineIndex);
-    } else if (instruction === "RET") {
-      currentFunction.retInstructions.push(lineIndex);
-    } else if (modifyingInstructions.includes(instruction)) {
-      // Track modifications to callee-saved registers
-      if (tokens.length > 1) {
-        const dest = tokens[1].toUpperCase();
-        if (calleeSavedRegs.has(dest) && dest !== "EBP") {
-          currentFunction.modifiesCalleeSavedRegs.add(dest);
-        }
-      }
-    }
-
-    firstInstructionAfterLabel = false;
-  }
-
-  // Add last function
-  if (currentFunction !== null) {
-    currentFunction.endLine = lines.length - 1;
-    functions.push(currentFunction);
-  }
-
-  // Analyze each function for calling convention issues
-  for (const func of functions) {
-    // Skip main/entry point functions
-    if (
-      func.name === "main" ||
-      func.name === "start" ||
-      func.name === "_start"
-    ) {
-      continue;
-    }
-
-    // Check for standard function prologue
-    if (func.callInstructions.length > 0 || func.retInstructions.length > 0) {
-      if (func.prologuePushEBPLine === -1) {
-        diagnostics.push({
-          severity: DiagnosticSeverity.Information,
-          range: {
-            start: { line: func.startLine, character: 0 },
-            end: {
-              line: func.startLine,
-              character: lines[func.startLine].length,
-            },
-          },
-          message: `Function '${func.name}' should start with 'PUSH EBP' (standard prologue)`,
-          source: "tonx86-convention",
-        });
-      }
-
-      if (func.prologuePushEBPLine !== -1 && func.prologueMovEBPLine === -1) {
-        diagnostics.push({
-          severity: DiagnosticSeverity.Information,
-          range: {
-            start: { line: func.prologuePushEBPLine, character: 0 },
-            end: {
-              line: func.prologuePushEBPLine,
-              character: lines[func.prologuePushEBPLine]?.length || 0,
-            },
-          },
-          message: `Function '${func.name}' should follow 'PUSH EBP' with 'MOV EBP, ESP' (standard prologue)`,
-          source: "tonx86-convention",
-        });
-      }
-
-      if (func.epiloguePopEBPLine === -1 && func.prologuePushEBPLine !== -1) {
-        diagnostics.push({
-          severity: DiagnosticSeverity.Warning,
-          range: {
-            start: { line: func.startLine, character: 0 },
-            end: {
-              line: func.endLine,
-              character: lines[func.endLine]?.length || 0,
-            },
-          },
-          message: `Function '${func.name}' has 'PUSH EBP' but missing 'POP EBP' (unbalanced stack)`,
-          source: "tonx86-convention",
-        });
-      }
-    }
-
-    // Check for unbalanced push/pop
-    if (func.pushCount !== func.popCount) {
-      diagnostics.push({
-        severity: DiagnosticSeverity.Warning,
-        range: {
-          start: { line: func.startLine, character: 0 },
-          end: {
-            line: func.endLine,
-            character: lines[func.endLine]?.length || 0,
-          },
-        },
-        message: `Function '${func.name}' has ${func.pushCount} PUSH but ${func.popCount} POP (unbalanced stack)`,
-        source: "tonx86-convention",
-      });
-    }
-
-    // Check for callee-saved register violations
-    for (const reg of func.modifiesCalleeSavedRegs) {
-      if (!func.savesCalleeSavedRegs.has(reg)) {
-        diagnostics.push({
-          severity: DiagnosticSeverity.Warning,
-          range: {
-            start: { line: func.startLine, character: 0 },
-            end: {
-              line: func.endLine,
-              character: lines[func.endLine]?.length || 0,
-            },
-          },
-          message: `Function '${func.name}' modifies callee-saved register ${reg} but doesn't save/restore it`,
-          source: "tonx86-convention",
-        });
-      }
-    }
-  }
-
-  // Analyze CALL sites for potential calling convention issues
-  for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
-    const line = lines[lineIndex];
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith(";")) {
-      continue;
-    }
-
-    const tokens = trimmed.split(/[\s,]+/).filter((t) => !t.startsWith(";"));
-    if (tokens.length === 0) {
-      continue;
-    }
-
-    const instruction = tokens[0].toUpperCase();
-
-    // Check for stack cleanup after CALL (cdecl pattern)
-    if (instruction === "CALL" && tokens.length > 1) {
-      const targetLabel = tokens[1];
-
-      // Look at next non-comment, non-empty line
-      let nextLineIndex = lineIndex + 1;
-      while (nextLineIndex < lines.length) {
-        const nextTrimmed = lines[nextLineIndex].trim();
-        if (nextTrimmed && !nextTrimmed.startsWith(";")) {
-          break;
-        }
-        nextLineIndex++;
-      }
-
-      if (nextLineIndex < lines.length) {
-        const nextLine = lines[nextLineIndex].trim();
-        const nextTokens = nextLine
-          .split(/[\s,]+/)
-          .filter((t) => !t.startsWith(";"));
-        const nextInstruction =
-          nextTokens.length > 0 ? nextTokens[0].toUpperCase() : "";
-
-        // Check for cdecl stack cleanup pattern
-        if (nextInstruction === "ADD" && nextTokens.length >= 3) {
-          const dest = nextTokens[1].toUpperCase();
-          const src = nextTokens[2];
-
-          if (dest === "ESP") {
-            // This looks like cdecl (caller cleans stack)
-            diagnostics.push({
-              severity: DiagnosticSeverity.Hint,
-              range: {
-                start: { line: lineIndex, character: 0 },
-                end: {
-                  line: nextLineIndex,
-                  character: lines[nextLineIndex].length,
-                },
-              },
-              message: `Call to '${targetLabel}' uses cdecl convention (caller cleans stack with ADD ESP, ${src})`,
-              source: "tonx86-convention",
-            });
-          }
-        }
-      }
-    }
-
-    // Detect potential parameter passing patterns
-    if (instruction === "PUSH") {
-      // Look ahead for CALL within next few lines
-      let foundCall = false;
-      for (
-        let i = lineIndex + 1;
-        i < Math.min(lineIndex + 10, lines.length);
-        i++
-      ) {
-        const futureTrimmed = lines[i].trim();
-        if (!futureTrimmed || futureTrimmed.startsWith(";")) {
-          continue;
-        }
-        const futureTokens = futureTrimmed
-          .split(/[\s,]+/)
-          .filter((t) => !t.startsWith(";"));
-        if (
-          futureTokens.length > 0 &&
-          futureTokens[0].toUpperCase() === "CALL"
-        ) {
-          foundCall = true;
-          break;
-        }
-        // Stop if we hit a label or control flow
-        if (
-          futureTrimmed.endsWith(":") ||
-          controlFlowInstructions.includes(futureTokens[0]?.toUpperCase())
-        ) {
-          break;
-        }
-      }
-
-      if (foundCall && tokens.length > 1) {
-        const param = tokens[1];
-        diagnostics.push({
-          severity: DiagnosticSeverity.Hint,
-          range: {
-            start: { line: lineIndex, character: 0 },
-            end: { line: lineIndex, character: trimmed.length },
-          },
-          message: `Pushing parameter '${param}' for upcoming function call (cdecl/stdcall pattern)`,
-          source: "tonx86-convention",
-        });
-      }
-    }
-  }
 }
 
 // Document change handler

@@ -122,7 +122,7 @@ Update relevant documentation:
 - Bug fixes
 
 ### Feature Development
-- New instructions (MUL, DIV, shifts, etc.)
+- New instructions (e.g., string operations)
 - Enhanced debugging features
 - Additional I/O devices
 - Performance optimizations
@@ -136,7 +136,7 @@ Update relevant documentation:
 
 All contributions must:
 - ✅ Pass TypeScript compilation
-- ✅ Pass all tests (102/102 currently)
+- ✅ Pass all tests (417/417 currently)
 - ✅ Maintain 80%+ code coverage
 - ✅ Pass ESLint checks
 - ✅ Include tests for new features

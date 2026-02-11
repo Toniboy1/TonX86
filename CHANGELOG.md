@@ -2,7 +2,27 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
-### [0.4.1](https://github.com/Toniboy1/TonX86/compare/v0.4.0...v0.4.1) (2026-02-10)
+### [0.4.1](https://github.com/Toniboy1/TonX86/compare/v0.4.0...v0.4.1) (2026-02-11)
+
+
+### Bug Fixes
+
+* fix memory operand dereferencing for CMP, AND, OR, XOR, TEST, MUL, IMUL, DIV, IDIV, MOD, ADD, SUB — instructions now properly read memory values instead of returning 0 ([ffed862](https://github.com/Toniboy1/TonX86/commit/ffed862))
+* fix debug adapter freezing by replacing 100k iteration limit with event loop yielding (1000-instruction intervals with 1ms sleep) ([ffed862](https://github.com/Toniboy1/TonX86/commit/ffed862))
+* fix LCD dimension detection to use EQU constants (GRID_SIZE/LCD_BASE) for proper 64x64 display support ([ffed862](https://github.com/Toniboy1/TonX86/commit/ffed862))
+
+
+### Features
+
+* add Snake game example (21-snake.asm) with 64x64 LCD display, keyboard controls, collision detection, food spawning, and start screen ([ffed862](https://github.com/Toniboy1/TonX86/commit/ffed862))
+* add resolveSourceValue() helper to simulator for consistent memory operand resolution across all instruction types ([ffed862](https://github.com/Toniboy1/TonX86/commit/ffed862))
+* rename example files to academic names (removed test/debug/new suffixes) ([ffed862](https://github.com/Toniboy1/TonX86/commit/ffed862))
+
+
+### Tests
+
+* expand test suite from 156 to 417 tests (25 debug-adapter + 104 language-server + 288 simcore) ([ffed862](https://github.com/Toniboy1/TonX86/commit/ffed862))
+
 
 ## [0.4.0](https://github.com/Toniboy1/TonX86/compare/v0.3.4...v0.4.0) (2026-02-10)
 

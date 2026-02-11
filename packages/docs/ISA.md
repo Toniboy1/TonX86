@@ -1,5 +1,7 @@
 # TonX86 Instruction Set Architecture
 
+> **Verification source:** This ISA is based on the [x86 Assembly Guide](https://www.cs.virginia.edu/~evans/cs216/guides/x86.html) from the University of Virginia CS216 course by David Evans (originally by Adam Ferrari, updated by Alan Batson, Mike Lack, and Anita Jones). Used under [CC BY-NC-SA 3.0 US](https://creativecommons.org/licenses/by-nc-sa/3.0/us/).
+
 ## Registers
 
 **General Purpose (32-bit):**
@@ -24,12 +26,14 @@
 
 These 8-bit registers provide access to individual bytes of the 32-bit general purpose registers. They are commonly used for byte-oriented operations, character I/O, and interrupt service routines.
 
+Register names are **not case-sensitive** (e.g., `EAX` and `eax` refer to the same register).
+
 ## Flags
 
-- **Z** (Zero) - Set when result is zero
-- **C** (Carry) - Set on unsigned overflow
-- **O** (Overflow) - Set on signed overflow
-- **S** (Sign) - Set when result is negative
+- **Z** (Zero, bit 6) - Set when result is zero
+- **C** (Carry, bit 0) - Set on unsigned overflow/borrow
+- **O** (Overflow, bit 11) - Set on signed overflow
+- **S** (Sign, bit 7) - Set when result is negative (bit 31 of result is 1)
 
 ## Instructions
 
@@ -57,7 +61,10 @@ These 8-bit registers provide access to individual bytes of the 32-bit general p
 **LEA dest, src** - Load effective address
 - Cycles: 1
 - Flags: None
-- Example: `LEA EAX, 0x1000`
+- Note: Computes the effective address of src and places it in dest. The memory contents are **not** loaded, only the address is computed.
+- Examples:
+  - `LEA EAX, 0x1000` (load address 0x1000 into EAX)
+  - `LEA EAX, [EBX+4]` (compute EBX+4 and store address in EAX)
 
 **MOVZX dest, src** - Move with zero extend
 - Cycles: 1
@@ -106,10 +113,16 @@ These 8-bit registers provide access to individual bytes of the 32-bit general p
 - Flags: Z, S
 - Example: `MUL ECX`
 
-**IMUL src** - Signed multiply (EAX * src -> EAX)
+**IMUL** - Signed multiply (supports 1, 2, and 3 operand forms per x86 spec)
+- **1 operand:** `IMUL src` - EAX * src → EDX:EAX (signed)
+- **2 operand:** `IMUL dest, src` - dest * src → dest
+- **3 operand:** `IMUL dest, src, const` - src * const → dest
 - Cycles: 1
 - Flags: Z, S
-- Example: `IMUL ECX`
+- Examples:
+  - `IMUL ECX` (EAX = EAX * ECX, signed, single-operand form)
+  - `IMUL EAX, EBX` (EAX = EAX * EBX, two-operand form)
+  - `IMUL ESI, EDI, 25` (ESI = EDI * 25, three-operand form)
 
 **DIV src** - Unsigned divide (EAX / src -> quotient in EAX, remainder in EDX)
 - Cycles: 1
@@ -120,6 +133,12 @@ These 8-bit registers provide access to individual bytes of the 32-bit general p
 - Cycles: 1
 - Flags: Z, S
 - Example: `IDIV ECX`
+
+**MOD dest, src** - Modulo operation (dest = dest % src)
+- Cycles: 1
+- Flags: Z, S
+- Example: `MOD EAX, 64`
+- Note: Educational instruction for easier modulo calculations. Alternatively, use DIV and read remainder from EDX.
 
 ### Logical
 
@@ -149,6 +168,8 @@ These 8-bit registers provide access to individual bytes of the 32-bit general p
 - Example: `TEST EAX, 0xFF`
 
 ### Shifts and Rotates
+
+> **Note:** Per x86 specification, shift counts greater than 31 are performed modulo 32.
 
 **SHL dest, count** - Shift left
 - Cycles: 1
@@ -192,10 +213,82 @@ These 8-bit registers provide access to individual bytes of the 32-bit general p
 - Flags: None (reads Z flag)
 - Example: `JNE loop_start`
 
+**JG label** - Jump if greater (signed)
+- Cycles: 1
+- Flags: None (reads Z, S, O flags)
+- Condition: SF == OF and ZF == 0
+- Example: `JG greater_handler`
+
+**JGE label** - Jump if greater or equal (signed)
+- Cycles: 1
+- Flags: None (reads S, O flags)
+- Condition: SF == OF
+- Example: `JGE ge_handler`
+
+**JL label** - Jump if less (signed)
+- Cycles: 1
+- Flags: None (reads S, O flags)
+- Condition: SF != OF
+- Example: `JL less_handler`
+
+**JLE label** - Jump if less or equal (signed)
+- Cycles: 1
+- Flags: None (reads Z, S, O flags)
+- Condition: SF != OF or ZF == 1
+- Example: `JLE le_handler`
+
+**JS label** - Jump if sign flag set
+- Cycles: 1
+- Flags: None (reads S flag)
+- Example: `JS negative_handler`
+
+**JNS label** - Jump if sign flag not set
+- Cycles: 1
+- Flags: None (reads S flag)
+- Example: `JNS positive_handler`
+
+**JA label** - Jump if above (unsigned greater)
+- Cycles: 1
+- Flags: None (reads C, Z flags)
+- Condition: CF == 0 and ZF == 0
+- Example: `JA above_handler`
+
+**JAE label** - Jump if above or equal (unsigned greater or equal)
+- Cycles: 1
+- Flags: None (reads C flag)
+- Condition: CF == 0
+- Example: `JAE ae_handler`
+
+**JB label** - Jump if below (unsigned less)
+- Cycles: 1
+- Flags: None (reads C flag)
+- Condition: CF == 1
+- Example: `JB below_handler`
+
+**JBE label** - Jump if below or equal (unsigned less or equal)
+- Cycles: 1
+- Flags: None (reads C, Z flags)
+- Condition: CF == 1 or ZF == 1
+- Example: `JBE be_handler`
+
+**NOP** - No operation
+- Cycles: 1
+- Flags: None
+- Example: `NOP`
+
 **HLT** - Halt execution
 - Cycles: 1
 - Flags: None
 - Example: `HLT`
+
+### Special Instructions
+
+**RAND dest, max** - Generate random number
+- Cycles: 1
+- Flags: Z, S
+- Operation: Generates random number from 0 to max-1, stores in dest
+- Example: `RAND EAX, 64` (generates 0-63)
+- Note: Educational instruction for game development and simulations. If max is omitted, generates full 32-bit random value.
 
 ### Stack Operations
 
@@ -249,17 +342,17 @@ MOV 0xF000, 1      ; Turn on pixel (0,0)
 MOV 0xF008, 0      ; Turn off pixel (0,1) in 8x8 grid
 ```
 
-### Keyboard (0xF100-0xF102)
+### Keyboard (0x10100-0x10102)
 **Read-only** - Keyboard input
 
-- `0xF100` - Status register (1=key available, 0=empty)
-- `0xF101` - Key code register (reading pops from queue)
-- `0xF102` - Key state register (1=pressed, 0=released)
+- `0x10100` - Status register (1=key available, 0=empty)
+- `0x10101` - Key code register (reading pops from queue)
+- `0x10102` - Key state register (1=pressed, 0=released)
 
 ```asm
-MOV EAX, 0xF100    ; Check keyboard status
-MOV EBX, 0xF101    ; Read key code
-MOV ECX, 0xF102    ; Read key state
+MOV EAX, 0x10100    ; Check keyboard status
+MOV EBX, 0x10101    ; Read key code
+MOV ECX, 0x10102    ; Read key state
 ```
 
 **Key Codes:**
@@ -300,12 +393,12 @@ HLT
 ### Keyboard Input
 ```asm
 loop:
-  MOV EAX, 0xF100   ; Check keyboard
+  MOV EAX, 0x10100   ; Check keyboard
   CMP EAX, 1
   JNE loop          ; Wait for key
   
-  MOV EBX, 0xF101   ; Read key code
-  MOV ECX, 0xF102   ; Read key state
+  MOV EBX, 0x10101   ; Read key code
+  MOV ECX, 0x10102   ; Read key state
   HLT
 ```
 
@@ -333,4 +426,4 @@ TonX86 supports standard x86 calling conventions. See [CALLING_CONVENTIONS.md](C
 - **stdcall** - Standard call (callee cleans stack)
 - **fastcall** - Fast call (first 2 params in registers)
 
-Example programs demonstrating each convention are available in `/examples/calling-conventions/`.
+Example programs demonstrating each convention are available in the `examples/` folder.
