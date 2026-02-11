@@ -1920,7 +1920,7 @@ describe("x86 Flags and Instructions (UVA CS216 verification)", () => {
       sim.executeInstruction("IMUL", ["EAX", "ECX", "-3"]);
       const regs = sim.getRegisters();
       // -30 as 32-bit unsigned
-      expect(regs.EAX).toBe(0xFFFFFFE2);
+      expect(regs.EAX).toBe(0xffffffe2);
     });
   });
 
@@ -1943,14 +1943,14 @@ describe("x86 Flags and Instructions (UVA CS216 verification)", () => {
       sim.executeInstruction("MOV", ["EAX", "0x80000000"]);
       sim.executeInstruction("SAR", ["EAX", "33"]); // 33 mod 32 = 1
       const regs = sim.getRegisters();
-      expect(regs.EAX).toBe(0xC0000000);
+      expect(regs.EAX).toBe(0xc0000000);
     });
 
     test("shift by 32 is equivalent to shift by 0", () => {
       sim.executeInstruction("MOV", ["EAX", "0xFF"]);
       sim.executeInstruction("SHL", ["EAX", "32"]); // 32 mod 32 = 0
       const regs = sim.getRegisters();
-      expect(regs.EAX).toBe(0xFF); // No shift
+      expect(regs.EAX).toBe(0xff); // No shift
     });
   });
 
@@ -1974,7 +1974,7 @@ describe("x86 Flags and Instructions (UVA CS216 verification)", () => {
       sim.executeInstruction("MOV", ["EBX", "0xF000"]); // LCD address range
       sim.executeInstruction("LEA", ["EAX", "[EBX+16]"]);
       const regs = sim.getRegisters();
-      expect(regs.EAX).toBe(0xF010); // Address computed, not memory content
+      expect(regs.EAX).toBe(0xf010); // Address computed, not memory content
     });
   });
 

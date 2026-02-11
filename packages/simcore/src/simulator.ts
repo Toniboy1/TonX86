@@ -669,7 +669,9 @@ export class Simulator {
             if (src.base === -1) {
               addr = src.offset || 0;
             } else {
-              addr = (this.cpu.registers[src.base!] + (src.offset || 0)) & 0xffffffff;
+              addr =
+                (this.cpu.registers[src.base!] + (src.offset || 0)) &
+                0xffffffff;
             }
             this.cpu.registers[dest.value] = addr >>> 0;
           } else if (src.type === "immediate") {
@@ -1036,7 +1038,7 @@ export class Simulator {
 
         if (dest.type === "register") {
           const destVal = this.cpu.registers[dest.value];
-          const result = (-destVal) & 0xffffffff;
+          const result = -destVal & 0xffffffff;
           this.cpu.registers[dest.value] = result;
           this.updateFlagsArith(result, 0, destVal, true);
         }
@@ -1068,7 +1070,9 @@ export class Simulator {
 
         if (dest.type === "register") {
           const count =
-            (src.type === "register" ? this.cpu.registers[src.value] : src.value) & 0x1f;
+            (src.type === "register"
+              ? this.cpu.registers[src.value]
+              : src.value) & 0x1f;
           this.cpu.registers[dest.value] =
             (this.cpu.registers[dest.value] << count) & 0xffffffff;
           this.updateFlags(this.cpu.registers[dest.value]);
@@ -1085,7 +1089,9 @@ export class Simulator {
 
         if (dest.type === "register") {
           const count =
-            (src.type === "register" ? this.cpu.registers[src.value] : src.value) & 0x1f;
+            (src.type === "register"
+              ? this.cpu.registers[src.value]
+              : src.value) & 0x1f;
           this.cpu.registers[dest.value] =
             (this.cpu.registers[dest.value] >>> count) & 0xffffffff;
           this.updateFlags(this.cpu.registers[dest.value]);
@@ -1102,7 +1108,9 @@ export class Simulator {
 
         if (dest.type === "register") {
           const count =
-            (src.type === "register" ? this.cpu.registers[src.value] : src.value) & 0x1f;
+            (src.type === "register"
+              ? this.cpu.registers[src.value]
+              : src.value) & 0x1f;
           // Convert to signed, shift, then back to unsigned
           this.cpu.registers[dest.value] =
             ((this.cpu.registers[dest.value] | 0) >> count) >>> 0;

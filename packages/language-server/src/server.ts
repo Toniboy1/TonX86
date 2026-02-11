@@ -166,7 +166,8 @@ const INSTRUCTIONS = [
   },
   {
     name: "IMUL",
-    description: "Signed multiply (supports 1, 2, and 3 operand forms per x86 spec)",
+    description:
+      "Signed multiply (supports 1, 2, and 3 operand forms per x86 spec)",
     syntax: "IMUL source | IMUL dest, src | IMUL dest, src, const",
     cycles: 2,
     flags: ["Z", "C", "O", "S"],
@@ -724,7 +725,10 @@ function validateDocument(document: TextDocument): void {
       }
 
       // IMUL and RAND have flexible operand counts
-      if (instruction === "IMUL" && (operands.length < 1 || operands.length > 3)) {
+      if (
+        instruction === "IMUL" &&
+        (operands.length < 1 || operands.length > 3)
+      ) {
         diagnostics.push({
           severity: DiagnosticSeverity.Error,
           range: {
@@ -737,7 +741,10 @@ function validateDocument(document: TextDocument): void {
         return;
       }
 
-      if (instruction === "RAND" && (operands.length < 1 || operands.length > 2)) {
+      if (
+        instruction === "RAND" &&
+        (operands.length < 1 || operands.length > 2)
+      ) {
         diagnostics.push({
           severity: DiagnosticSeverity.Error,
           range: {

@@ -379,9 +379,25 @@ export class TonX86DebugSession extends DebugSession {
 
       // Handle jump instructions (including CALL and RET)
       if (
-        ["JMP", "JE", "JZ", "JNE", "JNZ", "JG", "JGE", "JL", "JLE", "JS", "JNS", "JA", "JAE", "JB", "JBE", "CALL", "RET"].includes(
-          currentInstr.mnemonic,
-        )
+        [
+          "JMP",
+          "JE",
+          "JZ",
+          "JNE",
+          "JNZ",
+          "JG",
+          "JGE",
+          "JL",
+          "JLE",
+          "JS",
+          "JNS",
+          "JA",
+          "JAE",
+          "JB",
+          "JBE",
+          "CALL",
+          "RET",
+        ].includes(currentInstr.mnemonic)
       ) {
         if (currentInstr.mnemonic === "CALL") {
           // CALL: Push return address (next instruction) and jump to label
@@ -529,7 +545,10 @@ export class TonX86DebugSession extends DebugSession {
         return !this.isZeroFlagSet();
       case "JG":
         // Greater (signed): SF == OF and ZF == 0
-        return this.isSignFlagSet() === this.isOverflowFlagSet() && !this.isZeroFlagSet();
+        return (
+          this.isSignFlagSet() === this.isOverflowFlagSet() &&
+          !this.isZeroFlagSet()
+        );
       case "JGE":
         // Greater or equal (signed): SF == OF
         return this.isSignFlagSet() === this.isOverflowFlagSet();
@@ -538,7 +557,10 @@ export class TonX86DebugSession extends DebugSession {
         return this.isSignFlagSet() !== this.isOverflowFlagSet();
       case "JLE":
         // Less or equal (signed): SF != OF or ZF == 1
-        return this.isSignFlagSet() !== this.isOverflowFlagSet() || this.isZeroFlagSet();
+        return (
+          this.isSignFlagSet() !== this.isOverflowFlagSet() ||
+          this.isZeroFlagSet()
+        );
       case "JS":
         return this.isSignFlagSet();
       case "JNS":
@@ -857,7 +879,25 @@ export class TonX86DebugSession extends DebugSession {
       }
 
       // Handle jump instructions
-      if (["JMP", "JE", "JZ", "JNE", "JNZ", "JG", "JGE", "JL", "JLE", "JS", "JNS", "JA", "JAE", "JB", "JBE"].includes(currentInstr.mnemonic)) {
+      if (
+        [
+          "JMP",
+          "JE",
+          "JZ",
+          "JNE",
+          "JNZ",
+          "JG",
+          "JGE",
+          "JL",
+          "JLE",
+          "JS",
+          "JNS",
+          "JA",
+          "JAE",
+          "JB",
+          "JBE",
+        ].includes(currentInstr.mnemonic)
+      ) {
         const targetLabel = currentInstr.operands[0];
         const targetIndex = this.labels.get(targetLabel);
 
@@ -943,9 +983,25 @@ export class TonX86DebugSession extends DebugSession {
 
       // Handle jump/call/ret instructions
       if (
-        ["JMP", "JE", "JZ", "JNE", "JNZ", "JG", "JGE", "JL", "JLE", "JS", "JNS", "JA", "JAE", "JB", "JBE", "CALL", "RET"].includes(
-          currentInstr.mnemonic,
-        )
+        [
+          "JMP",
+          "JE",
+          "JZ",
+          "JNE",
+          "JNZ",
+          "JG",
+          "JGE",
+          "JL",
+          "JLE",
+          "JS",
+          "JNS",
+          "JA",
+          "JAE",
+          "JB",
+          "JBE",
+          "CALL",
+          "RET",
+        ].includes(currentInstr.mnemonic)
       ) {
         if (currentInstr.mnemonic === "CALL") {
           const targetLabel = currentInstr.operands[0];
