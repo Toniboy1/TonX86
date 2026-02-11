@@ -22,8 +22,31 @@ function parseASM(content) {
   const lines = content.split('\n');
   const instructions = [];
   const labels = {};
+  const constants = {}; // EQU constants
   let lineNumber = 0;
 
+  // First pass: collect EQU constants
+  for (let i = 0; i < lines.length; i++) {
+    let line = lines[i].trim();
+    
+    // Remove comments
+    const commentIndex = line.indexOf(';');
+    if (commentIndex >= 0) {
+      line = line.substring(0, commentIndex).trim();
+    }
+
+    if (!line) continue;
+
+    // Check for EQU directive (with or without colon)
+    const equMatch = line.match(/^(\w+):?\s+EQU\s+(.+)/i);
+    if (equMatch) {
+      const constName = equMatch[1];
+      const constValue = equMatch[2].trim();
+      constants[constName] = constValue;
+    }
+  }
+
+  // Second pass: collect labels and instructions
   for (let i = 0; i < lines.length; i++) {
     let line = lines[i].trim();
     
@@ -42,12 +65,20 @@ function parseASM(content) {
       continue;
     }
 
-    // Check for EQU directive
-    if (line.includes(' EQU ')) {
-      continue; // Skip constants for now
+    // Skip EQU directives
+    if (/\s+EQU\s+/i.test(line)) {
+      continue;
     }
 
-    instructions.push({ line: line, lineNumber: i + 1 });
+    // Substitute EQU constants in the line
+    let processedLine = line;
+    for (const [constName, constValue] of Object.entries(constants)) {
+      // Replace constant name with its value (word boundary match)
+      const regex = new RegExp(`\\b${constName}\\b`, 'g');
+      processedLine = processedLine.replace(regex, constValue);
+    }
+
+    instructions.push({ line: processedLine, lineNumber: i + 1 });
     lineNumber++;
   }
 
@@ -100,18 +131,8 @@ function testASMFile(filePath) {
       // Parse operands
       const operands = parts.slice(1).join(' ').split(',').map(op => op.trim());
 
-      try {
-        sim.executeInstruction(instruction, operands);
-      } catch (error) {
-        // Some instructions might fail in test mode (e.g., keyboard reads with no input)
-        // Only fail on critical errors
-        if (error.message.includes('Unknown instruction') || 
-            error.message.includes('Invalid operand')) {
-          throw error;
-        }
-        // Otherwise, log and continue
-        // console.log(`  Note: ${error.message}`);
-      }
+      // Execute instruction - any error should fail the test
+      sim.executeInstruction(instruction, operands);
 
       steps++;
     }

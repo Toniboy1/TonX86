@@ -482,10 +482,24 @@ export class Simulator {
     let value = 0;
 
     if (operand.startsWith("0X")) {
-      value = parseInt(operand.substring(2), 16);
+      const hexPart = operand.substring(2);
+      // Validate hex digits
+      if (!/^[0-9A-F]+$/.test(hexPart)) {
+        throw new Error(`Invalid hexadecimal value: ${operand}`);
+      }
+      value = parseInt(hexPart, 16);
     } else if (operand.startsWith("0B")) {
-      value = parseInt(operand.substring(2), 2);
+      const binPart = operand.substring(2);
+      // Validate binary digits
+      if (!/^[01]+$/.test(binPart)) {
+        throw new Error(`Invalid binary value: ${operand}`);
+      }
+      value = parseInt(binPart, 2);
     } else {
+      // Validate decimal number (allow optional minus sign)
+      if (!/^-?\d+$/.test(operand)) {
+        throw new Error(`Invalid operand: ${rawOperand}. Expected register, immediate value, or memory address`);
+      }
       value = parseInt(operand, 10);
     }
 
