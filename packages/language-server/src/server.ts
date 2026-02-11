@@ -403,9 +403,10 @@ function validateDocument(document: TextDocument): void {
   const text = document.getText();
   const lines = text.split(/\r?\n/);
   const labels = new Set<string>();
+  const labelLines = new Map<string, number[]>();
 
-  // First pass: collect all labels
-  lines.forEach((line) => {
+  // First pass: collect all labels and check for duplicates
+  lines.forEach((line, lineIndex) => {
     const trimmed = line.trim();
     if (trimmed.endsWith(":") || trimmed.includes(":")) {
       // Extract label name (handle inline comments)
@@ -414,8 +415,31 @@ function validateDocument(document: TextDocument): void {
         const label = trimmed.substring(0, colonIndex).trim();
         if (label && !label.includes(" ")) {
           labels.add(label);
+          
+          // Track line numbers for duplicate detection
+          if (!labelLines.has(label)) {
+            labelLines.set(label, []);
+          }
+          labelLines.get(label)!.push(lineIndex);
         }
       }
+    }
+  });
+
+  // Check for duplicate labels
+  labelLines.forEach((lineNumbers, label) => {
+    if (lineNumbers.length > 1) {
+      lineNumbers.forEach((lineIndex) => {
+        diagnostics.push({
+          severity: DiagnosticSeverity.Error,
+          range: {
+            start: { line: lineIndex, character: 0 },
+            end: { line: lineIndex, character: lines[lineIndex].length },
+          },
+          message: `Duplicate label '${label}' (also defined on line ${lineNumbers.filter(l => l !== lineIndex).map(l => l + 1).join(", ")})`,
+          source: "tonx86",
+        });
+      });
     }
   });
 
@@ -433,9 +457,39 @@ function validateDocument(document: TextDocument): void {
       return;
     }
 
-    // Skip EQU directives (constant definitions)
-    if (/^\w+:?\s+EQU\s+/i.test(trimmed)) {
-      return;
+    // Validate and skip EQU directives (constant definitions)
+    if (/EQU/i.test(trimmed)) {
+      const equMatch = /^(\w+:?)\s+EQU\s+(.+)/i.exec(trimmed);
+      if (equMatch) {
+        const constantName = equMatch[1];
+        const value = equMatch[2].trim();
+        
+        // Check if value is provided
+        if (!value) {
+          diagnostics.push({
+            severity: DiagnosticSeverity.Error,
+            range: {
+              start: { line: lineIndex, character: 0 },
+              end: { line: lineIndex, character: trimmed.length },
+            },
+            message: `EQU directive for '${constantName}' is missing a value`,
+            source: "tonx86",
+          });
+        }
+        return;
+      } else {
+        // EQU found but format is invalid
+        diagnostics.push({
+          severity: DiagnosticSeverity.Error,
+          range: {
+            start: { line: lineIndex, character: 0 },
+            end: { line: lineIndex, character: trimmed.length },
+          },
+          message: `Invalid EQU directive format. Expected: NAME EQU value`,
+          source: "tonx86",
+        });
+        return;
+      }
     }
 
     // Parse instruction
@@ -462,13 +516,84 @@ function validateDocument(document: TextDocument): void {
       return;
     }
 
-    // Basic operand validation
+    // Get operands (everything after the instruction)
+   const operands = tokens.slice(1);
+    const validRegisters = ["EAX", "EBX", "ECX", "EDX", "ESI", "EDI", "EBP", "ESP", "AL", "AH", "BL", "BH", "CL", "CH", "DL", "DH"];
+
+    // Validate operands
     const instructionDef = INSTRUCTIONS.find((i) => i.name === instruction);
     if (instructionDef) {
+      // Check operand count for instructions that require specific counts
+      const requiresTwoOperands = ["MOV", "ADD", "SUB", "AND", "OR", "XOR", "CMP", "TEST", "XCHG", "LEA", "MOVZX", "MOVSX", "MUL", "IMUL", "DIV", "IDIV", "MOD", "SHL", "SHR", "SAR", "ROL", "ROR"];
+      const requiresOneOperand = ["PUSH", "POP", "INC", "DEC", "NEG", "NOT", "JMP", "JZ", "JE", "JNZ", "JNE", "JG", "JGE", "JL", "JLE", "JA", "JAE", "JB", "JBE", "CALL", "INT"];
+      const requiresZeroOperands = ["RET", "HLT", "IRET", "NOP"];
+
+      if (requiresTwoOperands.includes(instruction) && operands.length !== 2) {
+        diagnostics.push({
+          severity: DiagnosticSeverity.Error,
+          range: {
+            start: { line: lineIndex, character: 0 },
+            end: { line: lineIndex, character: trimmed.length },
+          },
+          message: `${instruction} requires exactly 2 operands, found ${operands.length}`,
+          source: "tonx86",
+        });
+        return;
+      }
+
+      if (requiresOneOperand.includes(instruction) && operands.length !== 1) {
+        diagnostics.push({
+          severity: DiagnosticSeverity.Error,
+          range: {
+            start: { line: lineIndex, character: 0 },
+            end: { line: lineIndex, character: trimmed.length },
+          },
+          message: `${instruction} requires exactly 1 operand, found ${operands.length}`,
+          source: "tonx86",
+        });
+        return;
+      }
+
+      if (requiresZeroOperands.includes(instruction) && operands.length > 0) {
+        diagnostics.push({
+          severity: DiagnosticSeverity.Error,
+          range: {
+            start: { line: lineIndex, character: 0 },
+            end: { line: lineIndex, character: trimmed.length },
+          },
+          message: `${instruction} does not take operands, found ${operands.length}`,
+          source: "tonx86",
+        });
+        return;
+      }
+
+      // Validate register names in operands
+      operands.forEach((operand) => {
+        // Skip memory addresses, numbers, and labels
+        if (operand.startsWith("[") || operand.startsWith("0x") || /^\d+$/.test(operand) || operand.startsWith("-")) {
+          return;
+        }
+        
+        const upperOperand = operand.toUpperCase();
+        
+        // Check if it looks like a register but isn't valid
+        if (/^E?[A-Z]{2,3}$/.test(upperOperand) && !validRegisters.includes(upperOperand) && !labels.has(operand)) {
+          diagnostics.push({
+            severity: DiagnosticSeverity.Error,
+            range: {
+              start: { line: lineIndex, character: 0 },
+              end: { line: lineIndex, character: trimmed.length },
+            },
+            message: `Invalid register '${operand}'. Valid registers are: ${validRegisters.join(", ")}`,
+            source: "tonx86",
+          });
+        }
+      });
+
       // Check for jump instructions with undefined labels
-      if (["JMP", "JZ", "JE", "JNZ", "JNE"].includes(instruction)) {
-        if (tokens.length < 2) {
-          const diagnostic: Diagnostic = {
+      if (["JMP", "JZ", "JE", "JNZ", "JNE", "JG", "JGE", "JL", "JLE", "JA", "JAE", "JB", "JBE", "CALL"].includes(instruction)) {
+        if (operands.length < 1) {
+          diagnostics.push({
             severity: DiagnosticSeverity.Error,
             range: {
               start: { line: lineIndex, character: 0 },
@@ -476,13 +601,12 @@ function validateDocument(document: TextDocument): void {
             },
             message: `${instruction} requires a label operand`,
             source: "tonx86",
-          };
-          diagnostics.push(diagnostic);
+          });
         } else {
-          const label = tokens[1];
-          // Check if it's a hex address or a label
-          if (!label.startsWith("0x") && !labels.has(label)) {
-            const diagnostic: Diagnostic = {
+          const label = operands[0];
+          // Check if it's a hex address, register, or a label
+          if (!label.startsWith("0x") && !validRegisters.includes(label.toUpperCase()) && !labels.has(label)) {
+            diagnostics.push({
               severity: DiagnosticSeverity.Warning,
               range: {
                 start: { line: lineIndex, character: 0 },
@@ -490,8 +614,7 @@ function validateDocument(document: TextDocument): void {
               },
               message: `Label '${label}' is not defined`,
               source: "tonx86",
-            };
-            diagnostics.push(diagnostic);
+            });
           }
         }
       }
