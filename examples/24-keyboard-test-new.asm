@@ -11,13 +11,13 @@ main:
     
 wait_loop:
     ; Check keyboard status
-    MOV EAX, KB_STATUS
+    MOV EAX, [KB_STATUS]
     CMP EAX, 0
     JE wait_loop
     
     ; Key available - read it
-    MOV EBX, KB_KEYCODE
-    MOV ECX, KB_STATE
+    MOV EBX, [KB_KEYCODE]
+    MOV ECX, [KB_STATE]
     
     ; Turn on second pixel to show key was detected
     MOV 0xF001, 1
@@ -36,6 +36,15 @@ wait_loop:
     JMP wait_loop
 
 space_pressed:
+    ; Drain remaining keyboard events (including the release)
+drain_queue:
+    MOV EAX, [KB_STATUS]
+    CMP EAX, 0
+    JE queue_empty
+    MOV EBX, [KB_KEYCODE]  ; Pop event
+    JMP drain_queue
+    
+queue_empty:
     ; Fill first row to show space was pressed
     MOV EAX, 0xF000
     MOV ECX, 0

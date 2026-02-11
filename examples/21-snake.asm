@@ -1,6 +1,12 @@
+
 ; Snake Game - TonX86
 ; A classic snake game implementation for 64x64 LCD display
 ; 
+; REQUIRED SETTINGS:
+;   - Set tonx86.lcd.width = 64
+;   - Set tonx86.lcd.height = 64
+;   (File → Preferences → Settings → search "tonx86.lcd")
+;
 ; Controls:
 ;   SPACE - Start/Restart game
 ;   UP ARROW (128) - Move up
@@ -12,7 +18,7 @@
 ;   Snake body stored at 0x1000-0x1FFF (max 256 positions, 2 bytes each: X,Y)
 ;   Snake direction: 0=right, 1=down, 2=left, 3=up
 ;   Grid size: 64x64
-;   LCD memory: 0xF000-0xF0FF (mapped to 64x64 grid)
+;   LCD memory: 0xF000-0xFFFF (mapped to 64x64 grid, 4096 pixels)
 
 ; Constants
 GRID_SIZE:      EQU 64
@@ -106,7 +112,7 @@ init_game:
     MOV ESI, 0           ; Direction = right
     
     ; Store initial snake body positions
-    LEA EAX, SNAKE_BODY
+    MOV EAX, SNAKE_BODY
     ; Position 0 (head): X=32, Y=32
     MOV [EAX], 32
     ADD EAX, 4
@@ -141,7 +147,7 @@ clear_lcd:
     PUSH EAX
     PUSH EBX
     
-    LEA EAX, LCD_BASE
+    MOV EAX, LCD_BASE
     MOV EBX, 4096        ; 64*64 pixels
 clear_loop:
     MOV [EAX], 0
@@ -181,7 +187,7 @@ draw_snake_loop:
     MOV EBX, EAX
     ADD EBX, EBX         ; Multiply by 2 (X,Y pair)
     ADD EBX, EBX         ; Multiply by 4 (each coord is 4 bytes)
-    LEA ECX, SNAKE_BODY
+    MOV ECX, SNAKE_BODY
     ADD EBX, ECX
     
     ; Get X,Y coordinates
@@ -227,7 +233,8 @@ draw_pixel:
     MOV EDX, GRID_SIZE
     MUL EDX
     ADD EAX, ECX
-    ADD EAX, LCD_BASE
+    MOV EDX, LCD_BASE
+    ADD EAX, EDX
     
     ; Set pixel
     MOV [EAX], 1
@@ -298,7 +305,7 @@ shift_body:
     SUB EAX, 1
     ADD EAX, EAX         ; *2 for X,Y pair
     ADD EAX, EAX         ; *4 for byte offset
-    LEA ECX, SNAKE_BODY
+    MOV ECX, SNAKE_BODY
     ADD EAX, ECX
     
     MOV EBX, [EAX]       ; Get X of previous segment
@@ -318,13 +325,13 @@ shift_body:
 
 shift_done:
     ; Store new head position
-    LEA ECX, SNAKE_BODY
+    MOV ECX, SNAKE_BODY
     MOV [ECX], EAX       ; New head X
     ADD ECX, 4
     MOV [ECX], EBX       ; New head Y
     
     ; Update global head coordinates
-    LEA EAX, SNAKE_BODY
+    MOV EAX, SNAKE_BODY
     MOV EBX, [EAX]       ; EBX = new head X
     ADD EAX, 4
     MOV ECX, [EAX]       ; ECX = new head Y
@@ -350,7 +357,7 @@ check_collision:
     PUSH ECX
     
     ; Get head position
-    LEA EAX, SNAKE_BODY
+    MOV EAX, SNAKE_BODY
     MOV EBX, [EAX]       ; Head X
     ADD EAX, 4
     PUSH EAX
@@ -371,7 +378,7 @@ check_body_loop:
     MOV EAX, EDI
     ADD EAX, EAX         ; *2 for X,Y pair
     ADD EAX, EAX         ; *4 for byte offset
-    LEA ECX, SNAKE_BODY
+    MOV ECX, SNAKE_BODY
     ADD EAX, ECX
     MOV ECX, [EAX]       ; Segment X
     ADD EAX, 4
@@ -423,7 +430,7 @@ check_food:
     PUSH ECX
     
     ; Get head position
-    LEA EAX, SNAKE_BODY
+    MOV EAX, SNAKE_BODY
     MOV EBX, [EAX]       ; Head X
     ADD EAX, 4
     MOV ECX, [EAX]       ; Head Y
@@ -495,15 +502,15 @@ check_input:
     PUSH EBX
     
     ; Check if key available
-    MOV EAX, KB_STATUS
+    MOV EAX, [KB_STATUS]
     CMP EAX, 0
     JE no_input
     
     ; Read key code
-    MOV EAX, KB_KEYCODE
+    MOV EAX, [KB_KEYCODE]
     
     ; Check key state (only process key press)
-    MOV EBX, KB_STATE
+    MOV EBX, [KB_STATE]
     CMP EBX, 1
     JNE no_input
     
@@ -521,26 +528,36 @@ check_input:
 input_up:
     ; Don't allow reversing
     CMP ESI, 1           ; Currently going down?
-    JE no_input
+    JE drain_input_queue
     MOV ESI, 3
-    JMP no_input
+    JMP drain_input_queue
 
 input_down:
     CMP ESI, 3           ; Currently going up?
-    JE no_input
+    JE drain_input_queue
     MOV ESI, 1
-    JMP no_input
+    JMP drain_input_queue
 
 input_left:
     CMP ESI, 0           ; Currently going right?
-    JE no_input
+    JE drain_input_queue
     MOV ESI, 2
-    JMP no_input
+    JMP drain_input_queue
 
 input_right:
     CMP ESI, 2           ; Currently going left?
-    JE no_input
+    JE drain_input_queue
     MOV ESI, 0
+
+    ; Fall through to drain queue
+
+drain_input_queue:
+    ; Drain remaining keyboard events (release + any extras)
+    MOV EAX, [KB_STATUS]
+    CMP EAX, 0
+    JE no_input
+    MOV EAX, [KB_KEYCODE]  ; Pop event
+    JMP drain_input_queue
 
 no_input:
     POP EBX
@@ -559,18 +576,27 @@ wait_for_space:
     PUSH EBX
     
 wait_space_loop:
-    MOV EAX, KB_STATUS
+    MOV EAX, [KB_STATUS]
     CMP EAX, 0
     JE wait_space_loop
     
-    MOV EAX, KB_KEYCODE
-    MOV EBX, KB_STATE
+    MOV EAX, [KB_KEYCODE]
+    MOV EBX, [KB_STATE]
     
     CMP EAX, KEY_SPACE
     JNE wait_space_loop
     CMP EBX, 1           ; Press event
     JNE wait_space_loop
     
+    ; Drain remaining keyboard events
+drain_space_queue:
+    MOV EAX, [KB_STATUS]
+    CMP EAX, 0
+    JE space_queue_empty
+    MOV EAX, [KB_KEYCODE]  ; Pop event
+    JMP drain_space_queue
+    
+space_queue_empty:
     POP EBX
     POP EAX
     MOV ESP, EBP
@@ -609,7 +635,7 @@ flash_screen:
     MOV ECX, 3           ; Flash 3 times
 flash_loop:
     ; Fill screen
-    LEA EAX, LCD_BASE
+    MOV EAX, LCD_BASE
     MOV EBX, 4096
 fill_loop:
     MOV [EAX], 1

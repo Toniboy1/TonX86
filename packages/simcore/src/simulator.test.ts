@@ -1417,50 +1417,50 @@ describe("Simulator - Keyboard Integration", () => {
     expect(status.keyState).toBe(0);
   });
 
-  test("MOV can read keyboard status (0xF100)", () => {
+  test("MOV can read keyboard status (0x10100)", () => {
     sim.pushKeyboardEvent(65, true);
-    sim.executeInstruction("MOV", ["EAX", "0xF100"]);
+    sim.executeInstruction("MOV", ["EAX", "[0x10100]"]);
     const registers = sim.getRegisters();
     expect(registers.EAX).toBe(1); // status = 1 (key available)
   });
 
-  test("MOV can read key code (0xF101)", () => {
+  test("MOV can read key code (0x10101)", () => {
     sim.pushKeyboardEvent(65, true); // 'A'
-    sim.executeInstruction("MOV", ["EAX", "0xF101"]);
+    sim.executeInstruction("MOV", ["EAX", "[0x10101]"]);
     const registers = sim.getRegisters();
     expect(registers.EAX).toBe(65); // key code = 65
   });
 
-  test("MOV can read key state (0xF102)", () => {
+  test("MOV can read key state (0x10102)", () => {
     sim.pushKeyboardEvent(65, true); // pressed
-    sim.executeInstruction("MOV", ["EAX", "0xF102"]);
+    sim.executeInstruction("MOV", ["EAX", "[0x10102]"]);
     let registers = sim.getRegisters();
     expect(registers.EAX).toBe(1); // state = 1 (pressed)
 
     sim.pushKeyboardEvent(66, false); // released
-    sim.executeInstruction("MOV", ["EBX", "0xF102"]);
+    sim.executeInstruction("MOV", ["EBX", "[0x10102]"]);
     registers = sim.getRegisters();
     expect(registers.EBX).toBe(0); // state = 0 (released)
   });
 
-  test("reading key code (0xF101) pops key from queue", () => {
+  test("reading key code (0x10101) pops key from queue", () => {
     sim.pushKeyboardEvent(65, true);
     sim.pushKeyboardEvent(66, true);
 
     // First read gets 'A' and pops it
-    sim.executeInstruction("MOV", ["EAX", "0xF101"]);
+    sim.executeInstruction("MOV", ["EAX", "[0x10101]"]);
     let registers = sim.getRegisters();
     expect(registers.EAX).toBe(65);
 
     // Next read gets 'B'
-    sim.executeInstruction("MOV", ["EBX", "0xF101"]);
+    sim.executeInstruction("MOV", ["EBX", "[0x10101]"]);
     registers = sim.getRegisters();
     expect(registers.EBX).toBe(66);
   });
 
   test("keyboard I/O addresses are read-only (writes ignored)", () => {
-    sim.executeInstruction("MOV", ["0xF100", "99"]); // Try to write to status
-    sim.executeInstruction("MOV", ["EAX", "0xF100"]);
+    sim.executeInstruction("MOV", ["0x10100", "99"]); // Try to write to status
+    sim.executeInstruction("MOV", ["EAX", "[0x10100]"]);
     const registers = sim.getRegisters();
     expect(registers.EAX).toBe(0); // Should still be 0, not 99
   });
@@ -1473,7 +1473,7 @@ describe("Simulator - Keyboard Integration", () => {
     sim.pushKeyboardEvent(65, true);
 
     // Read keyboard
-    sim.executeInstruction("MOV", ["EAX", "0xF101"]);
+    sim.executeInstruction("MOV", ["EAX", "[0x10101]"]);
 
     // Verify both work
     const lcd = sim.getLCDDisplay();
@@ -1485,22 +1485,22 @@ describe("Simulator - Keyboard Integration", () => {
 
   test("arrow keys work correctly", () => {
     sim.pushKeyboardEvent(128, true); // Up
-    sim.executeInstruction("MOV", ["EAX", "0xF101"]);
+    sim.executeInstruction("MOV", ["EAX", "[0x10101]"]);
     let registers = sim.getRegisters();
     expect(registers.EAX).toBe(128);
 
     sim.pushKeyboardEvent(129, true); // Down
-    sim.executeInstruction("MOV", ["EBX", "0xF101"]);
+    sim.executeInstruction("MOV", ["EBX", "[0x10101]"]);
     registers = sim.getRegisters();
     expect(registers.EBX).toBe(129);
 
     sim.pushKeyboardEvent(130, true); // Left
-    sim.executeInstruction("MOV", ["ECX", "0xF101"]);
+    sim.executeInstruction("MOV", ["ECX", "[0x10101]"]);
     registers = sim.getRegisters();
     expect(registers.ECX).toBe(130);
 
     sim.pushKeyboardEvent(131, true); // Right
-    sim.executeInstruction("MOV", ["EDX", "0xF101"]);
+    sim.executeInstruction("MOV", ["EDX", "[0x10101]"]);
     registers = sim.getRegisters();
     expect(registers.EDX).toBe(131);
   });
@@ -1657,7 +1657,7 @@ describe("Simulator - Compatibility Mode", () => {
     test("allows flexible memory access in educational mode", () => {
       const sim = new Simulator(16, 16);
       // This represents memory-to-memory operation
-      sim.executeInstruction("MOV", ["EAX", "0xF100"]);
+      sim.executeInstruction("MOV", ["EAX", "[0x10100]"]);
       sim.executeInstruction("MOV", ["0xF000", "EAX"]);
       // Should work fine
       expect(sim.getCompatibilityMode()).toBe("educational");
@@ -1696,7 +1696,7 @@ describe("Simulator - Compatibility Mode", () => {
     test("allows memory-to-register MOV in strict-x86 mode", () => {
       const sim = new Simulator(16, 16, "strict-x86");
       sim.pushKeyboardEvent(65, true); // Push 'A' key
-      sim.executeInstruction("MOV", ["EAX", "0xF100"]);
+      sim.executeInstruction("MOV", ["EAX", "[0x10100]"]);
       // Should work - memory to register is allowed
       const regs = sim.getRegisters();
       expect(regs.EAX).toBe(1); // Status should be 1 (key available)

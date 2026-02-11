@@ -77,6 +77,11 @@ export class LCDDisplay {
     if (width < 2 || width > 256 || height < 2 || height > 256) {
       throw new Error("LCD dimensions must be between 2x2 and 256x256");
     }
+    // Check if width and height are powers of 2
+    const isPowerOf2 = (n: number) => n > 0 && (n & (n - 1)) === 0;
+    if (!isPowerOf2(width) || !isPowerOf2(height)) {
+      throw new Error("LCD dimensions must be powers of 2");
+    }
     this.width = width;
     this.height = height;
     this.pixels = new Uint8Array(width * height);
@@ -257,19 +262,13 @@ export class Simulator {
     if (address >= IO_LCD_BASE && address < IO_LCD_LIMIT) {
       return 0;
     } else if (address === IO_KEYBOARD_STATUS) {
-      const status = this.keyboard.getStatus();
-      console.error(`[Simulator] readIO KB_STATUS: ${status}, queue size: ${this.keyboard["keyQueue"].length}`);
-      return status;
+      return this.keyboard.getStatus();
     } else if (address === IO_KEYBOARD_KEYCODE) {
       // Pop the key first, then return the keycode that was just popped
       this.keyboard.popKey();
-      const keyCode = this.keyboard.getKeyCode();
-      console.error(`[Simulator] readIO KB_KEYCODE (after pop): ${keyCode}, state: ${this.keyboard.getKeyState()}`);
-      return keyCode;
+      return this.keyboard.getKeyCode();
     } else if (address === IO_KEYBOARD_KEYSTATE) {
-      const state = this.keyboard.getKeyState();
-      console.error(`[Simulator] readIO KB_KEYSTATE: ${state}`);
-      return state;
+      return this.keyboard.getKeyState();
     } else {
       throw new Error(`Unknown I/O read address: 0x${address.toString(16)}`);
     }
@@ -1332,13 +1331,7 @@ export class Simulator {
    * Push a keyboard event
    */
   pushKeyboardEvent(keyCode: number, pressed: boolean): void {
-    console.error(
-      `[Simulator] pushKeyboardEvent: keyCode=${keyCode}, pressed=${pressed}`,
-    );
     this.keyboard.pushKey(keyCode, pressed);
-    console.error(
-      `[Simulator] Keyboard queue size: ${this.keyboard["keyQueue"].length}`,
-    );
   }
 
   /**
