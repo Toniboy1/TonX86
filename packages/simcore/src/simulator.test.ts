@@ -1519,7 +1519,7 @@ describe("Simulator - INT instruction", () => {
       // Set AL = 'H' (0x48)
       sim.executeInstruction("MOV", ["EAX", "0x0E48"]); // AH=0x0E, AL=0x48
       sim.executeInstruction("INT", ["0x10"]);
-      
+
       const output = sim.getConsoleOutput();
       expect(output).toBe("H");
     });
@@ -1528,11 +1528,11 @@ describe("Simulator - INT instruction", () => {
       // Output 'H'
       sim.executeInstruction("MOV", ["EAX", "0x0E48"]);
       sim.executeInstruction("INT", ["0x10"]);
-      
+
       // Output 'i'
       sim.executeInstruction("MOV", ["EAX", "0x0E69"]);
       sim.executeInstruction("INT", ["0x10"]);
-      
+
       const output = sim.getConsoleOutput();
       expect(output).toBe("Hi");
     });
@@ -1540,7 +1540,7 @@ describe("Simulator - INT instruction", () => {
     test("INT 0x10 handles newline character", () => {
       sim.executeInstruction("MOV", ["EAX", "0x0E0A"]); // AL = '\n' (0x0A)
       sim.executeInstruction("INT", ["0x10"]);
-      
+
       const output = sim.getConsoleOutput();
       expect(output).toBe("\n");
     });
@@ -1549,7 +1549,7 @@ describe("Simulator - INT instruction", () => {
       sim.executeInstruction("MOV", ["EAX", "0x0E48"]);
       sim.executeInstruction("INT", ["0x10"]);
       expect(sim.getConsoleOutput()).toBe("H");
-      
+
       sim.clearConsoleOutput();
       expect(sim.getConsoleOutput()).toBe("");
     });
@@ -1558,7 +1558,7 @@ describe("Simulator - INT instruction", () => {
       sim.executeInstruction("MOV", ["EAX", "0x0E48"]);
       sim.executeInstruction("INT", ["0x10"]);
       expect(sim.getConsoleOutput()).toBe("H");
-      
+
       sim.reset();
       expect(sim.getConsoleOutput()).toBe("");
     });
@@ -1567,7 +1567,7 @@ describe("Simulator - INT instruction", () => {
   describe("INT 0x20 - Program terminate", () => {
     test("INT 0x20 halts the program", () => {
       sim.executeInstruction("INT", ["0x20"]);
-      
+
       const state = sim.getState();
       expect(state.halted).toBe(true);
       expect(state.running).toBe(false);
@@ -1581,7 +1581,7 @@ describe("Simulator - INT instruction", () => {
       sim.executeInstruction("MOV", ["EAX", "0x0200"]); // AH = 0x02
       sim.executeInstruction("MOV", ["EDX", "0x41"]); // DL = 'A'
       sim.executeInstruction("INT", ["0x21"]);
-      
+
       const output = sim.getConsoleOutput();
       expect(output).toBe("A");
     });
@@ -1590,10 +1590,10 @@ describe("Simulator - INT instruction", () => {
       sim.executeInstruction("MOV", ["EAX", "0x0200"]);
       sim.executeInstruction("MOV", ["EDX", "0x48"]); // 'H'
       sim.executeInstruction("INT", ["0x21"]);
-      
+
       sim.executeInstruction("MOV", ["EDX", "0x69"]); // 'i'
       sim.executeInstruction("INT", ["0x21"]);
-      
+
       const output = sim.getConsoleOutput();
       expect(output).toBe("Hi");
     });
@@ -1612,7 +1612,7 @@ describe("Simulator - INT instruction", () => {
     test("int is case insensitive", () => {
       sim.executeInstruction("MOV", ["EAX", "0x0E48"]);
       sim.executeInstruction("int", ["0x10"]);
-      
+
       const output = sim.getConsoleOutput();
       expect(output).toBe("H");
     });
@@ -1761,3 +1761,282 @@ describe("Simulator - Compatibility Mode", () => {
   });
 });
 
+// ================================
+// x86 Flag & Instruction Tests
+// Verified against UVA CS216 x86 Guide
+// ================================
+
+describe("x86 Flags and Instructions (UVA CS216 verification)", () => {
+  let sim: Simulator;
+
+  beforeEach(() => {
+    sim = new Simulator();
+  });
+
+  describe("Carry flag (CF) behavior", () => {
+    test("ADD sets carry flag on unsigned overflow", () => {
+      sim.executeInstruction("MOV", ["EAX", "0xFFFFFFFF"]);
+      sim.executeInstruction("ADD", ["EAX", "1"]);
+      expect(sim.isCarryFlagSet()).toBe(true);
+    });
+
+    test("ADD clears carry flag on no unsigned overflow", () => {
+      sim.executeInstruction("MOV", ["EAX", "5"]);
+      sim.executeInstruction("ADD", ["EAX", "3"]);
+      expect(sim.isCarryFlagSet()).toBe(false);
+    });
+
+    test("SUB sets carry flag on borrow (unsigned underflow)", () => {
+      sim.executeInstruction("MOV", ["EAX", "0"]);
+      sim.executeInstruction("SUB", ["EAX", "1"]);
+      expect(sim.isCarryFlagSet()).toBe(true);
+    });
+
+    test("SUB clears carry flag when no borrow", () => {
+      sim.executeInstruction("MOV", ["EAX", "10"]);
+      sim.executeInstruction("SUB", ["EAX", "5"]);
+      expect(sim.isCarryFlagSet()).toBe(false);
+    });
+
+    test("CMP sets carry flag when first < second (unsigned)", () => {
+      sim.executeInstruction("MOV", ["EAX", "5"]);
+      sim.executeInstruction("CMP", ["EAX", "10"]);
+      expect(sim.isCarryFlagSet()).toBe(true);
+    });
+
+    test("CMP clears carry flag when first >= second (unsigned)", () => {
+      sim.executeInstruction("MOV", ["EAX", "10"]);
+      sim.executeInstruction("CMP", ["EAX", "5"]);
+      expect(sim.isCarryFlagSet()).toBe(false);
+    });
+  });
+
+  describe("Overflow flag (OF) behavior", () => {
+    test("ADD sets overflow on positive + positive = negative", () => {
+      sim.executeInstruction("MOV", ["EAX", "0x7FFFFFFF"]); // Max positive
+      sim.executeInstruction("ADD", ["EAX", "1"]);
+      expect(sim.isOverflowFlagSet()).toBe(true);
+      expect(sim.isSignFlagSet()).toBe(true);
+    });
+
+    test("ADD clears overflow on no signed overflow", () => {
+      sim.executeInstruction("MOV", ["EAX", "5"]);
+      sim.executeInstruction("ADD", ["EAX", "3"]);
+      expect(sim.isOverflowFlagSet()).toBe(false);
+    });
+
+    test("SUB sets overflow on positive - negative = negative (signed overflow)", () => {
+      sim.executeInstruction("MOV", ["EAX", "0x7FFFFFFF"]); // Max positive
+      sim.executeInstruction("MOV", ["ECX", "0xFFFFFFFF"]); // -1 as unsigned
+      sim.executeInstruction("SUB", ["EAX", "ECX"]);
+      // 0x7FFFFFFF - (-1) = 0x80000000 which overflows signed
+      expect(sim.isOverflowFlagSet()).toBe(true);
+    });
+  });
+
+  describe("INC/DEC preserve Carry flag", () => {
+    test("INC preserves carry flag when set", () => {
+      // Set carry flag via an operation that causes carry
+      sim.executeInstruction("MOV", ["EAX", "0xFFFFFFFF"]);
+      sim.executeInstruction("ADD", ["EAX", "1"]); // Sets CF
+      expect(sim.isCarryFlagSet()).toBe(true);
+
+      // INC should preserve CF
+      sim.executeInstruction("MOV", ["EBX", "5"]);
+      sim.executeInstruction("INC", ["EBX"]);
+      expect(sim.isCarryFlagSet()).toBe(true); // CF preserved
+      const regs = sim.getRegisters();
+      expect(regs.EBX).toBe(6);
+    });
+
+    test("DEC preserves carry flag when set", () => {
+      // Set carry flag
+      sim.executeInstruction("MOV", ["EAX", "0xFFFFFFFF"]);
+      sim.executeInstruction("ADD", ["EAX", "1"]); // Sets CF
+      expect(sim.isCarryFlagSet()).toBe(true);
+
+      // DEC should preserve CF
+      sim.executeInstruction("MOV", ["EBX", "5"]);
+      sim.executeInstruction("DEC", ["EBX"]);
+      expect(sim.isCarryFlagSet()).toBe(true); // CF preserved
+      const regs = sim.getRegisters();
+      expect(regs.EBX).toBe(4);
+    });
+
+    test("INC preserves carry flag when clear", () => {
+      sim.executeInstruction("MOV", ["EAX", "5"]);
+      sim.executeInstruction("ADD", ["EAX", "3"]); // CF = 0
+      expect(sim.isCarryFlagSet()).toBe(false);
+
+      sim.executeInstruction("INC", ["EAX"]);
+      expect(sim.isCarryFlagSet()).toBe(false); // CF preserved as clear
+    });
+  });
+
+  describe("NOP instruction", () => {
+    test("NOP does not modify any register", () => {
+      sim.executeInstruction("MOV", ["EAX", "42"]);
+      sim.executeInstruction("MOV", ["ECX", "100"]);
+      sim.executeInstruction("NOP", []);
+      const regs = sim.getRegisters();
+      expect(regs.EAX).toBe(42);
+      expect(regs.ECX).toBe(100);
+    });
+
+    test("NOP does not modify flags", () => {
+      sim.executeInstruction("MOV", ["EAX", "0"]);
+      sim.executeInstruction("ADD", ["EAX", "0"]); // Sets ZF
+      expect(sim.isZeroFlagSet()).toBe(true);
+      sim.executeInstruction("NOP", []);
+      expect(sim.isZeroFlagSet()).toBe(true);
+    });
+  });
+
+  describe("IMUL multi-operand forms", () => {
+    test("two-operand IMUL: dest = dest * src", () => {
+      sim.executeInstruction("MOV", ["EAX", "7"]);
+      sim.executeInstruction("IMUL", ["EAX", "6"]);
+      const regs = sim.getRegisters();
+      expect(regs.EAX).toBe(42);
+    });
+
+    test("two-operand IMUL with registers", () => {
+      sim.executeInstruction("MOV", ["EAX", "10"]);
+      sim.executeInstruction("MOV", ["ECX", "3"]);
+      sim.executeInstruction("IMUL", ["EAX", "ECX"]);
+      const regs = sim.getRegisters();
+      expect(regs.EAX).toBe(30);
+    });
+
+    test("three-operand IMUL: dest = src * imm", () => {
+      sim.executeInstruction("MOV", ["ECX", "8"]);
+      sim.executeInstruction("IMUL", ["EAX", "ECX", "5"]);
+      const regs = sim.getRegisters();
+      expect(regs.EAX).toBe(40);
+    });
+
+    test("three-operand IMUL with negative multiplier", () => {
+      sim.executeInstruction("MOV", ["ECX", "10"]);
+      sim.executeInstruction("IMUL", ["EAX", "ECX", "-3"]);
+      const regs = sim.getRegisters();
+      // -30 as 32-bit unsigned
+      expect(regs.EAX).toBe(0xFFFFFFE2);
+    });
+  });
+
+  describe("Shift modulo 32 behavior", () => {
+    test("SHL count > 31 uses count mod 32", () => {
+      sim.executeInstruction("MOV", ["EAX", "1"]);
+      sim.executeInstruction("SHL", ["EAX", "33"]); // 33 mod 32 = 1
+      const regs = sim.getRegisters();
+      expect(regs.EAX).toBe(2);
+    });
+
+    test("SHR count > 31 uses count mod 32", () => {
+      sim.executeInstruction("MOV", ["EAX", "0x80000000"]);
+      sim.executeInstruction("SHR", ["EAX", "33"]); // 33 mod 32 = 1
+      const regs = sim.getRegisters();
+      expect(regs.EAX).toBe(0x40000000);
+    });
+
+    test("SAR count > 31 uses count mod 32", () => {
+      sim.executeInstruction("MOV", ["EAX", "0x80000000"]);
+      sim.executeInstruction("SAR", ["EAX", "33"]); // 33 mod 32 = 1
+      const regs = sim.getRegisters();
+      expect(regs.EAX).toBe(0xC0000000);
+    });
+
+    test("shift by 32 is equivalent to shift by 0", () => {
+      sim.executeInstruction("MOV", ["EAX", "0xFF"]);
+      sim.executeInstruction("SHL", ["EAX", "32"]); // 32 mod 32 = 0
+      const regs = sim.getRegisters();
+      expect(regs.EAX).toBe(0xFF); // No shift
+    });
+  });
+
+  describe("LEA with memory operand", () => {
+    test("LEA computes base + offset", () => {
+      sim.executeInstruction("MOV", ["EBX", "100"]);
+      sim.executeInstruction("LEA", ["EAX", "[EBX+8]"]);
+      const regs = sim.getRegisters();
+      expect(regs.EAX).toBe(108);
+    });
+
+    test("LEA with zero offset", () => {
+      sim.executeInstruction("MOV", ["ECX", "200"]);
+      sim.executeInstruction("LEA", ["EAX", "[ECX+0]"]);
+      const regs = sim.getRegisters();
+      expect(regs.EAX).toBe(200);
+    });
+
+    test("LEA does not dereference memory", () => {
+      // LEA just computes the address, doesn't actually read memory
+      sim.executeInstruction("MOV", ["EBX", "0xF000"]); // LCD address range
+      sim.executeInstruction("LEA", ["EAX", "[EBX+16]"]);
+      const regs = sim.getRegisters();
+      expect(regs.EAX).toBe(0xF010); // Address computed, not memory content
+    });
+  });
+
+  describe("Sign and Zero flag helpers", () => {
+    test("isZeroFlagSet returns true when result is zero", () => {
+      sim.executeInstruction("MOV", ["EAX", "5"]);
+      sim.executeInstruction("SUB", ["EAX", "5"]);
+      expect(sim.isZeroFlagSet()).toBe(true);
+    });
+
+    test("isSignFlagSet returns true when result is negative", () => {
+      sim.executeInstruction("MOV", ["EAX", "0"]);
+      sim.executeInstruction("SUB", ["EAX", "1"]); // Result is 0xFFFFFFFF (negative)
+      expect(sim.isSignFlagSet()).toBe(true);
+    });
+
+    test("isSignFlagSet returns false for positive result", () => {
+      sim.executeInstruction("MOV", ["EAX", "10"]);
+      sim.executeInstruction("SUB", ["EAX", "5"]);
+      expect(sim.isSignFlagSet()).toBe(false);
+    });
+  });
+
+  describe("Conditional jump instructions (as NOPs in simulator)", () => {
+    test("JG does not throw", () => {
+      expect(() => sim.executeInstruction("JG", ["label"])).not.toThrow();
+    });
+
+    test("JGE does not throw", () => {
+      expect(() => sim.executeInstruction("JGE", ["label"])).not.toThrow();
+    });
+
+    test("JL does not throw", () => {
+      expect(() => sim.executeInstruction("JL", ["label"])).not.toThrow();
+    });
+
+    test("JLE does not throw", () => {
+      expect(() => sim.executeInstruction("JLE", ["label"])).not.toThrow();
+    });
+
+    test("JS does not throw", () => {
+      expect(() => sim.executeInstruction("JS", ["label"])).not.toThrow();
+    });
+
+    test("JNS does not throw", () => {
+      expect(() => sim.executeInstruction("JNS", ["label"])).not.toThrow();
+    });
+
+    test("JA does not throw", () => {
+      expect(() => sim.executeInstruction("JA", ["label"])).not.toThrow();
+    });
+
+    test("JAE does not throw", () => {
+      expect(() => sim.executeInstruction("JAE", ["label"])).not.toThrow();
+    });
+
+    test("JB does not throw", () => {
+      expect(() => sim.executeInstruction("JB", ["label"])).not.toThrow();
+    });
+
+    test("JBE does not throw", () => {
+      expect(() => sim.executeInstruction("JBE", ["label"])).not.toThrow();
+    });
+  });
+});

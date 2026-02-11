@@ -1,6 +1,7 @@
 {
   "version": "1.0",
   "note": "Some instructions are aliases with identical opcodes: JE/JZ (0x74), JNE/JNZ (0x75)",
+  "credit": "Verified against x86 Assembly Guide from University of Virginia CS216 by David Evans (https://www.cs.virginia.edu/~evans/cs216/guides/x86.html)",
   "instructions": [
     {
       "mnemonic": "MOV",
@@ -31,11 +32,14 @@
     {
       "mnemonic": "LEA",
       "opcode": "0x8D",
-      "operands": ["reg", "imm"],
-      "description": "Load effective address",
+      "operands": ["reg", "imm/mem"],
+      "description": "Load effective address (computes address without memory access)",
       "cycles": 1,
       "flags": [],
-      "examples": ["LEA EAX, 0x1000    ; Load address into EAX"]
+      "examples": [
+        "LEA EAX, 0x1000    ; Load address into EAX",
+        "LEA EAX, [EBX+8]   ; EAX = EBX + 8 (address computation)"
+      ]
     },
     {
       "mnemonic": "MOVZX",
@@ -236,10 +240,14 @@
       "mnemonic": "IMUL",
       "opcode": "0xF7",
       "operands": ["reg/imm"],
-      "description": "Signed multiply (EAX * src -> EAX)",
+      "description": "Signed multiply - 1 operand: EAX * src -> EDX:EAX; 2 operands: dest = dest * src; 3 operands: dest = src * imm",
       "cycles": 1,
-      "flags": ["Z", "S"],
-      "examples": ["IMUL ECX           ; EAX = EAX * ECX (signed)"]
+      "flags": ["Z", "C", "O", "S"],
+      "examples": [
+        "IMUL ECX           ; EAX = EAX * ECX (signed), overflow in EDX",
+        "IMUL EAX, ECX      ; EAX = EAX * ECX",
+        "IMUL EAX, ECX, 5   ; EAX = ECX * 5"
+      ]
     },
     {
       "mnemonic": "DIV",
@@ -319,6 +327,96 @@
       "examples": ["JNZ loop_start     ; Jump if Z flag is clear"]
     },
     {
+      "mnemonic": "JG",
+      "opcode": "0x7F",
+      "operands": ["label"],
+      "description": "Jump if greater (signed): SF == OF and ZF == 0",
+      "cycles": 1,
+      "flags": [],
+      "examples": ["JG greater_handler ; Jump if signed greater"]
+    },
+    {
+      "mnemonic": "JGE",
+      "opcode": "0x7D",
+      "operands": ["label"],
+      "description": "Jump if greater or equal (signed): SF == OF",
+      "cycles": 1,
+      "flags": [],
+      "examples": ["JGE ge_handler     ; Jump if signed greater or equal"]
+    },
+    {
+      "mnemonic": "JL",
+      "opcode": "0x7C",
+      "operands": ["label"],
+      "description": "Jump if less (signed): SF != OF",
+      "cycles": 1,
+      "flags": [],
+      "examples": ["JL less_handler    ; Jump if signed less"]
+    },
+    {
+      "mnemonic": "JLE",
+      "opcode": "0x7E",
+      "operands": ["label"],
+      "description": "Jump if less or equal (signed): SF != OF or ZF == 1",
+      "cycles": 1,
+      "flags": [],
+      "examples": ["JLE le_handler     ; Jump if signed less or equal"]
+    },
+    {
+      "mnemonic": "JS",
+      "opcode": "0x78",
+      "operands": ["label"],
+      "description": "Jump if sign flag set (result is negative)",
+      "cycles": 1,
+      "flags": [],
+      "examples": ["JS negative_handler ; Jump if sign flag is set"]
+    },
+    {
+      "mnemonic": "JNS",
+      "opcode": "0x79",
+      "operands": ["label"],
+      "description": "Jump if sign flag not set (result is non-negative)",
+      "cycles": 1,
+      "flags": [],
+      "examples": ["JNS positive_handler ; Jump if sign flag is clear"]
+    },
+    {
+      "mnemonic": "JA",
+      "opcode": "0x77",
+      "operands": ["label"],
+      "description": "Jump if above (unsigned greater): CF == 0 and ZF == 0",
+      "cycles": 1,
+      "flags": [],
+      "examples": ["JA above_handler   ; Jump if unsigned above"]
+    },
+    {
+      "mnemonic": "JAE",
+      "opcode": "0x73",
+      "operands": ["label"],
+      "description": "Jump if above or equal (unsigned): CF == 0",
+      "cycles": 1,
+      "flags": [],
+      "examples": ["JAE ae_handler     ; Jump if unsigned above or equal"]
+    },
+    {
+      "mnemonic": "JB",
+      "opcode": "0x72",
+      "operands": ["label"],
+      "description": "Jump if below (unsigned less): CF == 1",
+      "cycles": 1,
+      "flags": [],
+      "examples": ["JB below_handler   ; Jump if unsigned below"]
+    },
+    {
+      "mnemonic": "JBE",
+      "opcode": "0x76",
+      "operands": ["label"],
+      "description": "Jump if below or equal (unsigned): CF == 1 or ZF == 1",
+      "cycles": 1,
+      "flags": [],
+      "examples": ["JBE be_handler     ; Jump if unsigned below or equal"]
+    },
+    {
       "mnemonic": "PUSH",
       "opcode": "0x50",
       "operands": ["reg/imm"],
@@ -384,6 +482,15 @@
       "cycles": 2,
       "flags": ["All restored from stack"],
       "examples": ["IRET               ; Return from interrupt"]
+    },
+    {
+      "mnemonic": "NOP",
+      "opcode": "0x90",
+      "operands": [],
+      "description": "No operation",
+      "cycles": 1,
+      "flags": [],
+      "examples": ["NOP                ; Do nothing"]
     },
     {
       "mnemonic": "HLT",

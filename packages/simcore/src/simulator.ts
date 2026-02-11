@@ -498,7 +498,9 @@ export class Simulator {
     } else {
       // Validate decimal number (allow optional minus sign)
       if (!/^-?\d+$/.test(operand)) {
-        throw new Error(`Invalid operand: ${rawOperand}. Expected register, immediate value, or memory address`);
+        throw new Error(
+          `Invalid operand: ${rawOperand}. Expected register, immediate value, or memory address`,
+        );
       }
       value = parseInt(operand, 10);
     }
@@ -654,13 +656,25 @@ export class Simulator {
 
       case "LEA": {
         // LEA destination, source - Load effective address
-        // In simplified form, just load the immediate value (address) into register
+        // Per x86 spec: computes the effective address of src and stores in dest
+        // Supports both LEA reg, imm and LEA reg, [base+offset]
         if (operands.length !== 2) break;
         const dest = this.parseOperand(operands[0]);
         const src = this.parseOperand(operands[1]);
 
-        if (dest.type === "register" && src.type === "immediate") {
-          this.cpu.registers[dest.value] = src.value;
+        if (dest.type === "register") {
+          if (src.type === "memory") {
+            // LEA reg, [base+offset] - compute effective address without dereferencing
+            let addr: number;
+            if (src.base === -1) {
+              addr = src.offset || 0;
+            } else {
+              addr = (this.cpu.registers[src.base!] + (src.offset || 0)) & 0xffffffff;
+            }
+            this.cpu.registers[dest.value] = addr >>> 0;
+          } else if (src.type === "immediate") {
+            this.cpu.registers[dest.value] = src.value;
+          }
         }
         break;
       }
@@ -729,9 +743,10 @@ export class Simulator {
           } else {
             srcValue = src.value;
           }
-          this.cpu.registers[dest.value] =
-            (this.cpu.registers[dest.value] + srcValue) & 0xffffffff;
-          this.updateFlags(this.cpu.registers[dest.value]);
+          const destVal = this.cpu.registers[dest.value];
+          const result = (destVal + srcValue) & 0xffffffff;
+          this.cpu.registers[dest.value] = result;
+          this.updateFlagsArith(result, destVal, srcValue, false);
         }
         break;
       }
@@ -753,35 +768,44 @@ export class Simulator {
           } else {
             srcValue = src.value;
           }
-          this.cpu.registers[dest.value] =
-            (this.cpu.registers[dest.value] - srcValue) & 0xffffffff;
-          this.updateFlags(this.cpu.registers[dest.value]);
+          const destVal = this.cpu.registers[dest.value];
+          const result = (destVal - srcValue) & 0xffffffff;
+          this.cpu.registers[dest.value] = result;
+          this.updateFlagsArith(result, destVal, srcValue, true);
         }
         break;
       }
 
       case "INC": {
-        // INC destination
+        // INC destination - per x86, INC preserves CF
         if (operands.length !== 1) break;
         const dest = this.parseOperand(operands[0]);
 
         if (dest.type === "register") {
-          this.cpu.registers[dest.value] =
-            (this.cpu.registers[dest.value] + 1) & 0xffffffff;
-          this.updateFlags(this.cpu.registers[dest.value]);
+          const destVal = this.cpu.registers[dest.value];
+          const result = (destVal + 1) & 0xffffffff;
+          this.cpu.registers[dest.value] = result;
+          // INC preserves carry flag per x86 spec
+          const savedCarry = this.cpu.flags & 0x01;
+          this.updateFlagsArith(result, destVal, 1, false);
+          this.cpu.flags = (this.cpu.flags & ~0x01) | savedCarry;
         }
         break;
       }
 
       case "DEC": {
-        // DEC destination
+        // DEC destination - per x86, DEC preserves CF
         if (operands.length !== 1) break;
         const dest = this.parseOperand(operands[0]);
 
         if (dest.type === "register") {
-          this.cpu.registers[dest.value] =
-            (this.cpu.registers[dest.value] - 1) & 0xffffffff;
-          this.updateFlags(this.cpu.registers[dest.value]);
+          const destVal = this.cpu.registers[dest.value];
+          const result = (destVal - 1) & 0xffffffff;
+          this.cpu.registers[dest.value] = result;
+          // DEC preserves carry flag per x86 spec
+          const savedCarry = this.cpu.flags & 0x01;
+          this.updateFlagsArith(result, destVal, 1, true);
+          this.cpu.flags = (this.cpu.flags & ~0x01) | savedCarry;
         }
         break;
       }
@@ -803,19 +827,58 @@ export class Simulator {
       }
 
       case "IMUL": {
-        // IMUL source - Signed multiply
-        // Simplified: single operand form, result in EAX
-        if (operands.length !== 1) break;
-        const src = this.parseOperand(operands[0]);
-
-        const srcValue =
-          src.type === "register" ? this.cpu.registers[src.value] : src.value;
-        // Convert to signed 32-bit, multiply, convert back
-        const eaxSigned = this.cpu.registers[0] | 0;
-        const srcSigned = srcValue | 0;
-        const result = eaxSigned * srcSigned;
-        this.cpu.registers[0] = (result & 0xffffffff) >>> 0;
-        this.updateFlags(this.cpu.registers[0]);
+        // IMUL - Signed multiply (supports 1, 2, and 3 operand forms per x86 spec)
+        if (operands.length === 1) {
+          // Single operand: EAX * src -> EDX:EAX
+          const src = this.parseOperand(operands[0]);
+          const srcValue =
+            src.type === "register" ? this.cpu.registers[src.value] : src.value;
+          const eaxSigned = this.cpu.registers[0] | 0;
+          const srcSigned = srcValue | 0;
+          const result = eaxSigned * srcSigned;
+          this.cpu.registers[0] = (result & 0xffffffff) >>> 0;
+          this.cpu.registers[2] = ((result / 0x100000000) | 0) >>> 0; // EDX
+          this.updateFlags(this.cpu.registers[0]);
+        } else if (operands.length === 2) {
+          // Two operand: dest = dest * src (result in dest register)
+          const dest = this.parseOperand(operands[0]);
+          const src = this.parseOperand(operands[1]);
+          if (dest.type !== "register") break;
+          const destSigned = this.cpu.registers[dest.value] | 0;
+          let srcValue: number;
+          if (src.type === "register") {
+            srcValue = this.cpu.registers[src.value] | 0;
+          } else if (src.type === "memory") {
+            const addr =
+              (this.cpu.registers[src.base!] + (src.offset || 0)) & 0xffff;
+            srcValue = this.readMemory32(addr) | 0;
+          } else {
+            srcValue = src.value | 0;
+          }
+          const result = destSigned * srcValue;
+          this.cpu.registers[dest.value] = (result & 0xffffffff) >>> 0;
+          this.updateFlags(this.cpu.registers[dest.value]);
+        } else if (operands.length === 3) {
+          // Three operand: dest = src * constant
+          const dest = this.parseOperand(operands[0]);
+          const src = this.parseOperand(operands[1]);
+          const con = this.parseOperand(operands[2]);
+          if (dest.type !== "register") break;
+          let srcValue: number;
+          if (src.type === "register") {
+            srcValue = this.cpu.registers[src.value] | 0;
+          } else if (src.type === "memory") {
+            const addr =
+              (this.cpu.registers[src.base!] + (src.offset || 0)) & 0xffff;
+            srcValue = this.readMemory32(addr) | 0;
+          } else {
+            srcValue = src.value | 0;
+          }
+          const constValue = con.value | 0;
+          const result = srcValue * constValue;
+          this.cpu.registers[dest.value] = (result & 0xffffffff) >>> 0;
+          this.updateFlags(this.cpu.registers[dest.value]);
+        }
         break;
       }
 
@@ -889,7 +952,7 @@ export class Simulator {
       }
 
       case "CMP": {
-        // CMP destination, source
+        // CMP destination, source - SUB without storing result, per x86 spec
         if (operands.length !== 2) break;
         const dest = this.parseOperand(operands[0]);
         const src = this.parseOperand(operands[1]);
@@ -899,7 +962,7 @@ export class Simulator {
           const srcValue =
             src.type === "register" ? this.cpu.registers[src.value] : src.value;
           const result = (destValue - srcValue) & 0xffffffff;
-          this.updateFlags(result);
+          this.updateFlagsArith(result, destValue, srcValue, true);
         }
         break;
       }
@@ -967,13 +1030,15 @@ export class Simulator {
 
       case "NEG": {
         // NEG destination - Two's complement negation
+        // Per x86: CF set unless operand is 0; OF set if operand is 0x80000000
         if (operands.length !== 1) break;
         const dest = this.parseOperand(operands[0]);
 
         if (dest.type === "register") {
-          this.cpu.registers[dest.value] =
-            -this.cpu.registers[dest.value] & 0xffffffff;
-          this.updateFlags(this.cpu.registers[dest.value]);
+          const destVal = this.cpu.registers[dest.value];
+          const result = (-destVal) & 0xffffffff;
+          this.cpu.registers[dest.value] = result;
+          this.updateFlagsArith(result, 0, destVal, true);
         }
         break;
       }
@@ -996,13 +1061,14 @@ export class Simulator {
 
       case "SHL": {
         // SHL destination, count - Shift left
+        // Per x86 spec: shift counts > 31 are performed modulo 32
         if (operands.length !== 2) break;
         const dest = this.parseOperand(operands[0]);
         const src = this.parseOperand(operands[1]);
 
         if (dest.type === "register") {
           const count =
-            src.type === "register" ? this.cpu.registers[src.value] : src.value;
+            (src.type === "register" ? this.cpu.registers[src.value] : src.value) & 0x1f;
           this.cpu.registers[dest.value] =
             (this.cpu.registers[dest.value] << count) & 0xffffffff;
           this.updateFlags(this.cpu.registers[dest.value]);
@@ -1012,13 +1078,14 @@ export class Simulator {
 
       case "SHR": {
         // SHR destination, count - Shift right (logical)
+        // Per x86 spec: shift counts > 31 are performed modulo 32
         if (operands.length !== 2) break;
         const dest = this.parseOperand(operands[0]);
         const src = this.parseOperand(operands[1]);
 
         if (dest.type === "register") {
           const count =
-            src.type === "register" ? this.cpu.registers[src.value] : src.value;
+            (src.type === "register" ? this.cpu.registers[src.value] : src.value) & 0x1f;
           this.cpu.registers[dest.value] =
             (this.cpu.registers[dest.value] >>> count) & 0xffffffff;
           this.updateFlags(this.cpu.registers[dest.value]);
@@ -1028,13 +1095,14 @@ export class Simulator {
 
       case "SAR": {
         // SAR destination, count - Shift arithmetic right (preserves sign)
+        // Per x86 spec: shift counts > 31 are performed modulo 32
         if (operands.length !== 2) break;
         const dest = this.parseOperand(operands[0]);
         const src = this.parseOperand(operands[1]);
 
         if (dest.type === "register") {
           const count =
-            src.type === "register" ? this.cpu.registers[src.value] : src.value;
+            (src.type === "register" ? this.cpu.registers[src.value] : src.value) & 0x1f;
           // Convert to signed, shift, then back to unsigned
           this.cpu.registers[dest.value] =
             ((this.cpu.registers[dest.value] | 0) >> count) >>> 0;
@@ -1081,6 +1149,11 @@ export class Simulator {
         break;
       }
 
+      case "NOP": {
+        // NOP - No operation, does nothing
+        break;
+      }
+
       case "JMP": {
         // JMP label (not implemented - labels need symbol table)
         break;
@@ -1097,6 +1170,56 @@ export class Simulator {
       case "JNZ": {
         // JNE/JNZ label (jump if not equal/not zero)
         // Requires symbol table - skip for now
+        break;
+      }
+
+      case "JG": {
+        // JG label - Jump if greater (signed): SF == OF and ZF == 0
+        break;
+      }
+
+      case "JGE": {
+        // JGE label - Jump if greater or equal (signed): SF == OF
+        break;
+      }
+
+      case "JL": {
+        // JL label - Jump if less (signed): SF != OF
+        break;
+      }
+
+      case "JLE": {
+        // JLE label - Jump if less or equal (signed): SF != OF or ZF == 1
+        break;
+      }
+
+      case "JS": {
+        // JS label - Jump if sign flag set
+        break;
+      }
+
+      case "JNS": {
+        // JNS label - Jump if sign flag not set
+        break;
+      }
+
+      case "JA": {
+        // JA label - Jump if above (unsigned): CF == 0 and ZF == 0
+        break;
+      }
+
+      case "JAE": {
+        // JAE label - Jump if above or equal (unsigned): CF == 0
+        break;
+      }
+
+      case "JB": {
+        // JB label - Jump if below (unsigned): CF == 1
+        break;
+      }
+
+      case "JBE": {
+        // JBE label - Jump if below or equal (unsigned): CF == 1 or ZF == 1
         break;
       }
 
@@ -1239,7 +1362,8 @@ export class Simulator {
   }
 
   /**
-   * Update CPU flags based on result
+   * Update CPU flags based on result (Zero and Sign only)
+   * Used for logical operations that clear C and O flags.
    */
   private updateFlags(result: number): void {
     // Set Zero flag if result is zero
@@ -1255,6 +1379,108 @@ export class Simulator {
     } else {
       this.cpu.flags &= ~0x80;
     }
+
+    // Clear Carry and Overflow for logical operations
+    this.cpu.flags &= ~0x01; // Clear Carry flag (bit 0)
+    this.cpu.flags &= ~0x800; // Clear Overflow flag (bit 11)
+  }
+
+  /**
+   * Update CPU flags based on arithmetic result with Carry and Overflow.
+   * Per x86 specification (ref: UVA CS216 x86 Guide).
+   * @param result - the masked 32-bit result
+   * @param destVal - original destination value (unsigned)
+   * @param srcVal - source value (unsigned)
+   * @param isSubtraction - true for SUB/CMP/DEC/NEG operations
+   */
+  private updateFlagsArith(
+    result: number,
+    destVal: number,
+    srcVal: number,
+    isSubtraction: boolean,
+  ): void {
+    const result32 = result >>> 0;
+    const dest32 = destVal >>> 0;
+    const src32 = srcVal >>> 0;
+
+    // Zero flag (bit 6)
+    if (result32 === 0) {
+      this.cpu.flags |= 0x40;
+    } else {
+      this.cpu.flags &= ~0x40;
+    }
+
+    // Sign flag (bit 7)
+    if ((result32 & 0x80000000) !== 0) {
+      this.cpu.flags |= 0x80;
+    } else {
+      this.cpu.flags &= ~0x80;
+    }
+
+    // Carry flag (bit 0) - unsigned overflow/borrow
+    if (isSubtraction) {
+      // CF set if borrow: unsigned src > unsigned dest
+      if (src32 > dest32) {
+        this.cpu.flags |= 0x01;
+      } else {
+        this.cpu.flags &= ~0x01;
+      }
+    } else {
+      // CF set if result wrapped (unsigned overflow)
+      if (result32 < dest32) {
+        this.cpu.flags |= 0x01;
+      } else {
+        this.cpu.flags &= ~0x01;
+      }
+    }
+
+    // Overflow flag (bit 11) - signed overflow
+    const destSign = (dest32 & 0x80000000) !== 0;
+    const srcSign = (src32 & 0x80000000) !== 0;
+    const resultSign = (result32 & 0x80000000) !== 0;
+    if (isSubtraction) {
+      // Overflow if: positive - negative = negative, or negative - positive = positive
+      if (destSign !== srcSign && resultSign !== destSign) {
+        this.cpu.flags |= 0x800;
+      } else {
+        this.cpu.flags &= ~0x800;
+      }
+    } else {
+      // Overflow if: positive + positive = negative, or negative + negative = positive
+      if (destSign === srcSign && resultSign !== destSign) {
+        this.cpu.flags |= 0x800;
+      } else {
+        this.cpu.flags &= ~0x800;
+      }
+    }
+  }
+
+  /**
+   * Check if the Carry flag (CF, bit 0) is set
+   */
+  isCarryFlagSet(): boolean {
+    return (this.cpu.flags & 0x01) !== 0;
+  }
+
+  /**
+   * Check if the Zero flag (ZF, bit 6) is set
+   */
+  isZeroFlagSet(): boolean {
+    return (this.cpu.flags & 0x40) !== 0;
+  }
+
+  /**
+   * Check if the Sign flag (SF, bit 7) is set
+   */
+  isSignFlagSet(): boolean {
+    return (this.cpu.flags & 0x80) !== 0;
+  }
+
+  /**
+   * Check if the Overflow flag (OF, bit 11) is set
+   */
+  isOverflowFlagSet(): boolean {
+    return (this.cpu.flags & 0x800) !== 0;
   }
 
   loadProgram(bytecode: Uint8Array): void {

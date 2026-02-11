@@ -166,8 +166,8 @@ const INSTRUCTIONS = [
   },
   {
     name: "IMUL",
-    description: "Signed multiply (EAX *= source)",
-    syntax: "IMUL source",
+    description: "Signed multiply (supports 1, 2, and 3 operand forms per x86 spec)",
+    syntax: "IMUL source | IMUL dest, src | IMUL dest, src, const",
     cycles: 2,
     flags: ["Z", "C", "O", "S"],
     example: "IMUL EBX  ; EAX = EAX * EBX (signed)",
@@ -275,6 +275,94 @@ const INSTRUCTIONS = [
     cycles: 1,
     flags: [],
     example: "JNE not_equal  ; Jump if Z=0",
+  },
+  {
+    name: "JG",
+    description: "Jump if greater (signed): SF == OF and ZF == 0",
+    syntax: "JG label",
+    cycles: 1,
+    flags: [],
+    example: "JG greater  ; Jump if dest > src (signed)",
+  },
+  {
+    name: "JGE",
+    description: "Jump if greater or equal (signed): SF == OF",
+    syntax: "JGE label",
+    cycles: 1,
+    flags: [],
+    example: "JGE ge_handler  ; Jump if dest >= src (signed)",
+  },
+  {
+    name: "JL",
+    description: "Jump if less (signed): SF != OF",
+    syntax: "JL label",
+    cycles: 1,
+    flags: [],
+    example: "JL less  ; Jump if dest < src (signed)",
+  },
+  {
+    name: "JLE",
+    description: "Jump if less or equal (signed): SF != OF or ZF == 1",
+    syntax: "JLE label",
+    cycles: 1,
+    flags: [],
+    example: "JLE le_handler  ; Jump if dest <= src (signed)",
+  },
+  {
+    name: "JS",
+    description: "Jump if sign flag set (result is negative)",
+    syntax: "JS label",
+    cycles: 1,
+    flags: [],
+    example: "JS negative  ; Jump if SF=1",
+  },
+  {
+    name: "JNS",
+    description: "Jump if sign flag not set (result is non-negative)",
+    syntax: "JNS label",
+    cycles: 1,
+    flags: [],
+    example: "JNS positive  ; Jump if SF=0",
+  },
+  {
+    name: "JA",
+    description: "Jump if above (unsigned): CF == 0 and ZF == 0",
+    syntax: "JA label",
+    cycles: 1,
+    flags: [],
+    example: "JA above  ; Jump if dest > src (unsigned)",
+  },
+  {
+    name: "JAE",
+    description: "Jump if above or equal (unsigned): CF == 0",
+    syntax: "JAE label",
+    cycles: 1,
+    flags: [],
+    example: "JAE ae_handler  ; Jump if dest >= src (unsigned)",
+  },
+  {
+    name: "JB",
+    description: "Jump if below (unsigned): CF == 1",
+    syntax: "JB label",
+    cycles: 1,
+    flags: [],
+    example: "JB below  ; Jump if dest < src (unsigned)",
+  },
+  {
+    name: "JBE",
+    description: "Jump if below or equal (unsigned): CF == 1 or ZF == 1",
+    syntax: "JBE label",
+    cycles: 1,
+    flags: [],
+    example: "JBE be_handler  ; Jump if dest <= src (unsigned)",
+  },
+  {
+    name: "NOP",
+    description: "No operation - does nothing",
+    syntax: "NOP",
+    cycles: 1,
+    flags: [],
+    example: "NOP  ; Do nothing",
   },
   {
     name: "HLT",
@@ -415,7 +503,7 @@ function validateDocument(document: TextDocument): void {
         const label = trimmed.substring(0, colonIndex).trim();
         if (label && !label.includes(" ")) {
           labels.add(label);
-          
+
           // Track line numbers for duplicate detection
           if (!labelLines.has(label)) {
             labelLines.set(label, []);
@@ -436,7 +524,10 @@ function validateDocument(document: TextDocument): void {
             start: { line: lineIndex, character: 0 },
             end: { line: lineIndex, character: lines[lineIndex].length },
           },
-          message: `Duplicate label '${label}' (also defined on line ${lineNumbers.filter(l => l !== lineIndex).map(l => l + 1).join(", ")})`,
+          message: `Duplicate label '${label}' (also defined on line ${lineNumbers
+            .filter((l) => l !== lineIndex)
+            .map((l) => l + 1)
+            .join(", ")})`,
           source: "tonx86",
         });
       });
@@ -463,7 +554,7 @@ function validateDocument(document: TextDocument): void {
       if (equMatch) {
         const constantName = equMatch[1];
         const value = equMatch[2].trim();
-        
+
         // Check if value is provided
         if (!value) {
           diagnostics.push({
@@ -517,16 +608,81 @@ function validateDocument(document: TextDocument): void {
     }
 
     // Get operands (everything after the instruction)
-   const operands = tokens.slice(1);
-    const validRegisters = ["EAX", "EBX", "ECX", "EDX", "ESI", "EDI", "EBP", "ESP", "AL", "AH", "BL", "BH", "CL", "CH", "DL", "DH"];
+    const operands = tokens.slice(1);
+    const validRegisters = [
+      "EAX",
+      "EBX",
+      "ECX",
+      "EDX",
+      "ESI",
+      "EDI",
+      "EBP",
+      "ESP",
+      "AL",
+      "AH",
+      "BL",
+      "BH",
+      "CL",
+      "CH",
+      "DL",
+      "DH",
+    ];
 
     // Validate operands
     const instructionDef = INSTRUCTIONS.find((i) => i.name === instruction);
     if (instructionDef) {
       // Check operand count for instructions that require specific counts
-      const requiresTwoOperands = ["MOV", "ADD", "SUB", "AND", "OR", "XOR", "CMP", "TEST", "XCHG", "LEA", "MOVZX", "MOVSX", "MUL", "IMUL", "DIV", "IDIV", "MOD", "SHL", "SHR", "SAR", "ROL", "ROR"];
-      const requiresOneOperand = ["PUSH", "POP", "INC", "DEC", "NEG", "NOT", "JMP", "JZ", "JE", "JNZ", "JNE", "JG", "JGE", "JL", "JLE", "JA", "JAE", "JB", "JBE", "CALL", "INT"];
+      const requiresTwoOperands = [
+        "MOV",
+        "ADD",
+        "SUB",
+        "AND",
+        "OR",
+        "XOR",
+        "CMP",
+        "TEST",
+        "XCHG",
+        "LEA",
+        "MOVZX",
+        "MOVSX",
+        "MOD",
+        "SHL",
+        "SHR",
+        "SAR",
+        "ROL",
+        "ROR",
+      ];
+      const requiresOneOperand = [
+        "PUSH",
+        "POP",
+        "INC",
+        "DEC",
+        "NEG",
+        "NOT",
+        "MUL",
+        "DIV",
+        "IDIV",
+        "JMP",
+        "JZ",
+        "JE",
+        "JNZ",
+        "JNE",
+        "JG",
+        "JGE",
+        "JL",
+        "JLE",
+        "JS",
+        "JNS",
+        "JA",
+        "JAE",
+        "JB",
+        "JBE",
+        "CALL",
+        "INT",
+      ];
       const requiresZeroOperands = ["RET", "HLT", "IRET", "NOP"];
+      // IMUL supports 1, 2, or 3 operands per x86 spec
+      const flexibleOperands = ["IMUL", "RAND"];
 
       if (requiresTwoOperands.includes(instruction) && operands.length !== 2) {
         diagnostics.push({
@@ -567,17 +723,53 @@ function validateDocument(document: TextDocument): void {
         return;
       }
 
+      // IMUL and RAND have flexible operand counts
+      if (instruction === "IMUL" && (operands.length < 1 || operands.length > 3)) {
+        diagnostics.push({
+          severity: DiagnosticSeverity.Error,
+          range: {
+            start: { line: lineIndex, character: 0 },
+            end: { line: lineIndex, character: trimmed.length },
+          },
+          message: `IMUL requires 1 to 3 operands, found ${operands.length}`,
+          source: "tonx86",
+        });
+        return;
+      }
+
+      if (instruction === "RAND" && (operands.length < 1 || operands.length > 2)) {
+        diagnostics.push({
+          severity: DiagnosticSeverity.Error,
+          range: {
+            start: { line: lineIndex, character: 0 },
+            end: { line: lineIndex, character: trimmed.length },
+          },
+          message: `RAND requires 1 or 2 operands, found ${operands.length}`,
+          source: "tonx86",
+        });
+        return;
+      }
+
       // Validate register names in operands
       operands.forEach((operand) => {
         // Skip memory addresses, numbers, and labels
-        if (operand.startsWith("[") || operand.startsWith("0x") || /^\d+$/.test(operand) || operand.startsWith("-")) {
+        if (
+          operand.startsWith("[") ||
+          operand.startsWith("0x") ||
+          /^\d+$/.test(operand) ||
+          operand.startsWith("-")
+        ) {
           return;
         }
-        
+
         const upperOperand = operand.toUpperCase();
-        
+
         // Check if it looks like a register but isn't valid
-        if (/^E?[A-Z]{2,3}$/.test(upperOperand) && !validRegisters.includes(upperOperand) && !labels.has(operand)) {
+        if (
+          /^E?[A-Z]{2,3}$/.test(upperOperand) &&
+          !validRegisters.includes(upperOperand) &&
+          !labels.has(operand)
+        ) {
           diagnostics.push({
             severity: DiagnosticSeverity.Error,
             range: {
@@ -591,7 +783,26 @@ function validateDocument(document: TextDocument): void {
       });
 
       // Check for jump instructions with undefined labels
-      if (["JMP", "JZ", "JE", "JNZ", "JNE", "JG", "JGE", "JL", "JLE", "JA", "JAE", "JB", "JBE", "CALL"].includes(instruction)) {
+      if (
+        [
+          "JMP",
+          "JZ",
+          "JE",
+          "JNZ",
+          "JNE",
+          "JG",
+          "JGE",
+          "JL",
+          "JLE",
+          "JS",
+          "JNS",
+          "JA",
+          "JAE",
+          "JB",
+          "JBE",
+          "CALL",
+        ].includes(instruction)
+      ) {
         if (operands.length < 1) {
           diagnostics.push({
             severity: DiagnosticSeverity.Error,
@@ -605,7 +816,11 @@ function validateDocument(document: TextDocument): void {
         } else {
           const label = operands[0];
           // Check if it's a hex address, register, or a label
-          if (!label.startsWith("0x") && !validRegisters.includes(label.toUpperCase()) && !labels.has(label)) {
+          if (
+            !label.startsWith("0x") &&
+            !validRegisters.includes(label.toUpperCase()) &&
+            !labels.has(label)
+          ) {
             diagnostics.push({
               severity: DiagnosticSeverity.Warning,
               range: {
@@ -641,57 +856,63 @@ function validateControlFlow(
   let unreachableAfterLine = -1;
   const terminationInstructions = ["HLT", "RET", "JMP"];
   const functionLabels = new Set<string>();
-  
+
   // Identify function labels (labels that have RET before the next label)
   let currentLabel: string | null = null;
   for (let i = 0; i < lines.length; i++) {
     const trimmed = lines[i].trim();
-    
+
     // Remove comments
     const commentIndex = trimmed.indexOf(";");
-    const cleanLine = commentIndex >= 0 ? trimmed.substring(0, commentIndex).trim() : trimmed;
-    
+    const cleanLine =
+      commentIndex >= 0 ? trimmed.substring(0, commentIndex).trim() : trimmed;
+
     if (!cleanLine) continue;
-    
+
     // Check for label
     if (cleanLine.endsWith(":")) {
       currentLabel = cleanLine.substring(0, cleanLine.length - 1);
       continue;
     }
-    
+
     // Check if we see a RET
     const tokens = cleanLine.split(/[\s,]+/);
-    if (tokens.length > 0 && tokens[0].toUpperCase() === "RET" && currentLabel) {
+    if (
+      tokens.length > 0 &&
+      tokens[0].toUpperCase() === "RET" &&
+      currentLabel
+    ) {
       functionLabels.add(currentLabel);
     }
   }
-  
+
   // Check for unreachable code and misplaced RET
   for (let i = 0; i < lines.length; i++) {
     const trimmed = lines[i].trim();
-    
+
     // Remove comments
     const commentIndex = trimmed.indexOf(";");
-    const cleanLine = commentIndex >= 0 ? trimmed.substring(0, commentIndex).trim() : trimmed;
-    
+    const cleanLine =
+      commentIndex >= 0 ? trimmed.substring(0, commentIndex).trim() : trimmed;
+
     if (!cleanLine || cleanLine.startsWith(";")) continue;
-    
+
     // Labels reset unreachable state (can be jump targets)
     if (cleanLine.endsWith(":")) {
       unreachableAfterLine = -1;
       continue;
     }
-    
+
     // Skip EQU directives
     if (/EQU/i.test(cleanLine)) {
       continue;
     }
-    
+
     const tokens = cleanLine.split(/[\s,]+/);
     if (tokens.length === 0) continue;
-    
+
     const instruction = tokens[0].toUpperCase();
-    
+
     // Warn about unreachable code
     if (unreachableAfterLine >= 0) {
       diagnostics.push({
@@ -704,7 +925,7 @@ function validateControlFlow(
         source: "tonx86",
       });
     }
-    
+
     // Check for RET outside of function context
     if (instruction === "RET") {
       // Look backwards to see if we're inside a function (after a CALL target label)
@@ -712,10 +933,13 @@ function validateControlFlow(
       for (let j = i - 1; j >= 0; j--) {
         const prevLine = lines[j].trim();
         const prevComment = prevLine.indexOf(";");
-        const prevClean = prevComment >= 0 ? prevLine.substring(0, prevComment).trim() : prevLine;
-        
+        const prevClean =
+          prevComment >= 0
+            ? prevLine.substring(0, prevComment).trim()
+            : prevLine;
+
         if (!prevClean) continue;
-        
+
         // If we hit a label, check if it's a function label
         if (prevClean.endsWith(":")) {
           const labelName = prevClean.substring(0, prevClean.length - 1);
@@ -724,14 +948,18 @@ function validateControlFlow(
           }
           break;
         }
-        
+
         // If we hit HLT or another RET, we're not in a function
         const prevTokens = prevClean.split(/[\s,]+/);
-        if (prevTokens.length > 0 && (prevTokens[0].toUpperCase() === "HLT" || prevTokens[0].toUpperCase() === "RET")) {
+        if (
+          prevTokens.length > 0 &&
+          (prevTokens[0].toUpperCase() === "HLT" ||
+            prevTokens[0].toUpperCase() === "RET")
+        ) {
           break;
         }
       }
-      
+
       if (!inFunction) {
         diagnostics.push({
           severity: DiagnosticSeverity.Warning,
@@ -744,7 +972,7 @@ function validateControlFlow(
         });
       }
     }
-    
+
     // Mark code after terminating instructions as unreachable
     if (instruction === "HLT") {
       unreachableAfterLine = i;

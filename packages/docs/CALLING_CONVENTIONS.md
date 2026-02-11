@@ -426,3 +426,12 @@ function:
 - [ISA.md](ISA.md) - Instruction Set Architecture reference
 - [README.md](../../README.md) - TonX86 overview and examples
 - Example programs in `/examples/calling-conventions/`
+
+## Verification Sources
+
+Calling convention behavior verified against:
+
+- **x86 Assembly Guide** — University of Virginia CS216, by David Evans
+  (originally created by Adam Ferrari, updated by Alan Batson, Mike Lack, and Anita Jones)
+  https://www.cs.virginia.edu/~evans/cs216/guides/x86.html
+  Licensed under [Creative Commons BY-NC-SA 3.0 US](https://creativecommons.org/licenses/by-nc-sa/3.0/us/)

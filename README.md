@@ -455,3 +455,12 @@ MIT License - Free to use for educational and commercial purposes.
 Example: `"Built with TonX86 by Anthony (Toniboy1)"`
 
 See [LICENSE](LICENSE) for full details.
+
+## Verification Sources
+
+The TonX86 instruction set and behavior have been verified against:
+
+- **x86 Assembly Guide** — University of Virginia CS216, by David Evans
+  (originally created by Adam Ferrari, updated by Alan Batson, Mike Lack, and Anita Jones)
+  https://www.cs.virginia.edu/~evans/cs216/guides/x86.html
+  Licensed under [Creative Commons BY-NC-SA 3.0 US](https://creativecommons.org/licenses/by-nc-sa/3.0/us/)

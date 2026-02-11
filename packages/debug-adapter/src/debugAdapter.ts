@@ -379,7 +379,7 @@ export class TonX86DebugSession extends DebugSession {
 
       // Handle jump instructions (including CALL and RET)
       if (
-        ["JMP", "JE", "JZ", "JNE", "JNZ", "CALL", "RET"].includes(
+        ["JMP", "JE", "JZ", "JNE", "JNZ", "JG", "JGE", "JL", "JLE", "JS", "JNS", "JA", "JAE", "JB", "JBE", "CALL", "RET"].includes(
           currentInstr.mnemonic,
         )
       ) {
@@ -443,13 +443,8 @@ export class TonX86DebugSession extends DebugSession {
           const targetIndex = this.labels.get(targetLabel);
 
           if (targetIndex !== undefined) {
-            // For conditional jumps, check the Zero flag
-            const shouldJump =
-              currentInstr.mnemonic === "JMP" ||
-              (["JE", "JZ"].includes(currentInstr.mnemonic) &&
-                this.isZeroFlagSet()) ||
-              (["JNE", "JNZ"].includes(currentInstr.mnemonic) &&
-                !this.isZeroFlagSet());
+            // For conditional jumps, check flags per x86 spec
+            const shouldJump = this.shouldTakeJump(currentInstr.mnemonic);
 
             if (shouldJump) {
               this.instructionPointer = targetIndex;
@@ -489,6 +484,80 @@ export class TonX86DebugSession extends DebugSession {
     const state = this.simulator.getState();
     // Zero flag is bit 6
     return (state.flags & (1 << 6)) !== 0;
+  }
+
+  /**
+   * Check if the Sign flag is set in the CPU
+   */
+  private isSignFlagSet(): boolean {
+    const state = this.simulator.getState();
+    // Sign flag is bit 7
+    return (state.flags & (1 << 7)) !== 0;
+  }
+
+  /**
+   * Check if the Overflow flag is set in the CPU
+   */
+  private isOverflowFlagSet(): boolean {
+    const state = this.simulator.getState();
+    // Overflow flag is bit 11
+    return (state.flags & (1 << 11)) !== 0;
+  }
+
+  /**
+   * Check if the Carry flag is set in the CPU
+   */
+  private isCarryFlagSet(): boolean {
+    const state = this.simulator.getState();
+    // Carry flag is bit 0
+    return (state.flags & 1) !== 0;
+  }
+
+  /**
+   * Evaluate whether a conditional jump should be taken.
+   * Per x86 specification (ref: UVA CS216 x86 Guide).
+   */
+  private shouldTakeJump(mnemonic: string): boolean {
+    switch (mnemonic) {
+      case "JMP":
+        return true;
+      case "JE":
+      case "JZ":
+        return this.isZeroFlagSet();
+      case "JNE":
+      case "JNZ":
+        return !this.isZeroFlagSet();
+      case "JG":
+        // Greater (signed): SF == OF and ZF == 0
+        return this.isSignFlagSet() === this.isOverflowFlagSet() && !this.isZeroFlagSet();
+      case "JGE":
+        // Greater or equal (signed): SF == OF
+        return this.isSignFlagSet() === this.isOverflowFlagSet();
+      case "JL":
+        // Less (signed): SF != OF
+        return this.isSignFlagSet() !== this.isOverflowFlagSet();
+      case "JLE":
+        // Less or equal (signed): SF != OF or ZF == 1
+        return this.isSignFlagSet() !== this.isOverflowFlagSet() || this.isZeroFlagSet();
+      case "JS":
+        return this.isSignFlagSet();
+      case "JNS":
+        return !this.isSignFlagSet();
+      case "JA":
+        // Above (unsigned): CF == 0 and ZF == 0
+        return !this.isCarryFlagSet() && !this.isZeroFlagSet();
+      case "JAE":
+        // Above or equal (unsigned): CF == 0
+        return !this.isCarryFlagSet();
+      case "JB":
+        // Below (unsigned): CF == 1
+        return this.isCarryFlagSet();
+      case "JBE":
+        // Below or equal (unsigned): CF == 1 or ZF == 1
+        return this.isCarryFlagSet() || this.isZeroFlagSet();
+      default:
+        return false;
+    }
   }
 
   protected sourceRequest(
@@ -788,17 +857,12 @@ export class TonX86DebugSession extends DebugSession {
       }
 
       // Handle jump instructions
-      if (["JMP", "JE", "JZ", "JNE", "JNZ"].includes(currentInstr.mnemonic)) {
+      if (["JMP", "JE", "JZ", "JNE", "JNZ", "JG", "JGE", "JL", "JLE", "JS", "JNS", "JA", "JAE", "JB", "JBE"].includes(currentInstr.mnemonic)) {
         const targetLabel = currentInstr.operands[0];
         const targetIndex = this.labels.get(targetLabel);
 
         if (targetIndex !== undefined) {
-          const shouldJump =
-            currentInstr.mnemonic === "JMP" ||
-            (["JE", "JZ"].includes(currentInstr.mnemonic) &&
-              this.isZeroFlagSet()) ||
-            (["JNE", "JNZ"].includes(currentInstr.mnemonic) &&
-              !this.isZeroFlagSet());
+          const shouldJump = this.shouldTakeJump(currentInstr.mnemonic);
 
           if (shouldJump) {
             console.error(
@@ -879,7 +943,7 @@ export class TonX86DebugSession extends DebugSession {
 
       // Handle jump/call/ret instructions
       if (
-        ["JMP", "JE", "JZ", "JNE", "JNZ", "CALL", "RET"].includes(
+        ["JMP", "JE", "JZ", "JNE", "JNZ", "JG", "JGE", "JL", "JLE", "JS", "JNS", "JA", "JAE", "JB", "JBE", "CALL", "RET"].includes(
           currentInstr.mnemonic,
         )
       ) {
@@ -912,12 +976,7 @@ export class TonX86DebugSession extends DebugSession {
           const targetIndex = this.labels.get(targetLabel);
 
           if (targetIndex !== undefined) {
-            const shouldJump =
-              currentInstr.mnemonic === "JMP" ||
-              (["JE", "JZ"].includes(currentInstr.mnemonic) &&
-                this.isZeroFlagSet()) ||
-              (["JNE", "JNZ"].includes(currentInstr.mnemonic) &&
-                !this.isZeroFlagSet());
+            const shouldJump = this.shouldTakeJump(currentInstr.mnemonic);
 
             if (shouldJump) {
               console.error(
