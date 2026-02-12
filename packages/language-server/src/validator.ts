@@ -135,6 +135,39 @@ export function stripComment(line: string): string {
 }
 
 /**
+ * Check if a line or the previous line contains a warning suppression directive.
+ * Supported directives:
+ * - ; tonx86-disable-next-line
+ * - ; tonx86-ignore
+ */
+function shouldSuppressWarning(
+  lines: string[],
+  currentLineIndex: number,
+): boolean {
+  // Check current line for inline suppression
+  const currentLine = lines[currentLineIndex];
+  if (
+    currentLine.includes("; tonx86-ignore") ||
+    currentLine.includes(";tonx86-ignore")
+  ) {
+    return true;
+  }
+
+  // Check previous line for next-line suppression
+  if (currentLineIndex > 0) {
+    const previousLine = lines[currentLineIndex - 1];
+    if (
+      previousLine.includes("; tonx86-disable-next-line") ||
+      previousLine.includes(";tonx86-disable-next-line")
+    ) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/**
  * Result of the first pass: labels, EQU constants, and duplicate-label diagnostics.
  */
 export interface FirstPassResult {
@@ -483,8 +516,8 @@ export function validateControlFlow(
 
     const instruction = tokens[0].toUpperCase();
 
-    // Warn about unreachable code
-    if (unreachableAfterLine >= 0) {
+    // Warn about unreachable code (unless suppressed)
+    if (unreachableAfterLine >= 0 && !shouldSuppressWarning(lines, i)) {
       diagnostics.push({
         severity: DiagnosticSeverity.Warning,
         range: {

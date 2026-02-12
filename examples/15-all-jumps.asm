@@ -6,6 +6,7 @@ main:
     ; Test unconditional jump
     MOV EAX, 0
     JMP test_je
+    ; tonx86-disable-next-line
     MOV EAX, 99        ; Should skip this
 
 test_je:
@@ -13,6 +14,7 @@ test_je:
     MOV EDX, 5
     CMP EDX, 5         ; Sets Z flag
     JE je_taken        ; Should jump
+    ; tonx86-disable-next-line
     MOV EAX, 1         ; Should skip
     JMP test_jne
 
@@ -24,6 +26,7 @@ test_jne:
     MOV ECX, 3
     CMP ECX, 5         ; Z flag = 0
     JNE jne_taken      ; Should jump
+    ; tonx86-disable-next-line
     MOV EAX, 2         ; Should skip
     JMP done
 

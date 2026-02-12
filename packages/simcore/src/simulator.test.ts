@@ -1168,7 +1168,6 @@ describe("Simulator - public API", () => {
 
   test("step() without loaded instructions does nothing", () => {
     sim.run();
-    const stateBefore = sim.getState();
     sim.step();
     const stateAfter = sim.getState();
     // Without loaded instructions, step() should halt the simulator

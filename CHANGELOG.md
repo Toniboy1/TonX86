@@ -2,6 +2,36 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [0.6.0](https://github.com/Toniboy1/TonX86/compare/v0.4.2...v0.6.0) (2026-02-12)
+
+### Features
+
+* **flags**: implement accurate x86 flag semantics for shift, rotate, NEG, and multiply instructions ([#76](https://github.com/Toniboy1/TonX86/issues/76))
+  - Add 4 new flag helper methods to simulator (`updateZeroAndSignFlags`, `updateFlagsShift`, `updateFlagsRotate`, `updateFlagsMultiply`)
+  - **SHL**: CF now set to last bit shifted out, OF = (MSB XOR CF) for single-bit shifts
+  - **SHR**: CF set to last bit shifted out, OF = original MSB for single-bit shifts
+  - **SAR**: CF set to last bit shifted out, OF always cleared for single-bit shifts
+  - **ROL**: CF set to bit rotated to LSB, OF = (MSB XOR CF) for single-bit rotates
+  - **ROR**: CF set to bit rotated to MSB, OF = (bit31 XOR bit30) for single-bit rotates
+  - **NEG**: CF behavior corrected (CF = source != 0, per x86 spec)
+  - **MUL/IMUL**: CF/OF now set based on upper 32 bits (EDX) or result truncation
+  - **INC/DEC**: Verified CF preservation (no modification to carry flag)
+  - **AND/OR/XOR**: Verified CF/OF are always cleared
+  - Maintains backward compatibility through educational mode (default behavior)
+  - Compatibility mode system supports "strict-x86" for exact x86 behavior
+
+### Tests
+
+* add 32 comprehensive flag behavior tests covering all updated instructions
+* expand test suite from 428 to 460 tests (25 debug-adapter + 104 language-server + 331 simcore)
+
+### Documentation
+
+* update ISA.md with detailed flag behavior for all affected instructions
+* document CF/OF semantics for shifts, rotates, NEG, and multiply operations
+* clarify INC/DEC CF preservation behavior
+* add notes on logical instruction flag clearing behavior
+
 ### [0.4.2](https://github.com/Toniboy1/TonX86/compare/v0.4.1...v0.4.2) (2026-02-11)
 
 ### [0.4.1](https://github.com/Toniboy1/TonX86/compare/v0.4.0...v0.4.1) (2026-02-11)

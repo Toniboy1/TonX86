@@ -6,6 +6,14 @@ import {
   OutputEvent,
 } from "vscode-debugadapter";
 import { DebugProtocol } from "vscode-debugprotocol";
+
+interface TonX86LaunchRequestArguments
+  extends DebugProtocol.LaunchRequestArguments {
+  program?: string;
+  cpuSpeed?: number;
+  stopOnEntry?: boolean;
+  enableLogging?: boolean;
+}
 import * as fs from "fs";
 import * as path from "path";
 import { Simulator, Instruction } from "@tonx86/simcore";
@@ -180,7 +188,7 @@ export class TonX86DebugSession extends DebugSession {
     );
 
     // Extract program path from args
-    const launchArgs = args as any;
+    const launchArgs = args as TonX86LaunchRequestArguments;
     this.programPath = launchArgs.program || "";
     this.cpuSpeed = launchArgs.cpuSpeed || 100;
     this.stopOnEntry =
@@ -871,7 +879,7 @@ export class TonX86DebugSession extends DebugSession {
   protected customRequest(
     command: string,
     response: DebugProtocol.Response,
-    args: any,
+    args: Record<string, unknown>,
   ): void {
     if (command === "getLCDState") {
       const lcdData = this.simulator.getLCDDisplay();
@@ -883,7 +891,12 @@ export class TonX86DebugSession extends DebugSession {
       // Get memory state for both memory banks
       // Default to showing first 16 bytes if not specified
       const DEFAULT_MEMORY_VIEW_SIZE = 16;
-      const { start = 0, length = DEFAULT_MEMORY_VIEW_SIZE } = args || {};
+      const argsObj = args || {};
+      const start = typeof argsObj.start === "number" ? argsObj.start : 0;
+      const length =
+        typeof argsObj.length === "number"
+          ? argsObj.length
+          : DEFAULT_MEMORY_VIEW_SIZE;
       const memoryA = this.simulator.getMemoryA(start, length);
       const memoryB = this.simulator.getMemoryB(start, length);
       response.body = {
@@ -902,7 +915,10 @@ export class TonX86DebugSession extends DebugSession {
         this.sendResponse(response);
         return;
       }
-      const { keyCode, pressed } = args;
+      const argsObj = args || {};
+      const keyCode = typeof argsObj.keyCode === "number" ? argsObj.keyCode : 0;
+      const pressed =
+        typeof argsObj.pressed === "boolean" ? argsObj.pressed : false;
       this.simulator.pushKeyboardEvent(keyCode, pressed);
       console.error(
         `[TonX86] Keyboard event: keyCode=${keyCode}, pressed=${pressed}`,

@@ -38,7 +38,7 @@ class TonX86DebugConfigurationProvider
   resolveDebugConfiguration(
     folder: vscode.WorkspaceFolder | undefined,
     config: vscode.DebugConfiguration,
-    token?: vscode.CancellationToken,
+    _?: vscode.CancellationToken,
   ): vscode.ProviderResult<vscode.DebugConfiguration> {
     // Get extension settings (always read fresh)
     const cpuSpeedSetting = vscode.workspace
@@ -777,7 +777,7 @@ export function activate(context: vscode.ExtensionContext): void {
         pressed,
       })
       .then(
-        (response) => {
+        () => {
           // Success
           console.log(
             `Keyboard event sent: keyCode=${keyCode}, pressed=${pressed}`,

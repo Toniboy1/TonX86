@@ -6,7 +6,7 @@
 
 import * as fs from "fs";
 import * as path from "path";
-import { DiagnosticSeverity } from "vscode-languageserver/node";
+import { Diagnostic, DiagnosticSeverity } from "vscode-languageserver/node";
 import {
   stripComment,
   collectLabelsAndConstants,
@@ -86,12 +86,6 @@ function errors(diags: ReturnType<typeof validate>) {
 }
 function warnings(diags: ReturnType<typeof validate>) {
   return diags.filter((d) => d.severity === DiagnosticSeverity.Warning);
-}
-function infos(diags: ReturnType<typeof validate>) {
-  return diags.filter((d) => d.severity === DiagnosticSeverity.Information);
-}
-function hints(diags: ReturnType<typeof validate>) {
-  return diags.filter((d) => d.severity === DiagnosticSeverity.Hint);
 }
 
 // ─── stripComment ──────────────────────────────────────────
@@ -641,7 +635,7 @@ describe("validateInstructions", () => {
 describe("validateControlFlow", () => {
   test("warns about unreachable code after HLT", () => {
     const lines = ["main:", "  HLT", "  MOV EAX, 10"];
-    const diags: any[] = [];
+    const diags: Diagnostic[] = [];
     validateControlFlow(lines, new Set(["main"]), diags);
     const warns = diags.filter(
       (d) => d.severity === DiagnosticSeverity.Warning,
@@ -652,7 +646,7 @@ describe("validateControlFlow", () => {
 
   test("warns about unreachable code after JMP", () => {
     const lines = ["main:", "  JMP end", "  MOV EAX, 10", "end:", "  HLT"];
-    const diags: any[] = [];
+    const diags: Diagnostic[] = [];
     validateControlFlow(lines, new Set(["main", "end"]), diags);
     const warns = diags.filter(
       (d) => d.severity === DiagnosticSeverity.Warning,
@@ -670,7 +664,7 @@ describe("validateControlFlow", () => {
       "end:",
       "  HLT",
     ];
-    const diags: any[] = [];
+    const diags: Diagnostic[] = [];
     validateControlFlow(lines, new Set(["main", "middle", "end"]), diags);
     // middle: resets unreachable, so MOV EAX shouldn't be warned as unreachable
     const unreachWarns = diags.filter(
@@ -692,7 +686,7 @@ describe("validateControlFlow", () => {
       "  MOV EAX, 10",
       "  RET", // This RET is in orphaned_code which is never CALLed
     ];
-    const diags: any[] = [];
+    const diags: Diagnostic[] = [];
     // The validator identifies orphaned_code as having RET → it's a "function"
     // So instead, test a simpler case:
     // Actually, since the validator auto-detects labels with RET as functions,
@@ -714,7 +708,7 @@ describe("validateControlFlow", () => {
       "  MOV EAX, 10",
       "  RET",
     ];
-    const diags: any[] = [];
+    const diags: Diagnostic[] = [];
     validateControlFlow(lines, new Set(["main", "my_func"]), diags);
     const retWarns = diags.filter((d) =>
       d.message.includes("RET instruction outside"),
@@ -728,14 +722,14 @@ describe("validateControlFlow", () => {
       "  MOV EAX, 10  ; set value",
       "  HLT  ; stop execution",
     ];
-    const diags: any[] = [];
+    const diags: Diagnostic[] = [];
     validateControlFlow(lines, new Set(["main"]), diags);
     expect(diags).toHaveLength(0);
   });
 
   test("skips EQU directives", () => {
     const lines = ["SIZE EQU 64", "main:", "  HLT"];
-    const diags: any[] = [];
+    const diags: Diagnostic[] = [];
     validateControlFlow(lines, new Set(["main"]), diags);
     // EQU should not be treated as unreachable code or instruction
     expect(diags).toHaveLength(0);
@@ -748,12 +742,68 @@ describe("validateControlFlow", () => {
       "  HLT",
       "  RET", // This RET comes after HLT, not in a function
     ];
-    const diags: any[] = [];
+    const diags: Diagnostic[] = [];
     validateControlFlow(lines, new Set(["start"]), diags);
     const retWarns = diags.filter((d) =>
       d.message.includes("RET instruction outside"),
     );
     expect(retWarns.length).toBeGreaterThanOrEqual(1);
+  });
+
+  test("suppresses unreachable code warning with tonx86-disable-next-line", () => {
+    const lines = [
+      "main:",
+      "  JMP end",
+      "  ; tonx86-disable-next-line",
+      "  MOV EAX, 99", // Should NOT warn due to suppression
+      "end:",
+      "  HLT",
+    ];
+    const diags: Diagnostic[] = [];
+    validateControlFlow(lines, new Set(["main", "end"]), diags);
+    const unreachWarns = diags.filter(
+      (d) =>
+        d.severity === DiagnosticSeverity.Warning &&
+        d.message.includes("Unreachable"),
+    );
+    expect(unreachWarns).toHaveLength(0);
+  });
+
+  test("suppresses unreachable code warning with inline tonx86-ignore", () => {
+    const lines = [
+      "main:",
+      "  JMP end",
+      "  MOV EAX, 99 ; tonx86-ignore", // Should NOT warn due to inline suppression
+      "end:",
+      "  HLT",
+    ];
+    const diags: Diagnostic[] = [];
+    validateControlFlow(lines, new Set(["main", "end"]), diags);
+    const unreachWarns = diags.filter(
+      (d) =>
+        d.severity === DiagnosticSeverity.Warning &&
+        d.message.includes("Unreachable"),
+    );
+    expect(unreachWarns).toHaveLength(0);
+  });
+
+  test("suppression works without space after semicolon", () => {
+    const lines = [
+      "main:",
+      "  JMP end",
+      "  ;tonx86-disable-next-line",
+      "  MOV EAX, 99", // Should NOT warn
+      "end:",
+      "  HLT",
+    ];
+    const diags: Diagnostic[] = [];
+    validateControlFlow(lines, new Set(["main", "end"]), diags);
+    const unreachWarns = diags.filter(
+      (d) =>
+        d.severity === DiagnosticSeverity.Warning &&
+        d.message.includes("Unreachable"),
+    );
+    expect(unreachWarns).toHaveLength(0);
   });
 });
 
@@ -769,7 +819,7 @@ describe("validateCallingConventions", () => {
       "  RET",
     ];
     const labels = new Set(["main", "my_func"]);
-    const diags: any[] = [];
+    const diags: Diagnostic[] = [];
     validateCallingConventions(lines, labels, diags);
     const infoMsgs = diags.filter(
       (d) => d.severity === DiagnosticSeverity.Information,
@@ -792,7 +842,7 @@ describe("validateCallingConventions", () => {
       "  RET",
     ];
     const labels = new Set(["main", "my_func"]);
-    const diags: any[] = [];
+    const diags: Diagnostic[] = [];
     validateCallingConventions(lines, labels, diags);
     const funcWarns = diags.filter(
       (d) =>
@@ -816,7 +866,7 @@ describe("validateCallingConventions", () => {
       "  RET",
     ];
     const labels = new Set(["main", "my_func"]);
-    const diags: any[] = [];
+    const diags: Diagnostic[] = [];
     validateCallingConventions(lines, labels, diags);
     const stackWarns = diags.filter((d) => d.message.includes("PUSH but"));
     expect(stackWarns.length).toBeGreaterThanOrEqual(1);
@@ -835,7 +885,7 @@ describe("validateCallingConventions", () => {
       "  RET",
     ];
     const labels = new Set(["main", "my_func"]);
-    const diags: any[] = [];
+    const diags: Diagnostic[] = [];
     validateCallingConventions(lines, labels, diags);
     const regWarns = diags.filter((d) =>
       d.message.includes("callee-saved register EBX"),
@@ -858,7 +908,7 @@ describe("validateCallingConventions", () => {
       "  RET",
     ];
     const labels = new Set(["main", "my_func"]);
-    const diags: any[] = [];
+    const diags: Diagnostic[] = [];
     validateCallingConventions(lines, labels, diags);
     const regWarns = diags.filter((d) =>
       d.message.includes("callee-saved register EBX"),
@@ -869,7 +919,7 @@ describe("validateCallingConventions", () => {
   test("skips main function for convention checks", () => {
     const lines = ["main:", "  MOV EBX, 42", "  HLT"];
     const labels = new Set(["main"]);
-    const diags: any[] = [];
+    const diags: Diagnostic[] = [];
     validateCallingConventions(lines, labels, diags);
     // main should be skipped entirely
     const funcWarns = diags.filter(
@@ -889,7 +939,7 @@ describe("validateCallingConventions", () => {
       "  HLT",
     ];
     const labels = new Set(["main"]);
-    const diags: any[] = [];
+    const diags: Diagnostic[] = [];
     validateCallingConventions(lines, labels, diags);
     // GRID_SIZE should NOT be analyzed as a function
     const gridWarns = diags.filter((d) => d.message.includes("GRID_SIZE"));
@@ -906,7 +956,7 @@ describe("validateCallingConventions", () => {
       "  HLT",
     ];
     const labels = new Set(["main", "loop"]);
-    const diags: any[] = [];
+    const diags: Diagnostic[] = [];
     validateCallingConventions(lines, labels, diags);
     // loop is not a CALL target, so it should NOT be analyzed as a function
     const loopWarns = diags.filter((d) => d.message.includes("loop"));
@@ -926,7 +976,7 @@ describe("validateCallingConventions", () => {
       "  RET               ; Return to caller",
     ];
     const labels = new Set(["main", "my_func"]);
-    const diags: any[] = [];
+    const diags: Diagnostic[] = [];
     validateCallingConventions(lines, labels, diags);
     // Comments should not break convention analysis
     const funcWarns = diags.filter(
@@ -949,7 +999,7 @@ describe("validateCallingConventions", () => {
       "  RET",
     ];
     const labels = new Set(["main", "my_func"]);
-    const diags: any[] = [];
+    const diags: Diagnostic[] = [];
     validateCallingConventions(lines, labels, diags);
     const movWarns = diags.filter((d) =>
       d.message.includes("should follow 'PUSH EBP' with 'MOV EBP, ESP'"),
@@ -969,7 +1019,7 @@ describe("validateCallingConventions", () => {
       "  RET",
     ];
     const labels = new Set(["main", "my_func"]);
-    const diags: any[] = [];
+    const diags: Diagnostic[] = [];
     validateCallingConventions(lines, labels, diags);
     const popWarns = diags.filter((d) =>
       d.message.includes("has 'PUSH EBP' but missing 'POP EBP'"),
@@ -994,7 +1044,7 @@ describe("validateCallingConventions", () => {
       "  RET",
     ];
     const labels = new Set(["main", "add_func"]);
-    const diags: any[] = [];
+    const diags: Diagnostic[] = [];
     validateCallingConventions(lines, labels, diags);
     const cdeclHints = diags.filter((d) =>
       d.message.includes("uses cdecl convention"),

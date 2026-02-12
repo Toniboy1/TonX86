@@ -95,34 +95,39 @@ Register names are **not case-sensitive** (e.g., `EAX` and `eax` refer to the sa
 
 **INC dest** - Increment
 - Cycles: 1
-- Flags: Z, C, O, S
+- Flags: Z, O, S (CF is **not** modified)
 - Example: `INC EAX`
+- Note: Per x86 specification, INC does not affect the carry flag, making it distinct from ADD dest, 1
 
 **DEC dest** - Decrement
 - Cycles: 1
-- Flags: Z, C, O, S
+- Flags: Z, O, S (CF is **not** modified)
 - Example: `DEC EAX`
+- Note: Per x86 specification, DEC does not affect the carry flag, making it distinct from SUB dest, 1
 
 **NEG dest** - Two's complement negation
 - Cycles: 1
 - Flags: Z, C, O, S
 - Example: `NEG EAX`
+- Note: CF is set if source is non-zero, cleared if source is zero (special x86 behavior)
 
 **MUL src** - Unsigned multiply (EAX * src -> EDX:EAX)
 - Cycles: 1
-- Flags: Z, S
+- Flags: C, O (Z, S are undefined per x86 spec, cleared in strict-x86 mode)
 - Example: `MUL ECX`
+- Note: CF and OF are set if the upper 32 bits (EDX) are non-zero, indicating the result doesn't fit in EAX
 
 **IMUL** - Signed multiply (supports 1, 2, and 3 operand forms per x86 spec)
 - **1 operand:** `IMUL src` - EAX * src → EDX:EAX (signed)
 - **2 operand:** `IMUL dest, src` - dest * src → dest
 - **3 operand:** `IMUL dest, src, const` - src * const → dest
 - Cycles: 1
-- Flags: Z, S
+- Flags: C, O (Z, S are undefined per x86 spec, cleared in strict-x86 mode)
 - Examples:
   - `IMUL ECX` (EAX = EAX * ECX, signed, single-operand form)
   - `IMUL EAX, EBX` (EAX = EAX * EBX, two-operand form)
   - `IMUL ESI, EDI, 25` (ESI = EDI * 25, three-operand form)
+- Note: CF and OF are set if the result is truncated (i.e., cannot be represented in the destination size)
 
 **DIV src** - Unsigned divide (EAX / src -> quotient in EAX, remainder in EDX)
 - Cycles: 1
@@ -144,17 +149,17 @@ Register names are **not case-sensitive** (e.g., `EAX` and `eax` refer to the sa
 
 **AND dest, src** - Bitwise AND
 - Cycles: 1
-- Flags: Z, S
+- Flags: Z, S (CF and OF are always cleared)
 - Example: `AND EAX, ECX`
 
 **OR dest, src** - Bitwise OR
 - Cycles: 1
-- Flags: Z, S
+- Flags: Z, S (CF and OF are always cleared)
 - Example: `OR EAX, ECX`
 
 **XOR dest, src** - Bitwise XOR
 - Cycles: 1
-- Flags: Z, S
+- Flags: Z, S (CF and OF are always cleared)
 - Example: `XOR EAX, ECX`
 
 **NOT dest** - Bitwise NOT (one's complement)
@@ -173,28 +178,53 @@ Register names are **not case-sensitive** (e.g., `EAX` and `eax` refer to the sa
 
 **SHL dest, count** - Shift left
 - Cycles: 1
-- Flags: Z, S
+- Flags: Z, S, C, O (if count > 0)
 - Example: `SHL EAX, 4`
+- Flag behavior:
+  - **CF**: Set to the last bit shifted out (the bit that was shifted beyond the register)
+  - **OF**: For count=1, set to (MSB of result) XOR CF; undefined for count>1
+  - **ZF/SF**: Reflect the result
+  - If count=0, no flags are modified
 
 **SHR dest, count** - Shift right (logical, zero-fill)
 - Cycles: 1
-- Flags: Z, S
+- Flags: Z, S, C, O (if count > 0)
 - Example: `SHR EAX, 2`
+- Flag behavior:
+  - **CF**: Set to the last bit shifted out (the LSB before the shift)
+  - **OF**: For count=1, set to the MSB of the original operand; undefined for count>1
+  - **ZF/SF**: Reflect the result
+  - If count=0, no flags are modified
 
 **SAR dest, count** - Shift arithmetic right (sign-extend)
 - Cycles: 1
-- Flags: Z, S
+- Flags: Z, S, C, O (if count > 0)
 - Example: `SAR EAX, 3`
+- Flag behavior:
+  - **CF**: Set to the last bit shifted out
+  - **OF**: Always cleared for count=1; undefined for count>1
+  - **ZF/SF**: Reflect the result (sign is preserved)
+  - If count=0, no flags are modified
 
 **ROL dest, count** - Rotate left
 - Cycles: 1
-- Flags: Z, S
+- Flags: C, O (if count > 0)
 - Example: `ROL EAX, 8`
+- Flag behavior:
+  - **CF**: Set to the bit rotated into the LSB position
+  - **OF**: For count=1, set to (MSB of result) XOR CF; undefined for count>1
+  - **ZF/SF**: Not modified by rotate operations
+  - If count=0, no flags are modified
 
 **ROR dest, count** - Rotate right
 - Cycles: 1
-- Flags: Z, S
+- Flags: C, O (if count > 0)
 - Example: `ROR EAX, 8`
+- Flag behavior:
+  - **CF**: Set to the bit rotated into the MSB position
+  - **OF**: For count=1, set to (MSB XOR second MSB) of result; undefined for count>1
+  - **ZF/SF**: Not modified by rotate operations
+  - If count=0, no flags are modified
 
 ### Control Flow
 

@@ -9,6 +9,23 @@ export interface Instruction {
 }
 
 /**
+ * Operand types used by parseOperand
+ */
+type ParsedOperand = {
+  type: "register" | "register8" | "immediate" | "memory";
+  value: number;
+  base?: number;
+  offset?: number;
+  byteOffset?: number;
+};
+
+type RegisterOperand = {
+  type: "register" | "register8";
+  value: number;
+  byteOffset?: number;
+};
+
+/**
  * TonX86 Memory - supports two separate memory banks (A and B)
  */
 export class Memory {
@@ -367,13 +384,7 @@ export class Simulator {
   /**
    * Parse a register name, immediate value, or memory address
    */
-  private parseOperand(operand: string): {
-    type: "register" | "register8" | "immediate" | "memory";
-    value: number;
-    base?: number;
-    offset?: number;
-    byteOffset?: number;
-  } {
+  private parseOperand(operand: string): ParsedOperand {
     const rawOperand = operand.trim();
 
     // Preserve case for character literals (e.g., 'e')
@@ -527,11 +538,7 @@ export class Simulator {
     };
   }
 
-  private readRegisterValue(operand: {
-    type: "register" | "register8";
-    value: number;
-    byteOffset?: number;
-  }): number {
+  private readRegisterValue(operand: RegisterOperand): number {
     const regValue = this.cpu.registers[operand.value];
 
     if (operand.type === "register8") {
@@ -542,14 +549,7 @@ export class Simulator {
     return regValue;
   }
 
-  private writeRegisterValue(
-    operand: {
-      type: "register" | "register8";
-      value: number;
-      byteOffset?: number;
-    },
-    value: number,
-  ): void {
+  private writeRegisterValue(operand: RegisterOperand, value: number): void {
     if (operand.type === "register8") {
       const shift = operand.byteOffset ?? 0;
       const mask = ~(0xff << shift);
@@ -576,7 +576,7 @@ export class Simulator {
     if (src.type === "register") {
       return this.cpu.registers[src.value];
     } else if (src.type === "register8") {
-      return this.readRegisterValue(src as any);
+      return this.readRegisterValue(src as RegisterOperand);
     } else if (src.type === "memory") {
       let addr: number;
       if (src.base === -1) {
@@ -842,7 +842,7 @@ export class Simulator {
         // Get source value
         let srcValue: number;
         if (src.type === "register" || src.type === "register8") {
-          srcValue = this.readRegisterValue(src as any);
+          srcValue = this.readRegisterValue(src as RegisterOperand);
         } else if (src.type === "memory") {
           // Read from memory address [base+offset]
           // Special case: base = -1 means absolute I/O address stored in offset
@@ -870,7 +870,7 @@ export class Simulator {
 
         // Handle destination
         if (dest.type === "register" || dest.type === "register8") {
-          this.writeRegisterValue(dest as any, srcValue);
+          this.writeRegisterValue(dest as RegisterOperand, srcValue);
         } else if (dest.type === "memory") {
           // Write to memory address [base+offset]
           // Special case: base = -1 means absolute I/O address stored in offset
@@ -907,12 +907,12 @@ export class Simulator {
           (dest.type === "register" || dest.type === "register8") &&
           (src.type === "register" || src.type === "register8")
         ) {
-          const temp = this.readRegisterValue(dest as any);
+          const temp = this.readRegisterValue(dest as RegisterOperand);
           this.writeRegisterValue(
-            dest as any,
-            this.readRegisterValue(src as any),
+            dest as RegisterOperand,
+            this.readRegisterValue(src as RegisterOperand),
           );
-          this.writeRegisterValue(src as any, temp);
+          this.writeRegisterValue(src as RegisterOperand, temp);
         }
         break;
       }
@@ -955,7 +955,7 @@ export class Simulator {
           let srcValue: number;
           if (src.type === "register" || src.type === "register8") {
             // Treat source as 8-bit (low byte)
-            srcValue = this.readRegisterValue(src as any) & 0xff;
+            srcValue = this.readRegisterValue(src as RegisterOperand) & 0xff;
           } else {
             srcValue = src.value & 0xff;
           }
@@ -975,7 +975,7 @@ export class Simulator {
           let srcValue: number;
           if (src.type === "register" || src.type === "register8") {
             // Treat source as 8-bit (low byte)
-            srcValue = this.readRegisterValue(src as any) & 0xff;
+            srcValue = this.readRegisterValue(src as RegisterOperand) & 0xff;
           } else {
             srcValue = src.value & 0xff;
           }
@@ -1059,16 +1059,18 @@ export class Simulator {
 
       case "MUL": {
         // MUL source - Unsigned multiply (EAX * source -> EDX:EAX)
-        // Simplified: result in EAX only (lower 32 bits)
+        // CF and OF set if upper half (EDX) is non-zero
         if (operands.length !== 1) break;
         const src = this.parseOperand(operands[0]);
 
         const srcValue = this.resolveSourceValue(src);
         const result = (this.cpu.registers[0] >>> 0) * (srcValue >>> 0);
         // Store lower 32 bits in EAX, upper 32 bits in EDX
-        this.cpu.registers[0] = (result & 0xffffffff) >>> 0;
-        this.cpu.registers[2] = ((result / 0x100000000) & 0xffffffff) >>> 0; // EDX
-        this.updateFlags(this.cpu.registers[0]);
+        const lower = (result & 0xffffffff) >>> 0;
+        const upper = ((result / 0x100000000) & 0xffffffff) >>> 0;
+        this.cpu.registers[0] = lower; // EAX
+        this.cpu.registers[2] = upper; // EDX
+        this.updateFlagsMultiply(lower, upper);
         break;
       }
 
@@ -1081,19 +1083,25 @@ export class Simulator {
           const eaxSigned = this.cpu.registers[0] | 0;
           const srcSigned = srcValue | 0;
           const result = eaxSigned * srcSigned;
-          this.cpu.registers[0] = (result & 0xffffffff) >>> 0;
-          this.cpu.registers[2] = ((result / 0x100000000) | 0) >>> 0; // EDX
-          this.updateFlags(this.cpu.registers[0]);
+          const lower = (result & 0xffffffff) >>> 0;
+          const upper = ((result / 0x100000000) | 0) >>> 0;
+          this.cpu.registers[0] = lower;
+          this.cpu.registers[2] = upper; // EDX
+          this.updateFlagsMultiply(lower, upper);
         } else if (operands.length === 2) {
           // Two operand: dest = dest * src (result in dest register)
+          // For 2/3 operand forms, CF/OF set if result is truncated
           const dest = this.parseOperand(operands[0]);
           const src = this.parseOperand(operands[1]);
           if (dest.type !== "register") break;
           const destSigned = this.cpu.registers[dest.value] | 0;
           const srcValue = this.resolveSourceValue(src) | 0;
-          const result = destSigned * srcValue;
-          this.cpu.registers[dest.value] = (result & 0xffffffff) >>> 0;
-          this.updateFlags(this.cpu.registers[dest.value]);
+          const result64 = destSigned * srcValue;
+          const result = (result64 & 0xffffffff) >>> 0;
+          this.cpu.registers[dest.value] = result;
+          // CF/OF set if result was truncated (upper 32 bits non-zero)
+          const upper = ((result64 / 0x100000000) | 0) >>> 0;
+          this.updateFlagsMultiply(result, upper);
         } else if (operands.length === 3) {
           // Three operand: dest = src * constant
           const dest = this.parseOperand(operands[0]);
@@ -1102,9 +1110,12 @@ export class Simulator {
           if (dest.type !== "register") break;
           const srcValue = this.resolveSourceValue(src) | 0;
           const constValue = con.value | 0;
-          const result = srcValue * constValue;
-          this.cpu.registers[dest.value] = (result & 0xffffffff) >>> 0;
-          this.updateFlags(this.cpu.registers[dest.value]);
+          const result64 = srcValue * constValue;
+          const result = (result64 & 0xffffffff) >>> 0;
+          this.cpu.registers[dest.value] = result;
+          // CF/OF set if result was truncated
+          const upper = ((result64 / 0x100000000) | 0) >>> 0;
+          this.updateFlagsMultiply(result, upper);
         }
         break;
       }
@@ -1256,9 +1267,19 @@ export class Simulator {
 
         if (dest.type === "register") {
           const destVal = this.cpu.registers[dest.value];
-          const result = -destVal & 0xffffffff;
+          const result = (0 - destVal) & 0xffffffff;
           this.cpu.registers[dest.value] = result;
+
+          // NEG has special CF behavior: CF = (source != 0)
+          // Update other flags normally, then fix CF
           this.updateFlagsArith(result, 0, destVal, true);
+
+          // Override CF with NEG-specific behavior
+          if (destVal !== 0) {
+            this.cpu.flags |= 0x01; // Set CF if source != 0
+          } else {
+            this.cpu.flags &= ~0x01; // Clear CF if source == 0
+          }
         }
         break;
       }
@@ -1286,13 +1307,14 @@ export class Simulator {
         const src = this.parseOperand(operands[1]);
 
         if (dest.type === "register") {
+          const originalValue = this.cpu.registers[dest.value];
           const count =
             (src.type === "register"
               ? this.cpu.registers[src.value]
               : src.value) & 0x1f;
-          this.cpu.registers[dest.value] =
-            (this.cpu.registers[dest.value] << count) & 0xffffffff;
-          this.updateFlags(this.cpu.registers[dest.value]);
+          const result = (originalValue << count) & 0xffffffff;
+          this.cpu.registers[dest.value] = result;
+          this.updateFlagsShift(result, originalValue, count, "SHL");
         }
         break;
       }
@@ -1305,13 +1327,14 @@ export class Simulator {
         const src = this.parseOperand(operands[1]);
 
         if (dest.type === "register") {
+          const originalValue = this.cpu.registers[dest.value];
           const count =
             (src.type === "register"
               ? this.cpu.registers[src.value]
               : src.value) & 0x1f;
-          this.cpu.registers[dest.value] =
-            (this.cpu.registers[dest.value] >>> count) & 0xffffffff;
-          this.updateFlags(this.cpu.registers[dest.value]);
+          const result = (originalValue >>> count) & 0xffffffff;
+          this.cpu.registers[dest.value] = result;
+          this.updateFlagsShift(result, originalValue, count, "SHR");
         }
         break;
       }
@@ -1324,14 +1347,15 @@ export class Simulator {
         const src = this.parseOperand(operands[1]);
 
         if (dest.type === "register") {
+          const originalValue = this.cpu.registers[dest.value];
           const count =
             (src.type === "register"
               ? this.cpu.registers[src.value]
               : src.value) & 0x1f;
           // Convert to signed, shift, then back to unsigned
-          this.cpu.registers[dest.value] =
-            ((this.cpu.registers[dest.value] | 0) >> count) >>> 0;
-          this.updateFlags(this.cpu.registers[dest.value]);
+          const result = ((originalValue | 0) >> count) >>> 0;
+          this.cpu.registers[dest.value] = result;
+          this.updateFlagsShift(result, originalValue, count, "SAR");
         }
         break;
       }
@@ -1348,9 +1372,10 @@ export class Simulator {
               ? this.cpu.registers[src.value]
               : src.value) & 0x1f;
           const value = this.cpu.registers[dest.value];
-          this.cpu.registers[dest.value] =
+          const result =
             ((value << count) | (value >>> (32 - count))) & 0xffffffff;
-          this.updateFlags(this.cpu.registers[dest.value]);
+          this.cpu.registers[dest.value] = result;
+          this.updateFlagsRotate(result, count, "ROL");
         }
         break;
       }
@@ -1367,9 +1392,10 @@ export class Simulator {
               ? this.cpu.registers[src.value]
               : src.value) & 0x1f;
           const value = this.cpu.registers[dest.value];
-          this.cpu.registers[dest.value] =
+          const result =
             ((value >>> count) | (value << (32 - count))) & 0xffffffff;
-          this.updateFlags(this.cpu.registers[dest.value]);
+          this.cpu.registers[dest.value] = result;
+          this.updateFlagsRotate(result, count, "ROR");
         }
         break;
       }
@@ -1455,7 +1481,7 @@ export class Simulator {
 
         let value: number;
         if (src.type === "register" || src.type === "register8") {
-          value = this.readRegisterValue(src as any);
+          value = this.readRegisterValue(src as RegisterOperand);
         } else if (src.type === "immediate") {
           value = src.value;
         } else if (src.type === "memory") {
@@ -1477,7 +1503,7 @@ export class Simulator {
 
         if (dest.type === "register" || dest.type === "register8") {
           const value = this.popStack();
-          this.writeRegisterValue(dest as any, value);
+          this.writeRegisterValue(dest as RegisterOperand, value);
         }
         break;
       }
@@ -1680,6 +1706,200 @@ export class Simulator {
       } else {
         this.cpu.flags &= ~0x800;
       }
+    }
+  }
+
+  /**
+   * Update Zero and Sign flags only (helper for other flag methods)
+   * @param result - the 32-bit result value
+   */
+  private updateZeroAndSignFlags(result: number): void {
+    const result32 = result >>> 0;
+
+    // Zero flag (bit 6)
+    if (result32 === 0) {
+      this.cpu.flags |= 0x40;
+    } else {
+      this.cpu.flags &= ~0x40;
+    }
+
+    // Sign flag (bit 7)
+    if ((result32 & 0x80000000) !== 0) {
+      this.cpu.flags |= 0x80;
+    } else {
+      this.cpu.flags &= ~0x80;
+    }
+  }
+
+  /**
+   * Update flags for shift instructions (SHL, SHR, SAR)
+   * Per x86 specification for shift operations.
+   * @param result - the shifted result
+   * @param originalValue - the value before shifting
+   * @param count - the shift count (masked to 0-31)
+   * @param shiftType - the type of shift operation
+   */
+  private updateFlagsShift(
+    result: number,
+    originalValue: number,
+    count: number,
+    shiftType: "SHL" | "SHR" | "SAR",
+  ): void {
+    // If count is 0, flags are not affected
+    if (count === 0) return;
+
+    const result32 = result >>> 0;
+    const original32 = originalValue >>> 0;
+
+    // Update ZF and SF based on result
+    this.updateZeroAndSignFlags(result32);
+
+    // CF: Last bit shifted out
+    if (shiftType === "SHL") {
+      // For left shift, CF gets the bit shifted out from MSB
+      // If count <= 32, get the bit at position (32 - count)
+      if (count <= 32) {
+        const cf = (original32 >>> (32 - count)) & 1;
+        if (cf) {
+          this.cpu.flags |= 0x01;
+        } else {
+          this.cpu.flags &= ~0x01;
+        }
+      } else {
+        // Count > 32, all bits shifted out, CF = 0
+        this.cpu.flags &= ~0x01;
+      }
+    } else {
+      // For right shifts (SHR, SAR), CF gets the last bit shifted out from LSB
+      const cf = (original32 >>> (count - 1)) & 1;
+      if (cf) {
+        this.cpu.flags |= 0x01;
+      } else {
+        this.cpu.flags &= ~0x01;
+      }
+    }
+
+    // OF: Only affected for single-bit shifts
+    if (count === 1) {
+      if (shiftType === "SHL") {
+        // OF = MSB of result XOR CF
+        const msb = (result32 >>> 31) & 1;
+        const cf = this.cpu.flags & 0x01 ? 1 : 0;
+        if (msb !== cf) {
+          this.cpu.flags |= 0x800;
+        } else {
+          this.cpu.flags &= ~0x800;
+        }
+      } else if (shiftType === "SHR") {
+        // OF = MSB of original operand
+        const originalMsb = (original32 >>> 31) & 1;
+        if (originalMsb) {
+          this.cpu.flags |= 0x800;
+        } else {
+          this.cpu.flags &= ~0x800;
+        }
+      } else {
+        // SAR: OF is always cleared for single-bit shift
+        this.cpu.flags &= ~0x800;
+      }
+    } else {
+      // OF is undefined for multi-bit shifts (we clear it)
+      this.cpu.flags &= ~0x800;
+    }
+  }
+
+  /**
+   * Update flags for rotate instructions (ROL, ROR)
+   * Per x86 specification for rotate operations.
+   * @param result - the rotated result
+   * @param count - the rotate count
+   * @param rotateType - the type of rotate operation
+   */
+  private updateFlagsRotate(
+    result: number,
+    count: number,
+    rotateType: "ROL" | "ROR",
+  ): void {
+    // If count is 0, flags are not affected
+    if (count === 0) return;
+
+    const result32 = result >>> 0;
+
+    // CF: Bit rotated into CF
+    if (rotateType === "ROL") {
+      // For ROL, CF gets the LSB of result (bit rotated from MSB to LSB)
+      const cf = result32 & 1;
+      if (cf) {
+        this.cpu.flags |= 0x01;
+      } else {
+        this.cpu.flags &= ~0x01;
+      }
+    } else {
+      // For ROR, CF gets the MSB of result (bit rotated from LSB to MSB)
+      const cf = (result32 >>> 31) & 1;
+      if (cf) {
+        this.cpu.flags |= 0x01;
+      } else {
+        this.cpu.flags &= ~0x01;
+      }
+    }
+
+    // OF: Only affected for single-bit rotates
+    if (count === 1) {
+      const msb = (result32 >>> 31) & 1;
+      if (rotateType === "ROL") {
+        // OF = MSB of result XOR CF
+        const cf = this.cpu.flags & 0x01 ? 1 : 0;
+        if (msb !== cf) {
+          this.cpu.flags |= 0x800;
+        } else {
+          this.cpu.flags &= ~0x800;
+        }
+      } else {
+        // ROR: OF = MSB XOR (MSB-1)
+        const msb1 = (result32 >>> 30) & 1;
+        if (msb !== msb1) {
+          this.cpu.flags |= 0x800;
+        } else {
+          this.cpu.flags &= ~0x800;
+        }
+      }
+    } else {
+      // OF is undefined for multi-bit rotates (we clear it)
+      this.cpu.flags &= ~0x800;
+    }
+
+    // For educational mode, also update ZF and SF (undefined in strict x86)
+    if (this.compatibilityMode === "educational") {
+      this.updateZeroAndSignFlags(result32);
+    }
+  }
+
+  /**
+   * Update flags for multiply instructions (MUL, IMUL)
+   * Per x86 specification for multiplication.
+   * @param lower - lower 32 bits of result (in EAX)
+   * @param upper - upper 32 bits of result (in EDX)
+   */
+  private updateFlagsMultiply(lower: number, upper: number): void {
+    const upper32 = upper >>> 0;
+
+    // CF and OF: Set if upper half is non-zero
+    if (upper32 !== 0) {
+      this.cpu.flags |= 0x01; // Set CF
+      this.cpu.flags |= 0x800; // Set OF
+    } else {
+      this.cpu.flags &= ~0x01; // Clear CF
+      this.cpu.flags &= ~0x800; // Clear OF
+    }
+
+    // ZF and SF: Keep for educational mode (undefined in strict x86)
+    if (this.compatibilityMode === "educational") {
+      this.updateZeroAndSignFlags(lower);
+    } else {
+      // In strict-x86 mode, ZF and SF are undefined - clear them
+      this.cpu.flags &= ~0x40; // Clear ZF
+      this.cpu.flags &= ~0x80; // Clear SF
     }
   }
 
