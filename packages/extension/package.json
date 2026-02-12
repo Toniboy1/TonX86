@@ -176,28 +176,6 @@
                 "type": "boolean",
                 "description": "Automatically stop after launch",
                 "default": true
-              },
-              "console": {
-                "type": "string",
-                "enum": [
-                  "internalConsole",
-                  "integratedTerminal",
-                  "externalTerminal"
-                ],
-                "description": "Where to launch the debug target",
-                "default": "internalConsole"
-              },
-              "cpuSpeed": {
-                "type": "number",
-                "description": "CPU execution speed in percentage (1-200%). 100% = normal speed, 50% = half speed, 200% = double speed. Lower values add delay between instructions.",
-                "default": 100,
-                "minimum": 1,
-                "maximum": 200
-              },
-              "enableLogging": {
-                "type": "boolean",
-                "description": "Enable debug logging to tonx86-debug.log file. When disabled, no log file is created (improves performance).",
-                "default": false
               }
             }
           }
@@ -208,10 +186,7 @@
             "type": "tonx86",
             "request": "launch",
             "program": "${workspaceFolder}/${fileBasename}",
-            "stopOnEntry": true,
-            "console": "internalConsole",
-            "cpuSpeed": 100,
-            "enableLogging": false
+            "stopOnEntry": true
           }
         ],
         "configurationSnippets": [
@@ -223,10 +198,7 @@
               "type": "tonx86",
               "request": "launch",
               "program": "${workspaceFolder}/${fileBasename}",
-              "stopOnEntry": true,
-              "console": "internalConsole",
-              "cpuSpeed": 100,
-              "enableLogging": false
+              "stopOnEntry": true
             }
           }
         ]
@@ -256,12 +228,11 @@
             "description": "LCD display height in pixels (2-256)"
           },
           "tonx86.lcd.pixelSize": {
-            "type": [
-              "string",
-              "number"
-            ],
-            "default": "auto",
-            "description": "Pixel size in pixels. Set to 'auto' for automatic sizing, or a number between 2 and 500 for manual size"
+            "type": "number",
+            "default": 5,
+            "minimum": 1,
+            "maximum": 50,
+            "description": "LCD pixel size in pixels (1-50). Larger values make each pixel bigger on screen."
           }
         }
       },
@@ -283,7 +254,7 @@
             "default": 100,
             "minimum": 1,
             "maximum": 200,
-            "description": "CPU execution speed in percentage (1-200%). 100% = normal speed, 50% = half speed, 200% = double speed. Lower values add delay between instructions for easier debugging."
+            "description": "CPU execution speed in percentage (1-200%). Below 100% adds periodic delays for slower, easier-to-debug execution. Above 100% reduces delays and yields for faster execution. 100% = normal speed."
           }
         }
       },
@@ -313,6 +284,21 @@
             ],
             "default": "educational",
             "description": "x86 compatibility mode: 'educational' for simplified learning (flexible memory access, simplified flags), 'strict-x86' for realistic x86 behavior (no memory-to-memory MOV, segment registers, proper constraints)"
+          }
+        }
+      },
+      {
+        "title": "TonX86 Debug",
+        "properties": {
+          "tonx86.debug.stopOnEntry": {
+            "type": "boolean",
+            "default": true,
+            "description": "Automatically stop at the first instruction when debugging starts (applies to all debug sessions)."
+          },
+          "tonx86.debug.enableLogging": {
+            "type": "boolean",
+            "default": false,
+            "description": "Enable debug adapter logging to tonx86-debug.log file in the same directory as the program being debugged. When disabled, no log file is created (improves performance)."
           }
         }
       }

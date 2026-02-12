@@ -1,26 +1,19 @@
 ## Description
-Clean up project documentation by removing redundant files, simplifying verbose documentation, and fixing formatting issues in prompt files.
+<!-- Provide a clear and concise description of your changes -->
 
 ## Type of Change
 - [ ] Bug fix (non-breaking change which fixes an issue)
 - [ ] New feature (non-breaking change which adds functionality)
 - [ ] Breaking change (fix or feature that would cause existing functionality to not work as expected)
-- [x] Documentation update
+- [ ] Documentation update
 - [ ] Performance improvement
-- [x] Code refactoring
+- [ ] Code refactoring
 
 ## Related Issues
 <!-- Link to related issues using #issue_number -->
-N/A
 
 ## Changes Made
 <!-- List the main changes -->
-- Removed redundant ISSUE_TEMPLATE.md (proper templates exist in `.github/ISSUE_TEMPLATE/`)
-- Fixed markdown formatting in prompt files (removed 4-backtick wrappers from all `.github/prompts/*.md` files)
-- Simplified VERSION.md from 402 lines to 160 lines by removing redundancies while maintaining all essential information
-- Streamlined PACKAGING.md with cleaner format and better organization
-- Updated CONTRIBUTING.md with cleaner structure and fixed broken references to non-existent files
-- All changes maintain essential information while improving readability
 
 ## Testing
 <!-- Describe the tests you ran to verify your changes -->
@@ -40,11 +33,7 @@ N/A
 - [ ] I have built the extension and tested it in VS Code
 
 ## Screenshots (if applicable)
-N/A - Documentation-only changes
+<!-- Add screenshots to help explain your changes -->
 
 ## Additional Notes
-This is a documentation and cleanup refactor with no functional changes to the codebase. All essential information has been preserved while improving readability and removing:
-- 1 redundant file (ISSUE_TEMPLATE.md)
-- 316 net lines of redundant/verbose documentation
-- Broken references to non-existent documentation files
-- Markdown formatting issues in prompt files
+<!-- Any additional information that reviewers should know -->

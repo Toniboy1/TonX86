@@ -35,7 +35,7 @@ export class TonX86DebugSession extends DebugSession {
   private instructionPointer: number = 0; // Index into instructions array
   private breakpoints: Set<number> = new Set(); // Set of line numbers with breakpoints
   private configurationDone = false; // Track if configuration is done
-  private shouldAutoStart = false; // Track if we should auto-start after config
+  private stopOnEntry: boolean = true; // Whether to stop at first instruction
   private simulator: Simulator; // CPU simulator instance
   private constants: Map<string, number> = new Map(); // EQU constants
   private cpuSpeed: number = 100; // CPU speed percentage (1-200)
@@ -185,8 +185,10 @@ export class TonX86DebugSession extends DebugSession {
     const launchArgs = args as any;
     this.programPath = launchArgs.program || "";
     this.cpuSpeed = launchArgs.cpuSpeed || 100;
+    this.stopOnEntry =
+      launchArgs.stopOnEntry !== undefined ? launchArgs.stopOnEntry : true;
     const enableLogging = launchArgs.enableLogging || false;
-    console.error("[TonX86] stopOnEntry value:", launchArgs.stopOnEntry);
+    console.error("[TonX86] stopOnEntry value:", this.stopOnEntry);
     console.error(`[TonX86] CPU speed set to ${this.cpuSpeed}%`);
     console.error(`[TonX86] Logging enabled: ${enableLogging}`);
 
@@ -281,26 +283,39 @@ export class TonX86DebugSession extends DebugSession {
     console.error("[TonX86] Sending InitializedEvent");
     this.sendEvent(new InitializedEvent());
 
-    // Always stop at the first instruction so user can inspect initial state
-    if (this.instructions.length > 0) {
+    // Send session started message
+    this.sendEvent(
+      new OutputEvent(
+        `\n=== TonX86 Debug Session Started ===\nProgram: ${path.basename(this.programPath)}\nInstructions: ${this.instructions.length}\n`,
+        "console",
+      ),
+    );
+
+    if (this.instructions.length === 0) {
+      console.error(
+        "[TonX86] No instructions to debug, program will terminate",
+      );
+      this.sendEvent(new TerminatedEvent());
+      return;
+    }
+
+    // Stop at first instruction if stopOnEntry is true, otherwise auto-start
+    if (this.stopOnEntry) {
       console.error(
         "[TonX86] Stopping at first instruction at line",
         this.currentLine,
-      );
-      this.sendEvent(
-        new OutputEvent(
-          `\n=== TonX86 Debug Session Started ===\nProgram: ${path.basename(this.programPath)}\nInstructions: ${this.instructions.length}\n`,
-          "console",
-        ),
       );
       setTimeout(() => {
         this.sendEvent(new StoppedEvent("entry", 1));
       }, 100);
     } else {
-      console.error(
-        "[TonX86] No instructions to debug, program will terminate",
-      );
-      this.sendEvent(new TerminatedEvent());
+      console.error("[TonX86] Auto-starting execution (stopOnEntry=false)");
+      // Wait for configuration done, then auto-start
+      setTimeout(() => {
+        if (this.configurationDone) {
+          this.continueExecution();
+        }
+      }, 100);
     }
     console.error("[TonX86] launchRequest complete");
   }
@@ -329,9 +344,36 @@ export class TonX86DebugSession extends DebugSession {
 
     // Yield interval: yield to event loop every N instructions
     // This allows incoming DAP messages (keyboard events, pause requests, etc.)
-    // to be processed. Use a small real delay (1ms) to ensure the I/O layer
-    // has time to parse and dispatch incoming protocol messages.
-    const yieldInterval = 1000;
+    // to be processed.
+    //
+    // Speed control strategy:
+    // - Vary both yield interval AND sleep time based on speed
+    // - Lower speeds: yield often with longer sleeps
+    // - Higher speeds: yield much less often with minimal sleep
+
+    let yieldInterval: number;
+    let sleepMs: number;
+
+    if (this.cpuSpeed <= 50) {
+      yieldInterval = 100;
+      sleepMs = 5; // Very slow
+    } else if (this.cpuSpeed < 100) {
+      yieldInterval = 100;
+      sleepMs = 2; // Slow
+    } else if (this.cpuSpeed === 100) {
+      yieldInterval = 100;
+      sleepMs = 1; // Normal baseline
+    } else {
+      // For speeds > 100%, scale up the yield interval significantly
+      // At 200%, yield every 2000 instructions (20x less often) with minimal sleep
+      yieldInterval = Math.floor(1000 * (this.cpuSpeed / 100));
+      sleepMs = 0.1; // Minimal sleep to allow event loop processing
+    }
+
+    console.error(
+      `[TonX86] Execution starting with cpuSpeed=${this.cpuSpeed}%, yieldInterval=${yieldInterval}, sleepMs=${sleepMs}`,
+    );
+
     let sinceLastYield = 0;
 
     while (this.instructionPointer < this.instructions.length) {
@@ -340,7 +382,7 @@ export class TonX86DebugSession extends DebugSession {
       sinceLastYield++;
       if (sinceLastYield >= yieldInterval) {
         sinceLastYield = 0;
-        await this.sleep(1);
+        await this.sleep(sleepMs);
       }
 
       const currentInstr = this.instructions[this.instructionPointer];
@@ -361,14 +403,6 @@ export class TonX86DebugSession extends DebugSession {
         return;
       }
       firstIteration = false;
-
-      // Add delay based on CPU speed (lower speed = longer delay)
-      // At 100%, delay is 0ms. At 50%, delay is ~1ms. At 1%, delay is ~50ms.
-      // At 200%, delay is 0ms (max speed).
-      if (this.cpuSpeed < 100) {
-        const delayMs = (100 - this.cpuSpeed) / 2; // Scale delay inversely
-        await this.sleep(delayMs);
-      }
 
       try {
         this.simulator.executeInstruction(
@@ -1124,6 +1158,14 @@ export class TonX86DebugSession extends DebugSession {
     console.error("[TonX86] Configuration done");
     this.configurationDone = true;
     this.sendResponse(response);
+
+    // If stopOnEntry is false, auto-start execution now
+    if (!this.stopOnEntry && this.instructions.length > 0) {
+      console.error("[TonX86] Auto-starting execution after configuration");
+      setTimeout(() => {
+        this.continueExecution();
+      }, 50);
+    }
   }
 
   /**

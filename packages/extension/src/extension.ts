@@ -14,7 +14,7 @@ interface LCDConfig {
   enabled: boolean;
   width: number;
   height: number;
-  pixelSize: number | "auto";
+  pixelSize: number;
 }
 
 /**
@@ -22,6 +22,57 @@ interface LCDConfig {
  */
 interface KeyboardConfig {
   enabled: boolean;
+}
+
+/**
+ * Debug Configuration Provider
+ * Injects extension settings into debug configuration
+ */
+class TonX86DebugConfigurationProvider
+  implements vscode.DebugConfigurationProvider
+{
+  /**
+   * Resolve a debug configuration before it is used to start a debug session
+   * This allows us to inject extension settings into the debug configuration
+   */
+  resolveDebugConfiguration(
+    folder: vscode.WorkspaceFolder | undefined,
+    config: vscode.DebugConfiguration,
+    token?: vscode.CancellationToken,
+  ): vscode.ProviderResult<vscode.DebugConfiguration> {
+    // Get extension settings (always read fresh)
+    const cpuSpeedSetting = vscode.workspace
+      .getConfiguration("tonx86.cpu")
+      .get<number>("speed", 100);
+    const enableLoggingSetting = vscode.workspace
+      .getConfiguration("tonx86.debug")
+      .get<boolean>("enableLogging", false);
+    const stopOnEntrySetting = vscode.workspace
+      .getConfiguration("tonx86.debug")
+      .get<boolean>("stopOnEntry", true);
+
+    // Log to Output channel for visibility
+    console.log(`[TonX86 Config] Reading settings:`);
+    console.log(`[TonX86 Config] - CPU Speed: ${cpuSpeedSetting}%`);
+    console.log(`[TonX86 Config] - Enable Logging: ${enableLoggingSetting}`);
+    console.log(`[TonX86 Config] - Stop On Entry: ${stopOnEntrySetting}`);
+
+    // Always use extension settings
+    config.cpuSpeed = cpuSpeedSetting;
+    config.enableLogging = enableLoggingSetting;
+    config.stopOnEntry = stopOnEntrySetting;
+
+    console.log(
+      `[TonX86 Config] Final config being sent to debug adapter:`,
+      JSON.stringify({
+        cpuSpeed: config.cpuSpeed,
+        enableLogging: config.enableLogging,
+        stopOnEntry: config.stopOnEntry,
+      }),
+    );
+
+    return config;
+  }
 }
 
 /**
@@ -42,7 +93,7 @@ function getLCDConfig(): LCDConfig {
   const enabled = config.get<boolean>("enabled", true);
   let width = config.get<number>("width", 16);
   let height = config.get<number>("height", 16);
-  const pixelSize = config.get<number | string>("pixelSize", "auto");
+  let pixelSize = config.get<number>("pixelSize", 5);
 
   // Validate width
   if (width < 2 || width > 256 || !Number.isInteger(width)) {
@@ -57,18 +108,12 @@ function getLCDConfig(): LCDConfig {
   }
 
   // Validate pixel size
-  let finalPixelSize: number | "auto" = "auto";
-  if (pixelSize !== "auto") {
-    const numPixelSize = Number(pixelSize);
-    if (isNaN(numPixelSize) || numPixelSize < 2 || numPixelSize > 500) {
-      finalPixelSize = "auto";
-      console.warn("Invalid LCD pixel size, resetting to 'auto'");
-    } else {
-      finalPixelSize = Math.floor(numPixelSize);
-    }
+  if (!Number.isInteger(pixelSize) || pixelSize < 1 || pixelSize > 50) {
+    pixelSize = 5;
+    console.warn("Invalid LCD pixel size, resetting to default (5)");
   }
 
-  return { enabled, width, height, pixelSize: finalPixelSize };
+  return { enabled, width, height, pixelSize };
 }
 
 /**
@@ -246,20 +291,8 @@ class LCDViewProvider implements vscode.WebviewViewProvider {
   }
 
   private getHtmlForWebview(): string {
-    const { width, height, pixelSize: configPixelSize } = this.lcdConfig;
+    const { width, height, pixelSize } = this.lcdConfig;
     const { enabled: keyboardEnabled } = this.keyboardConfig;
-
-    // Calculate pixel size
-    let pixelSize: number;
-    if (configPixelSize === "auto") {
-      // Auto-calculate based on display dimensions
-      pixelSize = Math.max(
-        10,
-        Math.min(30, Math.floor(600 / Math.max(width, height))),
-      );
-    } else {
-      pixelSize = configPixelSize as number;
-    }
 
     return `
 			<!DOCTYPE html>
@@ -295,7 +328,7 @@ class LCDViewProvider implements vscode.WebviewViewProvider {
 			<body>
 				<h3>LCD Display (${width}x${height})</h3>
 				<div id="lcd" tabindex="0"></div>
-				<div class="info">Pixel Size: ${pixelSize}px ${configPixelSize === "auto" ? "(auto)" : "(manual)"}</div>
+				<div class="info">Pixel Size: ${pixelSize}px</div>
 				<div class="keyboard-status">Keyboard: ${keyboardEnabled ? "Enabled (click LCD to focus)" : "Disabled"}</div>
 				<div id="debug" style="font-size: 0.7em; color: #999; margin-top: 5px; font-family: monospace;">Last key: none</div>
 				<script>
@@ -713,6 +746,14 @@ export function activate(context: vscode.ExtensionContext): void {
   // Output channel for debug output
   outputChannel = vscode.window.createOutputChannel("TonX86");
   context.subscriptions.push(outputChannel);
+
+  // Register debug configuration provider
+  context.subscriptions.push(
+    vscode.debug.registerDebugConfigurationProvider(
+      "tonx86",
+      new TonX86DebugConfigurationProvider(),
+    ),
+  );
 
   // Register tree data providers
   vscode.window.registerTreeDataProvider("tonx86.registers", registersProvider);

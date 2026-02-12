@@ -150,9 +150,12 @@ Configure TonX86 through VS Code settings:
 | `tonx86.lcd.enabled` | `true` | Enable LCD display |
 | `tonx86.lcd.width` | `16` | LCD width (2-256 pixels) |
 | `tonx86.lcd.height` | `16` | LCD height (2-256 pixels) |
-| `tonx86.lcd.pixelSize` | `"auto"` | Pixel size: "auto" or 2-500 |
+| `tonx86.lcd.pixelSize` | `5` | Pixel size in pixels (1-50) |
 | `tonx86.keyboard.enabled` | `true` | Enable keyboard input |
-| `tonx86.cpu.speed` | `100` | CPU speed 1-200% |
+| `tonx86.keyboard.memoryAddress` | `0x10100` | Keyboard buffer memory address |
+| `tonx86.cpu.speed` | `100` | CPU speed percentage (1-200%) |
+| `tonx86.debug.stopOnEntry` | `true` | Pause at first instruction when debugging |
+| `tonx86.debug.enableLogging` | `false` | Enable debug adapter logging |
 
 ## 📋 Example Programs
 
