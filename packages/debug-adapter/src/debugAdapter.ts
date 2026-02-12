@@ -227,11 +227,7 @@ export class TonX86DebugSession extends DebugSession {
         const instructions = parseResult.instructions;
         const labels = parseResult.labels;
         this.constants = parseResult.constants;
-        console.error(
-          "[TonX86] Parsed",
-          instructions.length,
-          "instructions:",
-        );
+        console.error("[TonX86] Parsed", instructions.length, "instructions:");
         instructions.forEach((instr) => {
           console.error(
             `  Line ${instr.line}: ${instr.mnemonic} ${instr.operands.join(", ")}`,
@@ -435,12 +431,7 @@ export class TonX86DebugSession extends DebugSession {
         }
       } catch (err) {
         console.error(`[TonX86] ERROR:`, err);
-        this.sendEvent(
-          new OutputEvent(
-            `ERROR: ${err}\n`,
-            "stderr",
-          ),
-        );
+        this.sendEvent(new OutputEvent(`ERROR: ${err}\n`, "stderr"));
         this.sendEvent(new TerminatedEvent());
         return;
       }
@@ -745,12 +736,7 @@ export class TonX86DebugSession extends DebugSession {
         }),
       );
       console.error(`[TonX86] ERROR during instruction execution:`, err);
-      this.sendEvent(
-        new OutputEvent(
-          `ERROR: ${err}\n`,
-          "stderr",
-        ),
-      );
+      this.sendEvent(new OutputEvent(`ERROR: ${err}\n`, "stderr"));
       this.sendEvent(new TerminatedEvent());
       return;
     }
@@ -830,10 +816,7 @@ export class TonX86DebugSession extends DebugSession {
       try {
         const executedLine = this.simulator.step();
         this.currentLine = executedLine;
-        console.error(
-          "[TonX86] Stepped to line",
-          this.currentLine,
-        );
+        console.error("[TonX86] Stepped to line", this.currentLine);
       } catch (err) {
         console.error("[TonX86] ERROR:", err);
       }

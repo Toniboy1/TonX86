@@ -2471,7 +2471,12 @@ describe("Simulator - Control Flow (EIP, loadInstructions, step)", () => {
 
   test("step() with JE (zero flag set) takes jump", () => {
     const instructions = [
-      { line: 1, mnemonic: "XOR", operands: ["EAX", "EAX"], raw: "XOR EAX, EAX" }, // EAX = 0, sets Zero flag
+      {
+        line: 1,
+        mnemonic: "XOR",
+        operands: ["EAX", "EAX"],
+        raw: "XOR EAX, EAX",
+      }, // EAX = 0, sets Zero flag
       { line: 2, mnemonic: "JE", operands: ["target"], raw: "JE target" },
       { line: 3, mnemonic: "MOV", operands: ["EBX", "99"], raw: "MOV EBX, 99" },
       { line: 4, mnemonic: "MOV", operands: ["EBX", "1"], raw: "MOV EBX, 1" },
@@ -2616,4 +2621,3 @@ describe("Simulator - Control Flow (EIP, loadInstructions, step)", () => {
     expect(state.callStackDepth).toBe(1);
   });
 });
-

@@ -599,7 +599,10 @@ export class Simulator {
   /**
    * Load a program with instructions and labels
    */
-  loadInstructions(instructions: Instruction[], labels: Map<string, number>): void {
+  loadInstructions(
+    instructions: Instruction[],
+    labels: Map<string, number>,
+  ): void {
     this.instructions = instructions;
     this.labels = labels;
     this.eip = 0;
