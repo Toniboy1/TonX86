@@ -1138,7 +1138,7 @@ export class Simulator {
           this.cpu.registers[0] = Math.floor(dividend / divisor) >>> 0; // Quotient
           this.cpu.registers[2] = (dividend % divisor) >>> 0; // Remainder
         }
-        
+
         // Per x86 spec: All flags are undefined after DIV
         if (this.compatibilityMode === "educational") {
           // Keep current behavior for learning
@@ -1168,7 +1168,7 @@ export class Simulator {
           this.cpu.registers[0] = Math.trunc(dividend / divisor) >>> 0; // Quotient
           this.cpu.registers[2] = (dividend % divisor) >>> 0; // Remainder
         }
-        
+
         // Per x86 spec: All flags are undefined after IDIV
         if (this.compatibilityMode === "educational") {
           // Keep current behavior for learning
