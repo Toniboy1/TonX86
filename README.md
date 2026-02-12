@@ -1,10 +1,8 @@
 # TonX86
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![CI](https://github.com/Toniboy1/TonX86/workflows/CI/badge.svg)](https://github.com/Toniboy1/TonX86/actions)
-[![CodeQL](https://github.com/Toniboy1/TonX86/workflows/CodeQL/badge.svg)](https://github.com/Toniboy1/TonX86/security/code-scanning)
-[![Tests](https://img.shields.io/badge/tests-417%20passing-brightgreen)](https://github.com/Toniboy1/TonX86/actions)
-[![Coverage](https://img.shields.io/badge/coverage-92%25-brightgreen)](https://github.com/Toniboy1/TonX86/actions)
+[![Version](https://img.shields.io/visual-studio-marketplace/v/Toniboy1.tonx86)](https://marketplace.visualstudio.com/items?itemName=Toniboy1.tonx86)
+[![Installs](https://img.shields.io/visual-studio-marketplace/i/Toniboy1.tonx86)](https://marketplace.visualstudio.com/items?itemName=Toniboy1.tonx86)
 
 Educational x86-like assembly environment for VS Code with integrated debugging, memory visualization, LCD display, and keyboard input.
 
@@ -96,12 +94,23 @@ Extension (UI/LCD/Keyboard) ←→ Debug Adapter (DAP) ←→ Simulator Core
 
 | Setting | Default | Description |
 |---------|---------|-------------|
+| **LCD Display** | | |
 | `tonx86.lcd.enabled` | `true` | Enable LCD display |
 | `tonx86.lcd.width` | `16` | LCD width (2-256 pixels) |
 | `tonx86.lcd.height` | `16` | LCD height (2-256 pixels) |
-| `tonx86.lcd.pixelSize` | `"auto"` | Pixel size: "auto" or 2-500 |
+| `tonx86.lcd.pixelSize` | `5` | Pixel size in pixels (1-50) |
+| **Keyboard** | | |
 | `tonx86.keyboard.enabled` | `true` | Enable keyboard input capture |
-| `tonx86.cpu.speed` | `100` | CPU speed 1-200% (100=normal) |
+| `tonx86.keyboard.memoryAddress` | `0x10100` | Keyboard buffer memory address |
+| **CPU** | | |
+| `tonx86.cpu.speed` | `100` | CPU speed percentage (1-200%, 100=normal) |
+| **Debugging** | | |
+| `tonx86.debug.stopOnEntry` | `true` | Pause at first instruction when debugging |
+| `tonx86.debug.enableLogging` | `false` | Enable debug adapter logging |
+| **Language** | | |
+| `tonx86.assemblyLanguage.diagnostics.undefinedLabels` | `true` | Show warnings for undefined labels |
+| `tonx86.assemblyLanguage.diagnostics.callingConventions` | `false` | Enable calling convention checks |
+| **Compatibility** | | |
 | `tonx86.compatibility.mode` | `"educational"` | Compatibility mode: "educational" or "strict-x86" |
 
 ### Compatibility Modes
@@ -129,12 +138,15 @@ Students should start in **educational mode** to learn core concepts, then switc
   "type": "tonx86",
   "request": "launch",
   "name": "Debug Assembly",
-  "program": "${workspaceFolder}/program.asm",
-  "stopOnEntry": true,
-  "cpuSpeed": 100,
-  "enableLogging": false
+  "program": "${workspaceFolder}/program.asm"
 }
 ```
+
+**Note**: All settings are configured via **VS Code Settings UI**:
+- Go to **File > Preferences > Settings** (or **Code > Settings** on macOS)
+- Search for "tonx86" to see all available options
+- All settings (CPU speed, logging, LCD dimensions, stop-on-entry, etc.) are applied automatically on each debug session
+- No launch.json configuration needed for these settings
 
 ## Instruction Set
 
@@ -372,52 +384,16 @@ main:
 
 ```bash
 npm install          # Install dependencies
-npm run build        # Build all packages
-npm run watch        # Watch mode for development
-npm test             # Run tests
-npm run lint         # Run linter
-npm run check        # Run all checks (lint, build, test)
+npm Quality Requirements
 
-# Run tests with coverage
-cd packages/simcore
-npm test -- --coverage
-```
+Before submitting a contribution:
+- ✅ All tests pass (`npm test`)
+- ✅ Code coverage ≥80% (`npm test -- --coverage`)
+- ✅ No lint errors (`npm run lint`)
+- ✅ Build succeeds (`npm run build`)
+- ✅ Documentation updated
 
-### CI/CD
-
-The project includes automated workflows:
-
-- **CI Pipeline** - Runs on every push/PR
-  - Build verification (Node 18 & 20)
-  - TypeScript compilation
-  - Linting
-  - Test execution with coverage (417 tests)
-  - Security audit
-  - Coverage reports uploaded as artifacts
-  - Coverage comments on PRs (free service)
-
-- **CodeQL Security Scan** - Weekly security analysis
-
-- **Dependabot** - Automated dependency updates
-  - Weekly checks for all packages
-  - Grouped minor/patch updates
-
-- **Release Workflow** - Triggered on version tags
-  - Packages extension as .vsix
-  - Creates GitHub release with artifact
-  - Ready for marketplace publication
-
-**Coverage Reports:**
-- View HTML coverage report: Check artifacts in [Actions](https://github.com/Toniboy1/TonX86/actions)
-- Coverage comments appear on pull requests automatically
-- All coverage runs executed locally during CI builds
-
-### Quality Standards
-
-All contributions must:
-- ✅ Pass TypeScript compilation
-- ✅ Pass all tests (417/417 currently)
-- ✅ Maintain 80%+ code coverage
+**For details on CI/CD, automated checks, coverage reports, and the release process, see [Contributing Workflow](.github/CONTRIBUTING_WORKFLOW.md).**
 - ✅ Pass ESLint checks
 - ✅ Include tests for new features
 - ✅ Update relevant documentation
@@ -465,3 +441,10 @@ The TonX86 instruction set and behavior have been verified against:
   (originally created by Adam Ferrari, updated by Alan Batson, Mike Lack, and Anita Jones)
   https://www.cs.virginia.edu/~evans/cs216/guides/x86.html
   Licensed under [Creative Commons BY-NC-SA 3.0 US](https://creativecommons.org/licenses/by-nc-sa/3.0/us/)
+ and [Contributing Workflow](.github/CONTRIBUTING_WORKFLOW.md) for details on what happens after you submit a PR (CI/CD, automated checks, coverage requirements, and release process).
+
+**Quick Links:**
+- [Report a Bug](https://github.com/Toniboy1/TonX86/issues/new?template=bug_report.yml)
+- [Request a Feature](https://github.com/Toniboy1/TonX86/issues/new?template=feature_request.yml)
+- [Security Policy](SECURITY.md)
+- [Contributing Workflow](.github/CONTRIBUTING_WORKFLOW

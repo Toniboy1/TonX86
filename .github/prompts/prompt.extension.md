@@ -16,7 +16,7 @@ VS Code extension UI for TonX86 assembly debugging.
 - `lcd.enabled` (boolean, default: true) - Enable LCD display
 - `lcd.width` (integer, 2-256, default: 16) - LCD width in pixels
 - `lcd.height` (integer, 2-256, default: 16) - LCD height in pixels
-- `lcd.pixelSize` (string|number, default: "auto") - Pixel size: "auto" or 2-500
+- `lcd.pixelSize` (number, default: 5) - Pixel size in pixels (1-50)
 
 ### Keyboard
 - `keyboard.enabled` (boolean, default: true) - Enable keyboard capture
@@ -31,18 +31,20 @@ VS Code extension UI for TonX86 assembly debugging.
 ### Compatibility
 - `compatibility.mode` (string, default: "educational") - Mode: "educational" or "strict-x86"
 
+### Debug
+- `debug.stopOnEntry` (boolean, default: true) - Stop at first instruction when debugging starts
+- `debug.enableLogging` (boolean, default: false) - Enable debug adapter logging to file
+
 ## Launch Configuration
 ```json
 {
   "type": "tonx86",
   "request": "launch",
-  "program": "${workspaceFolder}/${fileBasename}",
-  "stopOnEntry": true,
-  "console": "internalConsole",
-  "cpuSpeed": 100,
-  "enableLogging": false
+  "program": "${workspaceFolder}/${fileBasename}"
 }
 ```
+
+Note: All debug settings (cpuSpeed, stopOnEntry, enableLogging) are now configured via extension settings and automatically applied to all debug sessions.
 
 ## Communication
 - **LCD Updates**: Poll debug adapter via `customRequest("getLCDState")` every 50ms

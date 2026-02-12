@@ -153,17 +153,20 @@ Launch configuration example (from `.vscode/launch.json`):
   "request": "launch",
   "name": "Debug TonX86 Program",
   "program": "${file}",
-  "stopOnEntry": true,
-  "cpuSpeed": 100,
-  "enableLogging": false
+  "stopOnEntry": true
 }
 ```
 
 Parameters:
-- `program`: Path to the assembly file to debug
-- `stopOnEntry`: If true, stops at the first instruction
-- `cpuSpeed`: CPU execution speed (1-200%, default: 100)
-- `enableLogging`: Enable file-based logging for debugging
+- `program`: Path to the assembly file to debug (required)
+- `stopOnEntry`: Not recommended in launch.json - use extension setting `tonx86.debug.stopOnEntry` instead
+
+Additional configuration is managed through VS Code extension settings (always applied):
+- `tonx86.cpu.speed`: CPU execution speed (1-200%, default: 100)
+- `tonx86.debug.enableLogging`: Enable file-based logging for debugging (default: false)
+- `tonx86.debug.stopOnEntry`: Stop at first instruction when debugging starts (default: true)
+
+These settings are automatically injected into debug sessions by the extension's DebugConfigurationProvider and are always read fresh from settings on each launch.
 
 ## Conclusion
 

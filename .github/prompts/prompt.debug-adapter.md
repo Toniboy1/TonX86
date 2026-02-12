@@ -33,15 +33,22 @@ DAP server for TonX86 assembly debugging.
 - HLT: Terminate session immediately
 
 ## CPU Speed Control
-- Read `cpuSpeed` (1-200%) from launch args
-- Formula: `delayMs = (100 - speed) / 2` for speeds < 100%
-- Apply async delay in continueExecution() loop
-- 50% speed = ~1ms delay, 1% speed = ~50ms delay
+- Read `cpuSpeed` (1-200%) from launch args (injected by extension from settings)
+- Speed implementation:
+  - **≤ 50%**: Yield every 100 instructions, sleep 5ms (very slow)
+  - **51-99%**: Yield every 100 instructions, sleep 2ms (slow)
+  - **100%**: Yield every 100 instructions, sleep 1ms (normal baseline)
+  - **> 100%**: Yield every (1000 × speed/100) instructions, sleep 0.1ms
+    - 150%: Yield every 1500 instructions → significantly faster
+    - 200%: Yield every 2000 instructions → 20x less yielding than baseline
+- Always sleep at least 0.1ms to ensure event loop can process DAP requests
+- Configured via `tonx86.cpu.speed` extension setting
 
 ## Optional Logging
-- Read `enableLogging` from launch args (default: false)
+- Read `enableLogging` from launch args (injected by extension from settings)
 - When true: Create `tonx86-debug.log` in program directory
 - When false: No file I/O (performance optimized)
+- Configured via `tonx86.debug.enableLogging` extension setting
 
 ## Stopped Events
 - `entry` - Initial stop at first instruction
