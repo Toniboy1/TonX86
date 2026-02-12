@@ -8,6 +8,63 @@ Core CPU simulator for TonX86 assembly execution.
 - **Flags**: Z (Zero), C (Carry), O (Overflow), S (Sign)
 - **Memory**: 64KB dual banks (Memory A, Memory B)
 - **I/O**: Memory-mapped (0xF000-0xFFFF, 0x10100-0x10102)
+- **EIP**: Instruction pointer (index into instructions array)
+- **Call Stack**: Internal call stack for CALL/RET tracking
+
+## Control Flow (NEW in v0.5.0)
+
+Simcore now owns all control flow logic, including:
+- **EIP (Instruction Pointer)**: Tracks current instruction index
+- **Instructions Array**: Loaded via `loadInstructions(instructions, labels)`
+- **Labels Map**: Maps label names to instruction indices
+- **Jump Evaluation**: Evaluates conditional jumps based on CPU flags
+- **CALL/RET Handling**: Manages call stack and return addresses
+
+### Control Flow API
+```typescript
+// Load program
+loadInstructions(instructions: Instruction[], labels: Map<string, number>): void
+
+// Execute one instruction and update EIP
+step(): number  // Returns line number of executed instruction, or -1 if program ended
+
+// Get/Set EIP
+getEIP(): number
+setEIP(value: number): void
+
+// Get current instruction
+getCurrentInstruction(): Instruction | null
+
+// Get all instructions and labels
+getInstructions(): Instruction[]
+getLabels(): Map<string, number>
+```
+
+### step() Method
+The `step()` method:
+1. Executes the instruction at EIP
+2. Evaluates control flow (JMP, CALL, RET, conditional jumps)
+3. Updates EIP automatically based on instruction type
+4. Returns the line number of the executed instruction
+5. Returns -1 if program has ended
+6. Throws error if instruction execution fails
+
+### Jump Instructions Handled by step()
+- **JMP label**: Unconditional jump
+- **JE/JZ label**: Jump if Zero flag set
+- **JNE/JNZ label**: Jump if Zero flag clear
+- **JG label**: Jump if Greater (signed)
+- **JGE label**: Jump if Greater or Equal (signed)
+- **JL label**: Jump if Less (signed)
+- **JLE label**: Jump if Less or Equal (signed)
+- **JS label**: Jump if Sign flag set
+- **JNS label**: Jump if Sign flag clear
+- **JA label**: Jump if Above (unsigned)
+- **JAE label**: Jump if Above or Equal (unsigned)
+- **JB label**: Jump if Below (unsigned)
+- **JBE label**: Jump if Below or Equal (unsigned)
+- **CALL label**: Push return address and jump
+- **RET**: Pop return address and jump
 
 ## Instruction Execution
 `executeInstruction(mnemonic: string, operands: string[])`
@@ -52,8 +109,8 @@ Core CPU simulator for TonX86 assembly execution.
 ### Stack Operations
 - **PUSH src** - Push register/immediate onto stack (ESP -= 4)
 - **POP dest** - Pop from stack into register (ESP += 4)
-- **CALL label** - Call subroutine (push return address, handled by debug adapter)
-- **RET** - Return from subroutine (pop return address, handled by debug adapter)
+- **CALL label** - Call subroutine (handled by step() method, pushes return address)
+- **RET** - Return from subroutine (handled by step() method, pops return address)
 
 ### Interrupts
 - **INT num** - Software interrupt (executes handler based on number)
@@ -62,8 +119,11 @@ Core CPU simulator for TonX86 assembly execution.
   - 0x21: DOS services (AH=0x02: write character from DL)
 - **IRET** - Return from interrupt (restore flags from stack)
 
-### Control Flow (handled by debug adapter)
-- **JMP**, **JE/JZ**, **JNE/JNZ**, **HLT** - Parsed but not executed in simulator
+### Control Flow Instructions
+- **JMP**, **JE/JZ**, **JNE/JNZ**, **HLT** - Handled by step() method
+- **JG**, **JGE**, **JL**, **JLE**, **JS**, **JNS** - Conditional jumps (handled by step())
+- **JA**, **JAE**, **JB**, **JBE** - Unsigned conditional jumps (handled by step())
+- **CALL**, **RET** - Subroutine calls (handled by step())
 
 ### Special Instructions
 - **RAND dest, max** - Random number 0 to max-1 (educational instruction)
@@ -114,14 +174,27 @@ readIO(address: number): number {
 - **Overflow Flag**: Signed overflow (opposite signs)
 - **Sign Flag**: Result < 0 (bit 31 set)
 
+## Flag Checking Methods
+```typescript
+isZeroFlagSet(): boolean     // Zero flag (bit 6)
+isSignFlagSet(): boolean     // Sign flag (bit 7)
+isOverflowFlagSet(): boolean // Overflow flag (bit 11)
+isCarryFlagSet(): boolean    // Carry flag (bit 0)
+```
+
 ## Public API
-- `executeInstruction(mnemonic, operands)` - Execute one instruction
-- `getState()` - Returns {registers, memory, flags}
+- `loadInstructions(instructions, labels)` - Load program with instructions and labels
+- `step()` - Execute one instruction and handle control flow
+- `getEIP()` / `setEIP(value)` - Get/set instruction pointer
+- `getCurrentInstruction()` - Get instruction at EIP
+- `getInstructions()` / `getLabels()` - Get loaded program data
+- `executeInstruction(mnemonic, operands)` - Execute single instruction (no control flow)
+- `getState()` - Returns {registers, memory, flags, eip, callStackDepth}
 - `getRegisters()` - Returns register object (includes 8-bit aliases)
 - `getLCDDisplay()` - Returns LCD pixel array
 - `pushKeyboardEvent(keyCode, pressed)` - Add keyboard event
 - `getKeyboardStatus()` - Check keyboard queue status
-- `reset()` - Clear all state
+- `reset()` - Clear all state (including EIP and call stack)
 
 ## Testing
 Comprehensive test suite in `simulator.test.ts`:

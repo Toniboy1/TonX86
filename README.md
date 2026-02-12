@@ -155,11 +155,11 @@ Students should start in **educational mode** to learn core concepts, then switc
 
 8-bit aliases: `AL`/`AH`, `BL`/`BH`, `CL`/`CH`, `DL`/`DH` (low/high bytes of EAX, EBX, ECX, EDX)
 
-### Architecture Note
+### Architecture Note (v0.5.0+)
 
-**Control Flow Instructions:** Jump instructions (JMP, JE/JZ, JNE/JNZ) and subroutine instructions (CALL, RET) are handled by the debug adapter rather than the simulator core. This is by design, as they require access to the label symbol table and instruction pointer management. These instructions work seamlessly during debugging but require the debug adapter context.
+**Control Flow Ownership:** As of v0.5.0, the simulator core (simcore) owns all instruction execution including control flow (JMP, conditional jumps, CALL, RET), instruction pointer (EIP), label resolution, and call stack management. The debug adapter delegates execution to simcore's `step()` method, which handles all instruction execution and control flow decisions. This enables simcore to run independently from VS Code for testing and other use cases.
 
-**Data Instructions:** All other instructions (MOV, ADD, arithmetic, bitwise, etc.) are executed by the simulator core and work independently.
+**Previous Architecture (v0.4.x and earlier):** Control flow was handled by the debug adapter, which required the simulator to operate within a DAP context.
 
 ### Instructions
 

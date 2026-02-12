@@ -1166,13 +1166,14 @@ describe("Simulator - public API", () => {
     // No error thrown
   });
 
-  test("step() in running mode", () => {
+  test("step() without loaded instructions does nothing", () => {
     sim.run();
     const stateBefore = sim.getState();
     sim.step();
     const stateAfter = sim.getState();
-    // PC should increment on step
-    expect(stateAfter.pc).toBe(stateBefore.pc + 1);
+    // Without loaded instructions, step() should halt the simulator
+    // PC is not used anymore (EIP is used instead)
+    expect(stateAfter.halted).toBe(true);
   });
 
   test("step() in halted mode doesn't execute", () => {
@@ -2405,5 +2406,218 @@ describe("Simulator loadProgram and bytecode execution", () => {
     sim.loadProgram(bytecode);
     const state = sim.getState();
     expect(state.pc).toBe(0);
+  });
+});
+
+describe("Simulator - Control Flow (EIP, loadInstructions, step)", () => {
+  let sim: Simulator;
+
+  beforeEach(() => {
+    sim = new Simulator();
+  });
+
+  test("loadInstructions sets instructions and labels", () => {
+    const instructions = [
+      { line: 1, mnemonic: "MOV", operands: ["EAX", "10"], raw: "MOV EAX, 10" },
+      { line: 2, mnemonic: "ADD", operands: ["EAX", "5"], raw: "ADD EAX, 5" },
+    ];
+    const labels = new Map([["start", 0]]);
+
+    sim.loadInstructions(instructions, labels);
+
+    expect(sim.getInstructions()).toEqual(instructions);
+    expect(sim.getLabels()).toEqual(labels);
+    expect(sim.getEIP()).toBe(0);
+  });
+
+  test("step() executes instruction and increments EIP", () => {
+    const instructions = [
+      { line: 1, mnemonic: "MOV", operands: ["EAX", "10"], raw: "MOV EAX, 10" },
+      { line: 2, mnemonic: "ADD", operands: ["EAX", "5"], raw: "ADD EAX, 5" },
+    ];
+    sim.loadInstructions(instructions, new Map());
+
+    const line1 = sim.step();
+    expect(line1).toBe(1);
+    expect(sim.getEIP()).toBe(1);
+    expect(sim.getRegisters().EAX).toBe(10);
+
+    const line2 = sim.step();
+    expect(line2).toBe(2);
+    expect(sim.getEIP()).toBe(2);
+    expect(sim.getRegisters().EAX).toBe(15);
+  });
+
+  test("step() with JMP updates EIP correctly", () => {
+    const instructions = [
+      { line: 1, mnemonic: "MOV", operands: ["EAX", "10"], raw: "MOV EAX, 10" },
+      { line: 2, mnemonic: "JMP", operands: ["target"], raw: "JMP target" },
+      { line: 3, mnemonic: "MOV", operands: ["EAX", "99"], raw: "MOV EAX, 99" },
+      { line: 4, mnemonic: "ADD", operands: ["EAX", "1"], raw: "ADD EAX, 1" },
+    ];
+    const labels = new Map([["target", 3]]);
+    sim.loadInstructions(instructions, labels);
+
+    sim.step(); // MOV EAX, 10
+    expect(sim.getEIP()).toBe(1);
+
+    sim.step(); // JMP target
+    expect(sim.getEIP()).toBe(3); // Should jump to instruction index 3
+
+    sim.step(); // ADD EAX, 1
+    expect(sim.getEIP()).toBe(4);
+    expect(sim.getRegisters().EAX).toBe(11); // 10 + 1 (skipped MOV EAX, 99)
+  });
+
+  test("step() with JE (zero flag set) takes jump", () => {
+    const instructions = [
+      {
+        line: 1,
+        mnemonic: "XOR",
+        operands: ["EAX", "EAX"],
+        raw: "XOR EAX, EAX",
+      }, // EAX = 0, sets Zero flag
+      { line: 2, mnemonic: "JE", operands: ["target"], raw: "JE target" },
+      { line: 3, mnemonic: "MOV", operands: ["EBX", "99"], raw: "MOV EBX, 99" },
+      { line: 4, mnemonic: "MOV", operands: ["EBX", "1"], raw: "MOV EBX, 1" },
+    ];
+    const labels = new Map([["target", 3]]);
+    sim.loadInstructions(instructions, labels);
+
+    sim.step(); // XOR EAX, EAX
+    expect(sim.isZeroFlagSet()).toBe(true);
+
+    sim.step(); // JE target
+    expect(sim.getEIP()).toBe(3); // Should jump
+
+    sim.step(); // MOV EBX, 1
+    expect(sim.getRegisters().EBX).toBe(1); // Skipped MOV EBX, 99
+  });
+
+  test("step() with JNE (zero flag not set) takes jump", () => {
+    const instructions = [
+      { line: 1, mnemonic: "MOV", operands: ["EAX", "5"], raw: "MOV EAX, 5" }, // Non-zero
+      { line: 2, mnemonic: "CMP", operands: ["EAX", "10"], raw: "CMP EAX, 10" }, // 5 != 10
+      { line: 3, mnemonic: "JNE", operands: ["target"], raw: "JNE target" },
+      { line: 4, mnemonic: "MOV", operands: ["EBX", "99"], raw: "MOV EBX, 99" },
+      { line: 5, mnemonic: "MOV", operands: ["EBX", "1"], raw: "MOV EBX, 1" },
+    ];
+    const labels = new Map([["target", 4]]);
+    sim.loadInstructions(instructions, labels);
+
+    sim.step(); // MOV EAX, 5
+    sim.step(); // CMP EAX, 10
+    expect(sim.isZeroFlagSet()).toBe(false); // Not equal
+
+    sim.step(); // JNE target
+    expect(sim.getEIP()).toBe(4); // Should jump
+
+    sim.step(); // MOV EBX, 1
+    expect(sim.getRegisters().EBX).toBe(1); // Skipped MOV EBX, 99
+  });
+
+  test("step() with CALL pushes return address and jumps", () => {
+    const instructions = [
+      { line: 1, mnemonic: "MOV", operands: ["EAX", "10"], raw: "MOV EAX, 10" },
+      { line: 2, mnemonic: "CALL", operands: ["func"], raw: "CALL func" },
+      { line: 3, mnemonic: "ADD", operands: ["EAX", "5"], raw: "ADD EAX, 5" },
+      { line: 4, mnemonic: "ADD", operands: ["EAX", "1"], raw: "ADD EAX, 1" }, // func body
+      { line: 5, mnemonic: "RET", operands: [], raw: "RET" },
+    ];
+    const labels = new Map([["func", 3]]);
+    sim.loadInstructions(instructions, labels);
+
+    sim.step(); // MOV EAX, 10
+    expect(sim.getEIP()).toBe(1);
+
+    const initialESP = sim.getRegisters().ESP;
+    sim.step(); // CALL func
+    expect(sim.getEIP()).toBe(3); // Should jump to func
+    expect(sim.getRegisters().ESP).toBe(initialESP - 4); // Stack pushed
+
+    sim.step(); // ADD EAX, 1 (inside func)
+    expect(sim.getRegisters().EAX).toBe(11);
+
+    sim.step(); // RET
+    expect(sim.getEIP()).toBe(2); // Should return to instruction after CALL
+    expect(sim.getRegisters().ESP).toBe(initialESP); // Stack popped
+
+    sim.step(); // ADD EAX, 5
+    expect(sim.getRegisters().EAX).toBe(16);
+  });
+
+  test("step() with HLT halts execution", () => {
+    const instructions = [
+      { line: 1, mnemonic: "MOV", operands: ["EAX", "10"], raw: "MOV EAX, 10" },
+      { line: 2, mnemonic: "HLT", operands: [], raw: "HLT" },
+      { line: 3, mnemonic: "MOV", operands: ["EAX", "99"], raw: "MOV EAX, 99" },
+    ];
+    sim.loadInstructions(instructions, new Map());
+
+    sim.step(); // MOV EAX, 10
+    expect(sim.getState().halted).toBe(false);
+
+    sim.step(); // HLT
+    const state = sim.getState();
+    expect(state.halted).toBe(true);
+    expect(sim.getEIP()).toBe(1); // EIP doesn't advance after HLT
+  });
+
+  test("getCurrentInstruction returns current instruction at EIP", () => {
+    const instructions = [
+      { line: 1, mnemonic: "MOV", operands: ["EAX", "10"], raw: "MOV EAX, 10" },
+      { line: 2, mnemonic: "ADD", operands: ["EAX", "5"], raw: "ADD EAX, 5" },
+    ];
+    sim.loadInstructions(instructions, new Map());
+
+    const instr0 = sim.getCurrentInstruction();
+    expect(instr0).toEqual(instructions[0]);
+
+    sim.step();
+    const instr1 = sim.getCurrentInstruction();
+    expect(instr1).toEqual(instructions[1]);
+  });
+
+  test("setEIP changes instruction pointer", () => {
+    const instructions = [
+      { line: 1, mnemonic: "MOV", operands: ["EAX", "10"], raw: "MOV EAX, 10" },
+      { line: 2, mnemonic: "ADD", operands: ["EAX", "5"], raw: "ADD EAX, 5" },
+    ];
+    sim.loadInstructions(instructions, new Map());
+
+    sim.setEIP(1);
+    expect(sim.getEIP()).toBe(1);
+    expect(sim.getCurrentInstruction()).toEqual(instructions[1]);
+  });
+
+  test("reset() clears EIP and instructions", () => {
+    const instructions = [
+      { line: 1, mnemonic: "MOV", operands: ["EAX", "10"], raw: "MOV EAX, 10" },
+    ];
+    sim.loadInstructions(instructions, new Map());
+    sim.step();
+
+    sim.reset();
+    expect(sim.getEIP()).toBe(0);
+  });
+
+  test("getState() includes EIP and call stack depth", () => {
+    const instructions = [
+      { line: 1, mnemonic: "MOV", operands: ["EAX", "10"], raw: "MOV EAX, 10" },
+      { line: 2, mnemonic: "CALL", operands: ["func"], raw: "CALL func" },
+      { line: 3, mnemonic: "ADD", operands: ["EAX", "1"], raw: "ADD EAX, 1" },
+    ];
+    const labels = new Map([["func", 2]]);
+    sim.loadInstructions(instructions, labels);
+
+    sim.step(); // MOV EAX, 10
+    let state = sim.getState();
+    expect(state.eip).toBe(1);
+    expect(state.callStackDepth).toBe(0);
+
+    sim.step(); // CALL func
+    state = sim.getState();
+    expect(state.eip).toBe(2);
+    expect(state.callStackDepth).toBe(1);
   });
 });
