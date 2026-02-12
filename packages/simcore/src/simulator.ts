@@ -1,4 +1,14 @@
 /**
+ * Instruction interface - represents a parsed assembly instruction
+ */
+export interface Instruction {
+  line: number;
+  mnemonic: string;
+  operands: string[];
+  raw: string;
+}
+
+/**
  * TonX86 Memory - supports two separate memory banks (A and B)
  */
 export class Memory {
@@ -217,6 +227,12 @@ export class Simulator {
   private code: Uint8Array = new Uint8Array();
   private consoleOutput: string = ""; // Buffer for console output from INT 0x10 and INT 0x21
   private compatibilityMode: CompatibilityMode = "educational";
+
+  // Control flow state
+  private eip: number = 0; // Instruction pointer (index into instructions array)
+  private instructions: Instruction[] = [];
+  private labels: Map<string, number> = new Map(); // label name -> instruction index
+  private callStack: number[] = []; // Call stack for tracking return addresses
 
   // Map of mnemonics to register names
   private registerMap: { [key: string]: number } = {
@@ -578,6 +594,216 @@ export class Simulator {
     }
     // immediate
     return src.value;
+  }
+
+  /**
+   * Load a program with instructions and labels
+   */
+  loadInstructions(instructions: Instruction[], labels: Map<string, number>): void {
+    this.instructions = instructions;
+    this.labels = labels;
+    this.eip = 0;
+    this.callStack = [];
+    this.cpu.halted = false;
+    this.cpu.running = false;
+  }
+
+  /**
+   * Get the current instruction pointer (EIP)
+   */
+  getEIP(): number {
+    return this.eip;
+  }
+
+  /**
+   * Set the instruction pointer (EIP)
+   */
+  setEIP(value: number): void {
+    this.eip = value;
+  }
+
+  /**
+   * Get the current instruction
+   */
+  getCurrentInstruction(): Instruction | null {
+    if (this.eip >= 0 && this.eip < this.instructions.length) {
+      return this.instructions[this.eip];
+    }
+    return null;
+  }
+
+  /**
+   * Get all instructions
+   */
+  getInstructions(): Instruction[] {
+    return this.instructions;
+  }
+
+  /**
+   * Get all labels
+   */
+  getLabels(): Map<string, number> {
+    return this.labels;
+  }
+
+  /**
+   * Step to the next instruction based on control flow
+   * Returns the line number of the executed instruction, or -1 if program ended
+   */
+  step(): number {
+    if (this.eip < 0 || this.eip >= this.instructions.length) {
+      this.cpu.halted = true;
+      this.cpu.running = false;
+      return -1;
+    }
+
+    const instr = this.instructions[this.eip];
+    const currentLine = instr.line;
+
+    // Execute the instruction
+    this.executeInstruction(instr.mnemonic, instr.operands);
+
+    // Handle control flow - check if we hit HLT
+    if (this.cpu.halted) {
+      return currentLine;
+    }
+
+    // Handle jump/call/ret instructions
+    const mnemonic = instr.mnemonic.toUpperCase();
+    if (
+      [
+        "JMP",
+        "JE",
+        "JZ",
+        "JNE",
+        "JNZ",
+        "JG",
+        "JGE",
+        "JL",
+        "JLE",
+        "JS",
+        "JNS",
+        "JA",
+        "JAE",
+        "JB",
+        "JBE",
+        "CALL",
+        "RET",
+      ].includes(mnemonic)
+    ) {
+      if (mnemonic === "CALL") {
+        const targetLabel = instr.operands[0];
+        const targetIndex = this.labels.get(targetLabel);
+
+        if (targetIndex !== undefined) {
+          // Push return address onto call stack
+          const returnAddress = this.eip + 1;
+          this.callStack.push(returnAddress);
+
+          // Push return address onto CPU stack
+          this.pushStack(returnAddress);
+
+          // Jump to target
+          this.eip = targetIndex;
+        } else {
+          throw new Error(`CALL target "${targetLabel}" not found in labels`);
+        }
+      } else if (mnemonic === "RET") {
+        if (this.callStack.length > 0) {
+          const returnAddress = this.callStack.pop()!;
+
+          // Pop return address from CPU stack
+          this.popStack();
+
+          // Jump to return address
+          this.eip = returnAddress;
+        } else {
+          // RET with empty call stack - end program
+          this.eip++;
+        }
+      } else {
+        // Handle other jump instructions
+        const targetLabel = instr.operands[0];
+        const targetIndex = this.labels.get(targetLabel);
+
+        if (targetIndex !== undefined) {
+          const shouldJump = this.shouldTakeJump(mnemonic);
+
+          if (shouldJump) {
+            this.eip = targetIndex;
+          } else {
+            this.eip++;
+          }
+        } else {
+          throw new Error(`Jump target "${targetLabel}" not found in labels`);
+        }
+      }
+    } else {
+      // Move to next instruction for non-jump instructions
+      this.eip++;
+    }
+
+    return currentLine;
+  }
+
+  /**
+   * Evaluate whether a conditional jump should be taken.
+   * Per x86 specification.
+   */
+  private shouldTakeJump(mnemonic: string): boolean {
+    switch (mnemonic) {
+      case "JMP":
+        return true;
+      case "JE":
+      case "JZ":
+        return this.isZeroFlagSet();
+      case "JNE":
+      case "JNZ":
+        return !this.isZeroFlagSet();
+      case "JG":
+        // Greater (signed): SF == OF and ZF == 0
+        return (
+          this.isSignFlagSet() === this.isOverflowFlagSet() &&
+          !this.isZeroFlagSet()
+        );
+      case "JGE":
+        // Greater or equal (signed): SF == OF
+        return this.isSignFlagSet() === this.isOverflowFlagSet();
+      case "JL":
+        // Less (signed): SF != OF
+        return this.isSignFlagSet() !== this.isOverflowFlagSet();
+      case "JLE":
+        // Less or equal (signed): SF != OF or ZF == 1
+        return (
+          this.isSignFlagSet() !== this.isOverflowFlagSet() ||
+          this.isZeroFlagSet()
+        );
+      case "JS":
+        return this.isSignFlagSet();
+      case "JNS":
+        return !this.isSignFlagSet();
+      case "JA":
+        // Above (unsigned): CF == 0 and ZF == 0
+        return !this.isCarryFlagSet() && !this.isZeroFlagSet();
+      case "JAE":
+        // Above or equal (unsigned): CF == 0
+        return !this.isCarryFlagSet();
+      case "JB":
+        // Below (unsigned): CF == 1
+        return this.isCarryFlagSet();
+      case "JBE":
+        // Below or equal (unsigned): CF == 1 or ZF == 1
+        return this.isCarryFlagSet() || this.isZeroFlagSet();
+      default:
+        return false;
+    }
+  }
+
+  /**
+   * Check if the Carry flag (CF, bit 0) is set
+   */
+  isCarryFlagSet(): boolean {
+    return (this.cpu.flags & 0x01) !== 0;
   }
 
   /**
@@ -1255,10 +1481,9 @@ export class Simulator {
 
       case "CALL":
       case "RET": {
-        // CALL/RET are handled by the debug adapter
-        // The debug adapter manages both control flow (jumping to labels/return addresses)
-        // and stack operations (via pushStack/popStack methods)
-        // These cases are intentionally no-ops in executeInstruction
+        // CALL/RET control flow is now handled by the step() method
+        // Stack operations are performed there
+        // These cases are intentionally no-ops in executeInstruction to avoid double-execution
         break;
       }
 
@@ -1456,13 +1681,6 @@ export class Simulator {
   }
 
   /**
-   * Check if the Carry flag (CF, bit 0) is set
-   */
-  isCarryFlagSet(): boolean {
-    return (this.cpu.flags & 0x01) !== 0;
-  }
-
-  /**
    * Check if the Zero flag (ZF, bit 6) is set
    */
   isZeroFlagSet(): boolean {
@@ -1488,21 +1706,6 @@ export class Simulator {
     this.cpu.reset();
   }
 
-  step(): void {
-    if (!this.cpu.running || this.cpu.halted) {
-      return;
-    }
-
-    // Check breakpoint
-    if (this.cpu.hasBreakpoint(this.cpu.pc)) {
-      this.cpu.running = false;
-      return;
-    }
-
-    // Execute instruction (placeholder)
-    this.cpu.pc++;
-  }
-
   run(): void {
     this.cpu.running = true;
   }
@@ -1522,15 +1725,19 @@ export class Simulator {
     this.lcd.clear();
     this.keyboard.clear();
     this.consoleOutput = "";
+    this.eip = 0;
+    this.callStack = [];
   }
 
   getState() {
     return {
       pc: this.cpu.pc,
+      eip: this.eip,
       registers: Array.from(this.cpu.registers),
       flags: this.cpu.flags,
       running: this.cpu.running,
       halted: this.cpu.halted,
+      callStackDepth: this.callStack.length,
     };
   }
 

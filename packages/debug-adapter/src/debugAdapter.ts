@@ -8,8 +8,8 @@ import {
 import { DebugProtocol } from "vscode-debugprotocol";
 import * as fs from "fs";
 import * as path from "path";
-import { Simulator } from "@tonx86/simcore";
-import { parseAssembly, Instruction } from "./parser";
+import { Simulator, Instruction } from "@tonx86/simcore";
+import { parseAssembly } from "./parser";
 
 // File-based logger for debugging - will be set after launch
 let LOG_FILE = "";
@@ -30,16 +30,12 @@ export class TonX86DebugSession extends DebugSession {
   private sourceInfo: SourceInfo | undefined;
   private currentLine = 1;
   private programPath = "";
-  private instructions: Instruction[] = [];
-  private labels: Map<string, number> = new Map(); // label name -> instruction index
-  private instructionPointer: number = 0; // Index into instructions array
   private breakpoints: Set<number> = new Set(); // Set of line numbers with breakpoints
   private configurationDone = false; // Track if configuration is done
   private stopOnEntry: boolean = true; // Whether to stop at first instruction
   private simulator: Simulator; // CPU simulator instance
   private constants: Map<string, number> = new Map(); // EQU constants
   private cpuSpeed: number = 100; // CPU speed percentage (1-200)
-  private callStack: number[] = []; // Call stack for tracking return addresses
 
   public constructor() {
     super();
@@ -151,8 +147,10 @@ export class TonX86DebugSession extends DebugSession {
    * Get the next instruction line number
    */
   private getNextInstructionLine(): number {
-    if (this.instructionPointer + 1 < this.instructions.length) {
-      return this.instructions[this.instructionPointer + 1].line;
+    const instructions = this.simulator.getInstructions();
+    const eip = this.simulator.getEIP();
+    if (eip + 1 < instructions.length) {
+      return instructions[eip + 1].line;
     }
     // If no more instructions, stay at current line
     return this.currentLine;
@@ -226,15 +224,15 @@ export class TonX86DebugSession extends DebugSession {
 
         // Parse assembly instructions
         const parseResult = parseAssembly(lines);
-        this.instructions = parseResult.instructions;
-        this.labels = parseResult.labels;
+        const instructions = parseResult.instructions;
+        const labels = parseResult.labels;
         this.constants = parseResult.constants;
         console.error(
           "[TonX86] Parsed",
-          this.instructions.length,
+          instructions.length,
           "instructions:",
         );
-        this.instructions.forEach((instr) => {
+        instructions.forEach((instr) => {
           console.error(
             `  Line ${instr.line}: ${instr.mnemonic} ${instr.operands.join(", ")}`,
           );
@@ -242,14 +240,17 @@ export class TonX86DebugSession extends DebugSession {
 
         // Detect required LCD dimensions from code and EQU constants
         const [lcdWidth, lcdHeight] = this.detectLCDDimensions(
-          this.instructions,
+          instructions,
           this.constants,
         );
         this.simulator = new Simulator(lcdWidth, lcdHeight);
         console.error(`[TonX86] Detected LCD size: ${lcdWidth}x${lcdHeight}`);
 
+        // Load instructions and labels into simulator
+        this.simulator.loadInstructions(instructions, labels);
+
         // Show labels in Debug Console to help with CALL/JMP debugging
-        const labelList = Array.from(this.labels.entries())
+        const labelList = Array.from(labels.entries())
           .map(([name, index]) => `${name} -> ${index}`)
           .join(", ");
         this.sendEvent(
@@ -260,14 +261,13 @@ export class TonX86DebugSession extends DebugSession {
         );
 
         // Start at first instruction
-        if (this.instructions.length > 0) {
-          this.currentLine = this.instructions[0].line;
-          this.instructionPointer = 0;
+        if (instructions.length > 0) {
+          this.currentLine = instructions[0].line;
           console.error(
             "[TonX86] Starting at line",
             this.currentLine,
             "instruction:",
-            this.instructions[0].raw,
+            instructions[0].raw,
           );
         }
       } catch (err) {
@@ -286,12 +286,12 @@ export class TonX86DebugSession extends DebugSession {
     // Send session started message
     this.sendEvent(
       new OutputEvent(
-        `\n=== TonX86 Debug Session Started ===\nProgram: ${path.basename(this.programPath)}\nInstructions: ${this.instructions.length}\n`,
+        `\n=== TonX86 Debug Session Started ===\nProgram: ${path.basename(this.programPath)}\nInstructions: ${this.simulator.getInstructions().length}\n`,
         "console",
       ),
     );
 
-    if (this.instructions.length === 0) {
+    if (this.simulator.getInstructions().length === 0) {
       console.error(
         "[TonX86] No instructions to debug, program will terminate",
       );
@@ -331,8 +331,9 @@ export class TonX86DebugSession extends DebugSession {
    * Execute the program until a breakpoint or program end
    */
   private async continueExecution(): Promise<void> {
+    const eip = this.simulator.getEIP();
     logToFile(
-      `continueExecution called, IP=${this.instructionPointer}, breakpoints=${Array.from(this.breakpoints)}`,
+      `continueExecution called, EIP=${eip}, breakpoints=${Array.from(this.breakpoints)}`,
     );
 
     let firstIteration = true; // Skip breakpoint check on first instruction
@@ -375,8 +376,9 @@ export class TonX86DebugSession extends DebugSession {
     );
 
     let sinceLastYield = 0;
+    const instructions = this.simulator.getInstructions();
 
-    while (this.instructionPointer < this.instructions.length) {
+    while (this.simulator.getEIP() < instructions.length) {
       // Periodically yield to the event loop so incoming DAP messages
       // (keyboard events, pause, etc.) can be processed
       sinceLastYield++;
@@ -385,7 +387,8 @@ export class TonX86DebugSession extends DebugSession {
         await this.sleep(sleepMs);
       }
 
-      const currentInstr = this.instructions[this.instructionPointer];
+      const currentInstr = this.simulator.getCurrentInstruction();
+      if (!currentInstr) break;
 
       // Check for breakpoint BEFORE executing the instruction
       // But skip the check on first iteration (we're continuing from that line)
@@ -405,228 +408,47 @@ export class TonX86DebugSession extends DebugSession {
       firstIteration = false;
 
       try {
-        this.simulator.executeInstruction(
-          currentInstr.mnemonic,
-          currentInstr.operands,
-        );
+        // Use simulator.step() to execute instruction and handle control flow
+        const executedLine = this.simulator.step();
+        this.currentLine = executedLine;
+
         // Emit any console output from interrupt handlers
         this.emitConsoleOutput();
+
+        // Check if program halted
+        const state = this.simulator.getState();
+        if (state.halted) {
+          console.error(
+            "[TonX86] Program halted at HLT instruction at line",
+            executedLine,
+          );
+          this.sendEvent(
+            new OutputEvent(
+              `\n=== Program halted at line ${executedLine} ===\n`,
+              "console",
+            ),
+          );
+
+          // Terminate the debug session
+          this.sendEvent(new TerminatedEvent());
+          return;
+        }
       } catch (err) {
-        console.error(`[TonX86] ERROR at line ${currentInstr.line}:`, err);
+        console.error(`[TonX86] ERROR:`, err);
         this.sendEvent(
           new OutputEvent(
-            `ERROR at line ${currentInstr.line}: ${err}\n`,
+            `ERROR: ${err}\n`,
             "stderr",
           ),
         );
         this.sendEvent(new TerminatedEvent());
         return;
       }
-
-      this.currentLine = currentInstr.line;
-
-      // Check if we hit HLT
-      if (currentInstr.mnemonic === "HLT") {
-        console.error(
-          "[TonX86] Program halted at HLT instruction at line",
-          currentInstr.line,
-        );
-        this.sendEvent(
-          new OutputEvent(
-            `\n=== Program halted at line ${currentInstr.line} ===\n`,
-            "console",
-          ),
-        );
-
-        // Terminate the debug session
-        this.sendEvent(new TerminatedEvent());
-        return;
-      }
-
-      // Handle jump instructions (including CALL and RET)
-      if (
-        [
-          "JMP",
-          "JE",
-          "JZ",
-          "JNE",
-          "JNZ",
-          "JG",
-          "JGE",
-          "JL",
-          "JLE",
-          "JS",
-          "JNS",
-          "JA",
-          "JAE",
-          "JB",
-          "JBE",
-          "CALL",
-          "RET",
-        ].includes(currentInstr.mnemonic)
-      ) {
-        if (currentInstr.mnemonic === "CALL") {
-          // CALL: Push return address (next instruction) and jump to label
-          const targetLabel = currentInstr.operands[0];
-          const targetIndex = this.labels.get(targetLabel);
-
-          if (targetIndex !== undefined) {
-            // Push return address onto call stack
-            const returnAddress = this.instructionPointer + 1;
-            this.callStack.push(returnAddress);
-
-            // Push return address onto CPU stack
-            this.simulator.pushStack(returnAddress);
-
-            // Jump to target
-            this.instructionPointer = targetIndex;
-            logToFile(
-              `CALL ${targetLabel} -> index ${targetIndex}, return=${returnAddress}`,
-            );
-          } else {
-            console.error(
-              `[TonX86] CALL target "${targetLabel}" not found in labels`,
-            );
-            this.sendEvent(
-              new OutputEvent(
-                `[CALL] ERROR: label "${targetLabel}" not found\n`,
-                "stderr",
-              ),
-            );
-            this.instructionPointer++;
-          }
-        } else if (currentInstr.mnemonic === "RET") {
-          // RET: Pop return address and jump to it
-          if (this.callStack.length > 0) {
-            const returnAddress = this.callStack.pop()!;
-
-            // Pop return address from CPU stack
-            this.simulator.popStack();
-
-            // Jump to return address
-            this.instructionPointer = returnAddress;
-          } else {
-            console.error("[TonX86] RET called with empty call stack");
-            this.instructionPointer++;
-          }
-        } else {
-          // Handle other jump instructions
-          const targetLabel = currentInstr.operands[0];
-          const targetIndex = this.labels.get(targetLabel);
-
-          if (targetIndex !== undefined) {
-            // For conditional jumps, check flags per x86 spec
-            const shouldJump = this.shouldTakeJump(currentInstr.mnemonic);
-
-            if (shouldJump) {
-              this.instructionPointer = targetIndex;
-            } else {
-              this.instructionPointer++;
-            }
-          } else {
-            console.error(
-              `[TonX86] Jump target "${targetLabel}" not found in labels`,
-            );
-            this.instructionPointer++;
-          }
-        }
-      } else {
-        this.instructionPointer++;
-      }
     }
 
     // If we reach here, no HLT was found - program ended
     console.error("[TonX86] Reached end of program");
     this.sendEvent(new TerminatedEvent());
-  }
-
-  /**
-   * Check if the Zero flag is set in the CPU
-   */
-  private isZeroFlagSet(): boolean {
-    const state = this.simulator.getState();
-    // Zero flag is bit 6
-    return (state.flags & (1 << 6)) !== 0;
-  }
-
-  /**
-   * Check if the Sign flag is set in the CPU
-   */
-  private isSignFlagSet(): boolean {
-    const state = this.simulator.getState();
-    // Sign flag is bit 7
-    return (state.flags & (1 << 7)) !== 0;
-  }
-
-  /**
-   * Check if the Overflow flag is set in the CPU
-   */
-  private isOverflowFlagSet(): boolean {
-    const state = this.simulator.getState();
-    // Overflow flag is bit 11
-    return (state.flags & (1 << 11)) !== 0;
-  }
-
-  /**
-   * Check if the Carry flag is set in the CPU
-   */
-  private isCarryFlagSet(): boolean {
-    const state = this.simulator.getState();
-    // Carry flag is bit 0
-    return (state.flags & 1) !== 0;
-  }
-
-  /**
-   * Evaluate whether a conditional jump should be taken.
-   * Per x86 specification (ref: UVA CS216 x86 Guide).
-   */
-  private shouldTakeJump(mnemonic: string): boolean {
-    switch (mnemonic) {
-      case "JMP":
-        return true;
-      case "JE":
-      case "JZ":
-        return this.isZeroFlagSet();
-      case "JNE":
-      case "JNZ":
-        return !this.isZeroFlagSet();
-      case "JG":
-        // Greater (signed): SF == OF and ZF == 0
-        return (
-          this.isSignFlagSet() === this.isOverflowFlagSet() &&
-          !this.isZeroFlagSet()
-        );
-      case "JGE":
-        // Greater or equal (signed): SF == OF
-        return this.isSignFlagSet() === this.isOverflowFlagSet();
-      case "JL":
-        // Less (signed): SF != OF
-        return this.isSignFlagSet() !== this.isOverflowFlagSet();
-      case "JLE":
-        // Less or equal (signed): SF != OF or ZF == 1
-        return (
-          this.isSignFlagSet() !== this.isOverflowFlagSet() ||
-          this.isZeroFlagSet()
-        );
-      case "JS":
-        return this.isSignFlagSet();
-      case "JNS":
-        return !this.isSignFlagSet();
-      case "JA":
-        // Above (unsigned): CF == 0 and ZF == 0
-        return !this.isCarryFlagSet() && !this.isZeroFlagSet();
-      case "JAE":
-        // Above or equal (unsigned): CF == 0
-        return !this.isCarryFlagSet();
-      case "JB":
-        // Below (unsigned): CF == 1
-        return this.isCarryFlagSet();
-      case "JBE":
-        // Below or equal (unsigned): CF == 1 or ZF == 1
-        return this.isCarryFlagSet() || this.isZeroFlagSet();
-      default:
-        return false;
-    }
   }
 
   protected sourceRequest(
@@ -661,7 +483,7 @@ export class TonX86DebugSession extends DebugSession {
 
     // Build set of valid instruction lines
     const validInstructionLines = new Set(
-      this.instructions.map((instr) => instr.line),
+      this.simulator.getInstructions().map((instr) => instr.line),
     );
     console.error(
       "[TonX86] Valid instruction lines:",
@@ -822,8 +644,8 @@ export class TonX86DebugSession extends DebugSession {
     console.error("======================================");
     console.error("[TonX86] Continue request for thread:", args.threadId);
     console.error(
-      "[TonX86] Current state: instructionPointer=",
-      this.instructionPointer,
+      "[TonX86] Current state: EIP=",
+      this.simulator.getEIP(),
       "line=",
       this.currentLine,
     );
@@ -843,51 +665,37 @@ export class TonX86DebugSession extends DebugSession {
     console.error(
       "[TonX86] Next request for thread:",
       args.threadId,
-      "current instruction pointer:",
-      this.instructionPointer,
+      "current EIP:",
+      this.simulator.getEIP(),
     );
 
     this.sendResponse(response);
 
-    // Execute current instruction, then stop
-    if (this.instructionPointer < this.instructions.length) {
-      const currentInstr = this.instructions[this.instructionPointer];
-
-      console.error(
-        `[TonX86] Executing (next): ${currentInstr.mnemonic} ${currentInstr.operands.join(", ")}`,
-      );
-
-      // Send execution step to Debug Console
-      const stepMsg = `[Line ${currentInstr.line}] ${currentInstr.mnemonic} ${currentInstr.operands.join(", ")}\n`;
-      this.sendEvent(new OutputEvent(stepMsg, "console"));
-
-      // Execute the instruction
-      try {
-        this.simulator.executeInstruction(
-          currentInstr.mnemonic,
-          currentInstr.operands,
-        );
-        // Emit any console output from interrupt handlers
-        this.emitConsoleOutput();
-      } catch (err) {
-        logToFile(
-          JSON.stringify({
-            action: "ERROR",
-            ip: this.instructionPointer,
-            line: currentInstr.line,
-            error: String(err),
-          }),
-        );
-        console.error(`[TonX86] ERROR during instruction execution:`, err);
-        this.sendEvent(
-          new OutputEvent(
-            `ERROR at line ${currentInstr.line}: ${err}\n`,
-            "stderr",
-          ),
-        );
+    // Execute current instruction using simulator.step(), then stop
+    const currentInstr = this.simulator.getCurrentInstruction();
+    if (!currentInstr) {
+      console.error("[TonX86] No current instruction");
+      setTimeout(() => {
         this.sendEvent(new TerminatedEvent());
-        return;
-      }
+      }, 50);
+      return;
+    }
+
+    console.error(
+      `[TonX86] Executing (next): ${currentInstr.mnemonic} ${currentInstr.operands.join(", ")}`,
+    );
+
+    // Send execution step to Debug Console
+    const stepMsg = `[Line ${currentInstr.line}] ${currentInstr.mnemonic} ${currentInstr.operands.join(", ")}\n`;
+    this.sendEvent(new OutputEvent(stepMsg, "console"));
+
+    // Execute the instruction using simulator.step()
+    try {
+      const executedLine = this.simulator.step();
+      this.currentLine = executedLine;
+
+      // Emit any console output from interrupt handlers
+      this.emitConsoleOutput();
 
       // Log LCD state after instruction
       try {
@@ -899,25 +707,24 @@ export class TonX86DebugSession extends DebugSession {
         logToFile(
           JSON.stringify({
             action: "NEXT",
-            ip: this.instructionPointer - 1,
-            line: currentInstr.line,
+            eip: this.simulator.getEIP(),
+            line: executedLine,
             instruction: `${currentInstr.mnemonic} ${currentInstr.operands.join(", ")}`,
             lcdPixels: pixelCount,
             lcdLit: Array.from(pixelIndices),
-            lcdRaw: Array.from(lcdData), // Show actual pixel values
+            lcdRaw: Array.from(lcdData),
           }),
         );
       } catch (e) {
         logToFile(`[NEXT] LCD logging error: ${e}`);
       }
 
-      this.currentLine = currentInstr.line;
-
       // Check if we hit HLT
-      if (currentInstr.mnemonic === "HLT") {
+      const state = this.simulator.getState();
+      if (state.halted) {
         console.error(
           "[TonX86] Program halted at HLT instruction at line",
-          currentInstr.line,
+          executedLine,
         );
         setTimeout(() => {
           this.sendEvent(new TerminatedEvent());
@@ -925,63 +732,27 @@ export class TonX86DebugSession extends DebugSession {
         return;
       }
 
-      // Handle jump instructions
-      if (
-        [
-          "JMP",
-          "JE",
-          "JZ",
-          "JNE",
-          "JNZ",
-          "JG",
-          "JGE",
-          "JL",
-          "JLE",
-          "JS",
-          "JNS",
-          "JA",
-          "JAE",
-          "JB",
-          "JBE",
-        ].includes(currentInstr.mnemonic)
-      ) {
-        const targetLabel = currentInstr.operands[0];
-        const targetIndex = this.labels.get(targetLabel);
-
-        if (targetIndex !== undefined) {
-          const shouldJump = this.shouldTakeJump(currentInstr.mnemonic);
-
-          if (shouldJump) {
-            console.error(
-              `[TonX86] Jump taken to label "${targetLabel}" at instruction index ${targetIndex}`,
-            );
-            this.instructionPointer = targetIndex;
-          } else {
-            console.error(
-              `[TonX86] Conditional jump not taken (label: ${targetLabel})`,
-            );
-            this.instructionPointer++;
-          }
-        } else {
-          console.error(
-            `[TonX86] Jump target "${targetLabel}" not found in labels`,
-          );
-          this.instructionPointer++;
-        }
-      } else {
-        // Move to next instruction for non-jump instructions
-        this.instructionPointer++;
-      }
-
       // Send stopped event
       setTimeout(() => {
         this.sendEvent(new StoppedEvent("step", 1));
       }, 50);
-    } else {
-      console.error("[TonX86] Reached end of program");
-      setTimeout(() => {
-        this.sendEvent(new TerminatedEvent());
-      }, 50);
+    } catch (err) {
+      logToFile(
+        JSON.stringify({
+          action: "ERROR",
+          eip: this.simulator.getEIP(),
+          error: String(err),
+        }),
+      );
+      console.error(`[TonX86] ERROR during instruction execution:`, err);
+      this.sendEvent(
+        new OutputEvent(
+          `ERROR: ${err}\n`,
+          "stderr",
+        ),
+      );
+      this.sendEvent(new TerminatedEvent());
+      return;
     }
   }
 
@@ -992,35 +763,40 @@ export class TonX86DebugSession extends DebugSession {
     console.error(
       "[TonX86] Step in request for thread:",
       args.threadId,
-      "current instruction pointer:",
-      this.instructionPointer,
+      "current EIP:",
+      this.simulator.getEIP(),
     );
 
     this.sendResponse(response);
 
-    // Execute current instruction, then stop
-    if (this.instructionPointer < this.instructions.length) {
-      const currentInstr = this.instructions[this.instructionPointer];
+    // Execute current instruction using simulator.step(), then stop
+    const currentInstr = this.simulator.getCurrentInstruction();
+    if (!currentInstr) {
+      console.error("[TonX86] No current instruction");
+      setTimeout(() => {
+        this.sendEvent(new TerminatedEvent());
+      }, 50);
+      return;
+    }
 
-      console.error(
-        `[TonX86] Executing (stepIn): ${currentInstr.mnemonic} ${currentInstr.operands.join(", ")}`,
-      );
+    console.error(
+      `[TonX86] Executing (stepIn): ${currentInstr.mnemonic} ${currentInstr.operands.join(", ")}`,
+    );
 
-      // Execute the instruction (CALL/RET are handled below)
-      this.simulator.executeInstruction(
-        currentInstr.mnemonic,
-        currentInstr.operands,
-      );
+    try {
+      // Use simulator.step() to execute instruction and handle control flow
+      const executedLine = this.simulator.step();
+      this.currentLine = executedLine;
+
       // Emit any console output from interrupt handlers
       this.emitConsoleOutput();
 
-      this.currentLine = currentInstr.line;
-
-      // Check if we hit HLT
-      if (currentInstr.mnemonic === "HLT") {
+      // Check if program halted
+      const state = this.simulator.getState();
+      if (state.halted) {
         console.error(
           "[TonX86] Program halted at HLT instruction at line",
-          currentInstr.line,
+          executedLine,
         );
         setTimeout(() => {
           this.sendEvent(new TerminatedEvent());
@@ -1028,88 +804,13 @@ export class TonX86DebugSession extends DebugSession {
         return;
       }
 
-      // Handle jump/call/ret instructions
-      if (
-        [
-          "JMP",
-          "JE",
-          "JZ",
-          "JNE",
-          "JNZ",
-          "JG",
-          "JGE",
-          "JL",
-          "JLE",
-          "JS",
-          "JNS",
-          "JA",
-          "JAE",
-          "JB",
-          "JBE",
-          "CALL",
-          "RET",
-        ].includes(currentInstr.mnemonic)
-      ) {
-        if (currentInstr.mnemonic === "CALL") {
-          const targetLabel = currentInstr.operands[0];
-          const targetIndex = this.labels.get(targetLabel);
-
-          if (targetIndex !== undefined) {
-            const returnAddress = this.instructionPointer + 1;
-            this.callStack.push(returnAddress);
-            this.simulator.pushStack(returnAddress);
-            this.instructionPointer = targetIndex;
-          } else {
-            console.error(
-              `[TonX86] CALL target "${targetLabel}" not found in labels`,
-            );
-            this.instructionPointer++;
-          }
-        } else if (currentInstr.mnemonic === "RET") {
-          if (this.callStack.length > 0) {
-            const returnAddress = this.callStack.pop()!;
-            this.simulator.popStack();
-            this.instructionPointer = returnAddress;
-          } else {
-            console.error("[TonX86] RET called with empty call stack");
-            this.instructionPointer++;
-          }
-        } else {
-          const targetLabel = currentInstr.operands[0];
-          const targetIndex = this.labels.get(targetLabel);
-
-          if (targetIndex !== undefined) {
-            const shouldJump = this.shouldTakeJump(currentInstr.mnemonic);
-
-            if (shouldJump) {
-              console.error(
-                `[TonX86] Jump taken to label "${targetLabel}" at instruction index ${targetIndex}`,
-              );
-              this.instructionPointer = targetIndex;
-            } else {
-              console.error(
-                `[TonX86] Conditional jump not taken (label: ${targetLabel})`,
-              );
-              this.instructionPointer++;
-            }
-          } else {
-            console.error(
-              `[TonX86] Jump target "${targetLabel}" not found in labels`,
-            );
-            this.instructionPointer++;
-          }
-        }
-      } else {
-        // Move to next instruction for non-jump instructions
-        this.instructionPointer++;
-      }
-
       // Send stopped event
       setTimeout(() => {
         this.sendEvent(new StoppedEvent("step", 1));
       }, 50);
-    } else {
-      console.error("[TonX86] Reached end of program");
+    } catch (err) {
+      console.error("[TonX86] ERROR:", err);
+      this.sendEvent(new OutputEvent(`ERROR: ${err}\n`, "stderr"));
       setTimeout(() => {
         this.sendEvent(new TerminatedEvent());
       }, 50);
@@ -1122,18 +823,20 @@ export class TonX86DebugSession extends DebugSession {
   ): void {
     console.error("[TonX86] Step out request for thread:", args.threadId);
 
-    // In assembly, step out would exit the current function
-    // For now, just continue to next instruction like step in
-    if (this.instructionPointer + 1 < this.instructions.length) {
-      this.instructionPointer++;
-      this.currentLine = this.instructions[this.instructionPointer].line;
-      const instr = this.instructions[this.instructionPointer];
-      console.error(
-        "[TonX86] Stepped to line",
-        this.currentLine,
-        "instruction:",
-        instr.raw,
-      );
+    // Step out: execute until we return from current function
+    // For now, just step once like stepIn
+    const currentInstr = this.simulator.getCurrentInstruction();
+    if (currentInstr) {
+      try {
+        const executedLine = this.simulator.step();
+        this.currentLine = executedLine;
+        console.error(
+          "[TonX86] Stepped to line",
+          this.currentLine,
+        );
+      } catch (err) {
+        console.error("[TonX86] ERROR:", err);
+      }
     }
 
     this.sendResponse(response);
@@ -1160,7 +863,7 @@ export class TonX86DebugSession extends DebugSession {
     this.sendResponse(response);
 
     // If stopOnEntry is false, auto-start execution now
-    if (!this.stopOnEntry && this.instructions.length > 0) {
+    if (!this.stopOnEntry && this.simulator.getInstructions().length > 0) {
       console.error("[TonX86] Auto-starting execution after configuration");
       setTimeout(() => {
         this.continueExecution();

@@ -3,12 +3,7 @@
  * Parses assembly files into instructions and labels
  */
 
-export interface Instruction {
-  line: number;
-  mnemonic: string;
-  operands: string[];
-  raw: string;
-}
+import { Instruction } from "@tonx86/simcore";
 
 export interface ParseResult {
   instructions: Instruction[];

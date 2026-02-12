@@ -59,14 +59,19 @@ The debug adapter includes a robust assembly parser that:
 - Preserves original line numbers for accurate debugging
 - Strips inline comments from instructions
 
-### Control Flow
+### Control Flow (v0.5.0+)
 
-The control flow implementation:
-- Tracks instruction pointer (IP) as an index into the instruction array
+**Architecture:** Control flow is now owned by simcore, not the debug adapter. The debug adapter delegates execution to `simulator.step()` which:
+- Tracks instruction pointer (EIP) as an index into the instruction array
 - Handles unconditional jumps (JMP)
-- Handles conditional jumps (JE, JZ, JNE, JNZ) based on Zero flag
+- Handles conditional jumps (JE, JZ, JNE, JNZ, JG, JL, etc.) based on CPU flags
 - Resolves labels to instruction indices
+- Manages call stack for CALL/RET instructions
 - Includes error handling for invalid jump targets
+
+**Debug Adapter Role:** Simply calls `simulator.step()` and checks for halted state or breakpoints. All control flow logic is delegated to simcore, allowing simcore to run independently from the debug adapter.
+
+**Previous Architecture (v0.4.x):** Control flow was handled directly by the debug adapter with its own instruction pointer and label resolution.
 
 ### Breakpoint Handling
 
