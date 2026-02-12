@@ -1138,7 +1138,16 @@ export class Simulator {
           this.cpu.registers[0] = Math.floor(dividend / divisor) >>> 0; // Quotient
           this.cpu.registers[2] = (dividend % divisor) >>> 0; // Remainder
         }
-        this.updateFlags(this.cpu.registers[0]);
+        
+        // Per x86 spec: All flags are undefined after DIV
+        if (this.compatibilityMode === "educational") {
+          // Keep current behavior for learning
+          this.updateFlags(this.cpu.registers[0]);
+        } else {
+          // In strict-x86 mode, clear CF and OF (common practice for undefined flags)
+          this.cpu.flags &= ~0x01; // Clear CF
+          this.cpu.flags &= ~0x800; // Clear OF
+        }
         break;
       }
 
@@ -1159,7 +1168,16 @@ export class Simulator {
           this.cpu.registers[0] = Math.trunc(dividend / divisor) >>> 0; // Quotient
           this.cpu.registers[2] = (dividend % divisor) >>> 0; // Remainder
         }
-        this.updateFlags(this.cpu.registers[0]);
+        
+        // Per x86 spec: All flags are undefined after IDIV
+        if (this.compatibilityMode === "educational") {
+          // Keep current behavior for learning
+          this.updateFlags(this.cpu.registers[0]);
+        } else {
+          // In strict-x86 mode, clear CF and OF (common practice for undefined flags)
+          this.cpu.flags &= ~0x01; // Clear CF
+          this.cpu.flags &= ~0x800; // Clear OF
+        }
         break;
       }
 

@@ -131,13 +131,15 @@ Register names are **not case-sensitive** (e.g., `EAX` and `eax` refer to the sa
 
 **DIV src** - Unsigned divide (EAX / src -> quotient in EAX, remainder in EDX)
 - Cycles: 1
-- Flags: Z, S
+- Flags: Z, S (educational mode); undefined (strict-x86 mode - CF/OF cleared)
 - Example: `DIV ECX`
+- Note: Per x86 spec, all flags are undefined after DIV. In educational mode, ZF and SF are set for learning purposes.
 
 **IDIV src** - Signed divide (EAX / src -> quotient in EAX, remainder in EDX)
 - Cycles: 1
-- Flags: Z, S
+- Flags: Z, S (educational mode); undefined (strict-x86 mode - CF/OF cleared)
 - Example: `IDIV ECX`
+- Note: Per x86 spec, all flags are undefined after IDIV. In educational mode, ZF and SF are set for learning purposes.
 
 **MOD dest, src** - Modulo operation (dest = dest % src)
 - Cycles: 1

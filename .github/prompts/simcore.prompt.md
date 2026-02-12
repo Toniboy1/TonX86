@@ -174,6 +174,16 @@ readIO(address: number): number {
 - **Overflow Flag**: Signed overflow (opposite signs)
 - **Sign Flag**: Result < 0 (bit 31 set)
 
+### Compatibility Mode Flag Behavior
+- **Educational Mode** (default): All instructions update flags for learning purposes
+  - DIV/IDIV: Set ZF and SF based on quotient
+  - MUL/IMUL: Set ZF and SF based on lower 32 bits
+  - Rotates: Set ZF and SF based on result
+- **Strict-x86 Mode**: Matches real x86 processor behavior
+  - DIV/IDIV: All flags undefined (CF/OF cleared)
+  - MUL/IMUL: ZF/SF undefined (cleared), CF/OF set if upper bits non-zero
+  - Rotates: ZF/SF not modified (per x86 spec)
+
 ## Flag Checking Methods
 ```typescript
 isZeroFlagSet(): boolean     // Zero flag (bit 6)
