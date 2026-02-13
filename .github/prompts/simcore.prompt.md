@@ -230,3 +230,14 @@ Comprehensive test suite in `simulator.test.ts`:
 - Memory-mapped I/O reads/writes
 - Stack operations
 - Interrupt handlers
+
+**Golden Test Suite** (`golden.test.ts`):
+- 106 comprehensive instruction-level validation tests
+- Arithmetic operations (ADD, SUB, MUL, DIV, NEG, etc.)
+- Logical operations (AND, OR, XOR, NOT, TEST)
+- Shift/rotate operations (SHL, SHR, SAR, ROL, ROR)
+- Stack operations (PUSH, POP)
+- Control flow (conditional jumps, flag requirements)
+- Flag correctness validation (Z, C, O, S flags)
+- Complex scenarios (factorial, bit counting, XOR swap, etc.)
+- See [GOLDEN_TESTS.md](../../packages/simcore/GOLDEN_TESTS.md) for details

@@ -494,6 +494,8 @@ Before submitting a contribution:
 
 **Current Coverage:** 92% statements, 84% branches, 95% functions, 94% lines
 
+**Golden Test Suite:** Comprehensive instruction-level validation with 106 tests covering arithmetic, logical, shift/rotate, stack, control flow, and flag correctness. See [packages/simcore/GOLDEN_TESTS.md](packages/simcore/GOLDEN_TESTS.md) for details.
+
 ## Contributing
 
 We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
@@ -514,10 +516,10 @@ MIT License - Free to use for educational and commercial purposes.
 
 **Attribution Required:** When using or distributing this software, you must:
 - Include the original copyright notice
-- Credit the author: **Anthony (Toniboy1)**
+- Credit the author: **Anthony Fasano (Toniboy1)**
 - Link to: https://github.com/Toniboy1/TonX86
 
-Example: `"Built with TonX86 by Anthony (Toniboy1)"`
+Example: `"Built with TonX86 by Anthony Fasano (Toniboy1)"`
 
 See [LICENSE](LICENSE) for full details.
 

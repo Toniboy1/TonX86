@@ -11,7 +11,8 @@
     "watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
     "build": "npm run check-types && node esbuild.js --production",
     "lint": "eslint src",
-    "test": "jest"
+    "test": "jest",
+    "test:coverage": "jest --coverage"
   },
   "dependencies": {
     "@tonx86/simcore": "0.0.1",

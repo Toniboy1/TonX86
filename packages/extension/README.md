@@ -254,7 +254,7 @@ Contributions are welcome! Visit the [GitHub repository](https://github.com/Toni
 
 MIT License - Free to use for educational and commercial purposes.
 
-**Attribution Required**: When using this software, please credit **Anthony (Toniboy1)** and link to the repository.
+**Attribution Required**: When using this software, please credit **Anthony Fasano (Toniboy1)** and link to the repository.
 
 ---
 
