@@ -1358,13 +1358,12 @@ export class Simulator {
 
         if (dest.type === "register") {
           const originalValue = this.cpu.registers[dest.value];
-          const count =
-            (src.type === "register"
-              ? this.cpu.registers[src.value]
-              : src.value) & 0x1f;
+          const rawCount =
+            src.type === "register" ? this.cpu.registers[src.value] : src.value;
+          const count = rawCount & 0x1f;
           const result = (originalValue << count) & 0xffffffff;
           this.cpu.registers[dest.value] = result;
-          this.updateFlagsShift(result, originalValue, count, "SHL");
+          this.updateFlagsShift(result, originalValue, rawCount, "SHL");
         }
         break;
       }
@@ -1378,13 +1377,12 @@ export class Simulator {
 
         if (dest.type === "register") {
           const originalValue = this.cpu.registers[dest.value];
-          const count =
-            (src.type === "register"
-              ? this.cpu.registers[src.value]
-              : src.value) & 0x1f;
+          const rawCount =
+            src.type === "register" ? this.cpu.registers[src.value] : src.value;
+          const count = rawCount & 0x1f;
           const result = (originalValue >>> count) & 0xffffffff;
           this.cpu.registers[dest.value] = result;
-          this.updateFlagsShift(result, originalValue, count, "SHR");
+          this.updateFlagsShift(result, originalValue, rawCount, "SHR");
         }
         break;
       }
@@ -1398,14 +1396,19 @@ export class Simulator {
 
         if (dest.type === "register") {
           const originalValue = this.cpu.registers[dest.value];
-          const count =
-            (src.type === "register"
-              ? this.cpu.registers[src.value]
-              : src.value) & 0x1f;
-          // Convert to signed, shift, then back to unsigned
-          const result = ((originalValue | 0) >> count) >>> 0;
+          const rawCount =
+            src.type === "register" ? this.cpu.registers[src.value] : src.value;
+          const count = rawCount & 0x1f;
+          const signBit = (originalValue & 0x80000000) >>> 31;
+          let result = originalValue >>> count;
+          if (signBit === 1) {
+            // Fill with sign bit (1s from left)
+            const mask = 0xffffffff << (32 - count);
+            result |= mask;
+          }
+          result &= 0xffffffff;
           this.cpu.registers[dest.value] = result;
-          this.updateFlagsShift(result, originalValue, count, "SAR");
+          this.updateFlagsShift(result, originalValue, rawCount, "SAR");
         }
         break;
       }
@@ -1792,9 +1795,12 @@ export class Simulator {
   private updateFlagsShift(
     result: number,
     originalValue: number,
-    count: number,
+    rawCount: number,
     shiftType: "SHL" | "SHR" | "SAR",
   ): void {
+    // Mask count to 5 bits (0-31) per x86 spec (done after flag calculation for large counts)
+    const count = rawCount & 0x1f;
+
     // If count is 0, flags are not affected
     if (count === 0) return;
 
@@ -1807,8 +1813,8 @@ export class Simulator {
     // CF: Last bit shifted out
     if (shiftType === "SHL") {
       // For left shift, CF gets the bit shifted out from MSB
-      // If count <= 32, get the bit at position (32 - count)
-      if (count <= 32) {
+      // If rawCount <= 32, get the bit at position (32 - count)
+      if (rawCount <= 32) {
         const cf = (original32 >>> (32 - count)) & 1;
         if (cf) {
           this.cpu.flags |= 0x01;
@@ -1816,7 +1822,7 @@ export class Simulator {
           this.cpu.flags &= ~0x01;
         }
       } else {
-        // Count > 32, all bits shifted out, CF = 0
+        // RawCount > 32, all bits shifted out, CF = 0
         this.cpu.flags &= ~0x01;
       }
     } else {

@@ -18,6 +18,15 @@ import * as fs from "fs";
 import * as path from "path";
 import { Simulator, Instruction } from "@tonx86/simcore";
 import { parseAssembly } from "./parser";
+import {
+  detectLCDDimensions,
+  getNextInstructionLine,
+  formatRegisterValue,
+  formatFlagValue,
+  validateCPUSpeed,
+  isExecutableLine,
+  findInstructionByLine,
+} from "./debugLogic";
 
 // File-based logger for debugging - will be set after launch
 let LOG_FILE = "";
@@ -190,7 +199,7 @@ export class TonX86DebugSession extends DebugSession {
     // Extract program path from args
     const launchArgs = args as TonX86LaunchRequestArguments;
     this.programPath = launchArgs.program || "";
-    this.cpuSpeed = launchArgs.cpuSpeed || 100;
+    this.cpuSpeed = validateCPUSpeed(launchArgs.cpuSpeed);
     this.stopOnEntry =
       launchArgs.stopOnEntry !== undefined ? launchArgs.stopOnEntry : true;
     const enableLogging = launchArgs.enableLogging || false;
@@ -244,7 +253,7 @@ export class TonX86DebugSession extends DebugSession {
         });
 
         // Detect required LCD dimensions from code and EQU constants
-        const [lcdWidth, lcdHeight] = this.detectLCDDimensions(
+        const [lcdWidth, lcdHeight] = detectLCDDimensions(
           instructions,
           this.constants,
         );
@@ -939,7 +948,9 @@ export class TonX86DebugSession extends DebugSession {
   }
 }
 
-// Start the debug session
-console.error("[TonX86] Debug adapter starting...");
-DebugSession.run(TonX86DebugSession);
-console.error("[TonX86] Debug adapter started");
+// Start the debug session only if run directly (not imported in tests)
+if (require.main === module || process.env.NODE_ENV !== "test") {
+  console.error("[TonX86] Debug adapter starting...");
+  DebugSession.run(TonX86DebugSession);
+  console.error("[TonX86] Debug adapter started");
+}

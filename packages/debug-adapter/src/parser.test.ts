@@ -78,6 +78,22 @@ describe("Parser - Assembler Directives", () => {
 
       expect(result.dataSegment.items[0].values).toEqual([65, 66, 67]);
     });
+
+    it("should parse standalone DB with string in quotes", () => {
+      const lines = [".data", 'DB "Test"'];
+      const result = parseAssembly(lines);
+
+      expect(result.dataSegment.items[0].values).toEqual([84, 101, 115, 116]); // "Test"
+      expect(result.dataSegment.items[0].size).toBe(1);
+    });
+
+    it("should parse standalone DW with string in quotes", () => {
+      const lines = [".data", 'DW "AB"'];
+      const result = parseAssembly(lines);
+
+      expect(result.dataSegment.items[0].values).toEqual([65, 66]); // "AB"
+      expect(result.dataSegment.items[0].size).toBe(2);
+    });
   });
 
   describe("ORG directive", () => {
@@ -153,6 +169,28 @@ describe("Parser - Assembler Directives", () => {
 
       expect(result.dataSegment.items[0].values).toEqual([10, 20]);
     });
+
+    it("should replace constants in label + data directive", () => {
+      const lines = ["SIZE EQU 64", ".data", "buffer: DB SIZE, SIZE"];
+      const result = parseAssembly(lines);
+
+      expect(result.constants.get("SIZE")).toBe(64);
+      expect(result.dataSegment.items[0].values).toEqual([64, 64]);
+      expect(result.dataSegment.items[0].label).toBe("buffer");
+    });
+
+    it("should replace constants in standalone data directives", () => {
+      const lines = [
+        "WIDTH EQU 32",
+        "HEIGHT EQU 16",
+        ".data",
+        "DD WIDTH, HEIGHT",
+      ];
+      const result = parseAssembly(lines);
+
+      expect(result.dataSegment.items[0].values).toEqual([32, 16]);
+      expect(result.dataSegment.items[0].size).toBe(4);
+    });
   });
 
   describe("Mixed code and data", () => {
@@ -180,6 +218,68 @@ describe("Parser - Assembler Directives", () => {
       // Check code section
       expect(result.instructions).toHaveLength(3);
       expect(result.labels.get("start")).toBe(0);
+    });
+
+    it("should handle label with instruction on same line", () => {
+      const lines = [".text", "start: MOV EAX, 1", "loop: ADD EAX, 1"];
+      const result = parseAssembly(lines);
+
+      expect(result.labels.get("start")).toBe(0);
+      expect(result.labels.get("loop")).toBe(1);
+      expect(result.instructions).toHaveLength(2);
+      expect(result.instructions[0].mnemonic).toBe("MOV");
+      expect(result.instructions[1].mnemonic).toBe("ADD");
+    });
+
+    it("should handle label with instruction and inline comment", () => {
+      const lines = [".text", "main: MOV EAX, 10 ; initialize"];
+      const result = parseAssembly(lines);
+
+      expect(result.labels.get("main")).toBe(0);
+      expect(result.instructions[0].operands).toEqual(["EAX", "10"]);
+    });
+
+    it("should replace constants in label + instruction", () => {
+      const lines = [
+        "MAX EQU 100",
+        ".text",
+        "start: MOV EAX, MAX",
+        "loop: ADD EAX, MAX",
+      ];
+      const result = parseAssembly(lines);
+
+      expect(result.constants.get("MAX")).toBe(100);
+      expect(result.instructions[0].operands).toEqual(["EAX", "100"]);
+      expect(result.instructions[1].operands).toEqual(["EAX", "100"]);
+    });
+
+    it("should handle label in data section followed by directive", () => {
+      const lines = [".data", "msg:", "DB 'X'"];
+      const result = parseAssembly(lines);
+
+      expect(result.labels.get("msg")).toBe(0x2000);
+      expect(result.dataSegment.items[0].label).toBe("msg");
+    });
+
+    it("should handle label on separate line in data section", () => {
+      const lines = [".data", "value:", "DD 0x12345678"];
+      const result = parseAssembly(lines);
+
+      expect(result.labels.get("value")).toBe(0x2000);
+      expect(result.dataSegment.items[0].label).toBe("value");
+      expect(result.dataSegment.items[0].values).toEqual([0x12345678]);
+    });
+
+    it("should handle label with non-directive content in data section", () => {
+      // When label has something after colon that's not a directive
+      // The label is saved for next line
+      const lines = [".data", "data: something", "DB 0x42"];
+      const result = parseAssembly(lines);
+
+      // Label should be saved and applied to next directive
+      expect(result.dataSegment.items).toHaveLength(1);
+      expect(result.dataSegment.items[0].label).toBe("data");
+      expect(result.labels.get("data")).toBe(0x2000);
     });
   });
 

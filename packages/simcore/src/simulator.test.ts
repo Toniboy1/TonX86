@@ -2620,3 +2620,130 @@ describe("Simulator - Control Flow (EIP, loadInstructions, step)", () => {
     expect(state.callStackDepth).toBe(1);
   });
 });
+
+describe("Simulator - Flag edge cases for full coverage", () => {
+  let sim: Simulator;
+
+  beforeEach(() => {
+    sim = new Simulator();
+  });
+
+  describe("SHL with large count", () => {
+    test("clears CF when raw count > 32", () => {
+      sim.executeInstruction("MOV", ["EAX", "0xFFFFFFFF"]);
+      sim.executeInstruction("MOV", ["ECX", "40"]); // count > 32
+      sim.executeInstruction("SHL", ["EAX", "ECX"]);
+      const flags = sim.getState().flags;
+      // When raw count > 32, CF should be cleared (line 1839)
+      expect(flags & 0x01).toBe(0); // CF should be 0
+      // Result should be same as SHL by (40 & 0x1f) = 8
+      const regs = sim.getRegisters();
+      expect(regs.EAX).toBe(0xffffff00);
+    });
+  });
+
+  describe("ROL single-bit rotation flag edge cases", () => {
+    test("clears OF when MSB equals CF for single-bit ROL", () => {
+      // Set up a value where ROL will result in MSB == CF
+      // Example: 0x00000000 rotated left by 1 gives 0x00000000, MSB=0, CF=0
+      sim.executeInstruction("MOV", ["EAX", "0"]);
+      sim.executeInstruction("ROL", ["EAX", "1"]);
+      const flags = sim.getState().flags;
+      // OF should be cleared when MSB == CF (both 0)
+      expect(flags & 0x800).toBe(0); // OF should be 0 (line 1906)
+    });
+
+    test("sets OF when MSB != CF for single-bit ROL", () => {
+      // Set up a value where ROL will result in MSB != CF
+      // Example: 0x80000000 rotated left by 1 gives 0x00000001, MSB=0, CF=1
+      sim.executeInstruction("MOV", ["EAX", "0x80000000"]);
+      sim.executeInstruction("ROL", ["EAX", "1"]);
+      const flags = sim.getState().flags;
+      // OF should be set when MSB != CF
+      expect(flags & 0x800).not.toBe(0); // OF should be set
+    });
+  });
+
+  describe("DIV/IDIV in strict-x86 mode", () => {
+    test("clears CF and OF in strict-x86 mode", () => {
+      const sim = new Simulator(8, 8, "strict-x86");
+      // Set CF and OF first
+      sim.executeInstruction("MOV", ["EAX", "0x80000000"]);
+      sim.executeInstruction("ADD", ["EAX", "0x80000000"]); // Sets CF and OF
+
+      // Now do DIV which should clear CF and OF in strict-x86 mode
+      sim.executeInstruction("MOV", ["EAX", "100"]);
+      sim.executeInstruction("MOV", ["EDX", "0"]);
+      sim.executeInstruction("MOV", ["ECX", "10"]);
+      sim.executeInstruction("DIV", ["ECX"]);
+      const flags = sim.getState().flags;
+      // In strict-x86 mode, CF and OF are cleared
+      expect(flags & 0x01).toBe(0); // CF should be cleared (line 1210)
+      expect(flags & 0x800).toBe(0); // OF should be cleared (line 1211)
+    });
+  });
+
+  describe("PUSH with memory operand", () => {
+    test("pushes value from memory address with register base", () => {
+      // Write a value to memory first
+      sim.executeInstruction("MOV", ["EAX", "12345"]);
+      sim.executeInstruction("MOV", ["EBX", "0x1000"]);
+      sim.executeInstruction("MOV", ["[EBX]", "EAX"]);
+
+      // Push the memory value onto stack using register indirect
+      sim.executeInstruction("PUSH", ["[EBX]"]); // line 1551
+
+      // Pop it back and verify
+      sim.executeInstruction("POP", ["ECX"]);
+      const regs = sim.getRegisters();
+      expect(regs.ECX).toBe(12345);
+    });
+  });
+
+  describe("INT 0x21 with AH=0x09", () => {
+    test("handles write string interrupt", () => {
+      // Set up INT 0x21, AH=0x09 (write string)
+      sim.executeInstruction("MOV", ["EAX", "0x0900"]); // AH=0x09
+      sim.executeInstruction("INT", ["0x21"]); // line 1610
+      // This is not fully implemented but should not crash
+      expect(sim.getState().halted).toBe(false);
+    });
+  });
+
+  describe("MUL/IMUL in strict-x86 mode", () => {
+    test("clears ZF and SF in strict-x86 mode", () => {
+      const sim = new Simulator(8, 8, "strict-x86");
+      // Set ZF and SF first with a SUB instruction
+      sim.executeInstruction("MOV", ["EAX", "0"]);
+      sim.executeInstruction("SUB", ["EAX", "1"]);
+      let flags = sim.getState().flags;
+      // Verify ZF is cleared and SF is set after SUB
+      expect(flags & 0x40).toBe(0); // ZF should be clear
+      expect(flags & 0x80).not.toBe(0); // SF should be set
+
+      // Now do MUL which should clear ZF and SF in strict-x86 mode (lines 1951-1952)
+      sim.executeInstruction("MOV", ["EAX", "5"]);
+      sim.executeInstruction("MOV", ["ECX", "3"]);
+      sim.executeInstruction("MUL", ["ECX"]);
+      flags = sim.getState().flags;
+      // In strict-x86 mode, ZF and SF are undefined (cleared)
+      expect(flags & 0x40).toBe(0); // ZF should be cleared (line 1951)
+      expect(flags & 0x80).toBe(0); // SF should be cleared (line 1952)
+    });
+
+    test("clears ZF and SF in strict-x86 mode for IMUL", () => {
+      const sim = new Simulator(8, 8, "strict-x86");
+      // Set ZF and SF first
+      sim.executeInstruction("MOV", ["EAX", "0"]);
+      sim.executeInstruction("SUB", ["EAX", "1"]);
+
+      // Now do IMUL which should also clear ZF and SF in strict-x86 mode
+      sim.executeInstruction("MOV", ["EAX", "5"]);
+      sim.executeInstruction("MOV", ["ECX", "3"]);
+      sim.executeInstruction("IMUL", ["ECX"]);
+      const flags = sim.getState().flags;
+      expect(flags & 0x40).toBe(0); // ZF should be cleared
+      expect(flags & 0x80).toBe(0); // SF should be cleared
+    });
+  });
+});
