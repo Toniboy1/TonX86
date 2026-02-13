@@ -104,6 +104,11 @@ export const REQUIRES_ONE_OPERAND = [
 export const REQUIRES_ZERO_OPERANDS = ["RET", "HLT", "IRET", "NOP"];
 
 /**
+ * Assembler directives (non-instructions)
+ */
+export const ASSEMBLER_DIRECTIVES = [".TEXT", ".DATA", "DB", "DW", "DD", "ORG"];
+
+/**
  * Jump/call instructions that take label targets
  */
 export const LABEL_INSTRUCTIONS = [
@@ -252,8 +257,16 @@ export function validateInstructions(
   lines.forEach((line, lineIndex) => {
     const trimmed = line.trim();
 
-    // Skip empty lines, comments, labels
+    // Skip empty lines, comments
     if (!trimmed || trimmed.startsWith(";")) return;
+
+    // Skip section directives (.text, .data) - case insensitive
+    const upperTrimmed = trimmed.toUpperCase();
+    if (upperTrimmed === ".TEXT" || upperTrimmed === ".DATA") {
+      return;
+    }
+
+    // Skip standalone labels (lines ending with :)
     if (trimmed.endsWith(":")) return;
 
     // Strip inline comments
@@ -291,13 +304,74 @@ export function validateInstructions(
       return;
     }
 
+    // Skip ORG directive
+    if (/^ORG\s+/i.test(cleanLine)) {
+      const orgMatch = /^ORG\s+(.+)$/i.exec(cleanLine);
+      if (!orgMatch || !orgMatch[1].trim()) {
+        diagnostics.push({
+          severity: DiagnosticSeverity.Error,
+          range: {
+            start: { line: lineIndex, character: 0 },
+            end: { line: lineIndex, character: trimmed.length },
+          },
+          message: `ORG directive requires an address value`,
+          source: "tonx86",
+        });
+      }
+      return;
+    }
+
+    // Skip data directives (DB, DW, DD)
+    if (/^(DB|DW|DD)\s+/i.test(cleanLine)) {
+      const dataMatch = /^(DB|DW|DD)\s+(.+)$/i.exec(cleanLine);
+      if (!dataMatch || !dataMatch[2].trim()) {
+        const directive = dataMatch ? dataMatch[1] : "DB/DW/DD";
+        diagnostics.push({
+          severity: DiagnosticSeverity.Error,
+          range: {
+            start: { line: lineIndex, character: 0 },
+            end: { line: lineIndex, character: trimmed.length },
+          },
+          message: `${directive} directive requires data values`,
+          source: "tonx86",
+        });
+      }
+      return;
+    }
+
+    // Handle labels with directives on same line (e.g., "message: DB 'Hi'")
+    // Must be checked BEFORE tokenization to avoid treating "label:" as instruction
+    const labelWithDirective = cleanLine.match(
+      /^(\w+):\s+(DB|DW|DD|ORG|EQU)\s+(.+)$/i,
+    );
+    if (labelWithDirective) {
+      const directive = labelWithDirective[2].toUpperCase();
+      const value = labelWithDirective[3].trim();
+      if (!value) {
+        diagnostics.push({
+          severity: DiagnosticSeverity.Error,
+          range: {
+            start: { line: lineIndex, character: 0 },
+            end: { line: lineIndex, character: trimmed.length },
+          },
+          message: `${directive} directive requires ${directive === "ORG" ? "an address" : directive === "EQU" ? "a value" : "data values"}`,
+          source: "tonx86",
+        });
+      }
+      return;
+    }
+
     // Tokenize
     const tokens = cleanLine.split(/[\s,]+/).filter((t) => t.length > 0);
     if (tokens.length === 0) return;
 
     const instruction = tokens[0].toUpperCase();
 
-    // Check valid instruction
+    // Check valid instruction (skip if it's a directive)
+    if (ASSEMBLER_DIRECTIVES.includes(instruction)) {
+      return; // Already handled above
+    }
+
     if (!validInstructionNames.includes(instruction)) {
       diagnostics.push({
         severity: DiagnosticSeverity.Error,

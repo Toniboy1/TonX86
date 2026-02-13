@@ -243,6 +243,94 @@ The language server provides real-time diagnostics for:
 
 See [CALLING_CONVENTIONS.md](packages/docs/CALLING_CONVENTIONS.md) for detailed documentation.
 
+### Assembler Directives
+
+TonX86 supports assembler directives for organizing code and data sections, defining data, and setting addresses.
+
+#### Section Directives
+
+- **`.text`** - Code section (default)
+- **`.data`** - Data section
+
+#### Data Definition Directives
+
+- **`DB`** - Define Byte (8-bit)
+- **`DW`** - Define Word (16-bit, little-endian)
+- **`DD`** - Define Doubleword (32-bit, little-endian)
+
+#### Address Control
+
+- **`ORG address`** - Set origin address for current section
+  - In `.text`: Sets code start address (default 0x0000)
+  - In `.data`: Sets data start address (default 0x2000)
+
+#### Constants
+
+- **`NAME EQU value`** - Define named constant
+  - Supports decimal, hexadecimal (`0x`), and binary (`0b`) values
+  - Can be used in both code and data sections
+
+#### Examples
+
+**Basic Data Section:**
+```asm
+.data
+message: DB "Hello, World!", 0x00
+count: DW 100
+buffer: DD 0x12345678
+```
+
+**Using EQU Constants:**
+```asm
+SCREEN_WIDTH EQU 64
+LCD_BASE EQU 0xF000
+
+.data
+dimensions: DW SCREEN_WIDTH, SCREEN_WIDTH
+
+.text
+MOV EAX, LCD_BASE
+```
+
+**Complete Program with Directives:**
+```asm
+; Constants
+LCD_BASE EQU 0xF000
+
+; Data Section
+.data
+ORG 0x2000
+message: DB "TonX86", 0x00
+colors: DD 0xFF000000, 0xFFFFFFFF
+
+; Code Section
+.text
+ORG 0x0000
+
+main:
+  MOV ESI, message
+  MOV EDI, LCD_BASE
+  CALL display_text
+  HLT
+
+display_text:
+  PUSH EBP
+  MOV EBP, ESP
+  ; ... display logic ...
+  POP EBP
+  RET
+```
+
+**Memory Layout:**
+- **Code**: Starts at 0x0000 by default (configurable with ORG)
+- **Data**: Starts at 0x2000 by default (configurable with ORG)
+- **Stack**: Grows downward from 0xFFFF
+- **I/O**: Memory-mapped at 0xF000-0xFFFF (LCD), 0x10100-0x10102 (Keyboard)
+
+**Label Resolution:**
+- **`.text` labels**: Resolved to instruction indices (for JMP, CALL)
+- **`.data` labels**: Resolved to memory addresses (for MOV, etc.)
+
 ### Flags
 **Z** (Zero) | **C** (Carry) | **O** (Overflow) | **S** (Sign)
 

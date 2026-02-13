@@ -45,7 +45,10 @@ function parseASM(content) {
   const instructions = [];
   const labels = {};
   const constants = {}; // EQU constants
+  const dataLabels = {}; // Data section labels with memory addresses
   let lineNumber = 0;
+  let currentSection = 'text'; // 'text' or 'data'
+  let dataAddress = 0x2000; // Default data start address
 
   // First pass: collect EQU constants
   for (let i = 0; i < lines.length; i++) {
@@ -68,7 +71,10 @@ function parseASM(content) {
     }
   }
 
-  // Second pass: collect labels and instructions
+  // Second pass: collect data labels with addresses
+  currentSection = 'text';
+  dataAddress = 0x2000;
+  
   for (let i = 0; i < lines.length; i++) {
     let line = lines[i].trim();
     
@@ -80,7 +86,159 @@ function parseASM(content) {
 
     if (!line) continue;
 
-    // Check for label
+    // Track section changes
+    if (line.toUpperCase() === '.DATA') {
+      currentSection = 'data';
+      continue;
+    }
+    if (line.toUpperCase() === '.TEXT') {
+      currentSection = 'text';
+      continue;
+    }
+
+    // Handle ORG directive
+    if (/^ORG\s+/i.test(line)) {
+      const orgMatch = line.match(/^ORG\s+(.+)/i);
+      if (orgMatch && currentSection === 'data') {
+        const addressStr = orgMatch[1].trim();
+        // Parse hex, binary, or decimal
+        if (addressStr.startsWith('0x') || addressStr.startsWith('0X')) {
+          dataAddress = parseInt(addressStr.substring(2), 16);
+        } else if (addressStr.startsWith('0b') || addressStr.startsWith('0B')) {
+          dataAddress = parseInt(addressStr.substring(2), 2);
+        } else {
+          dataAddress = parseInt(addressStr, 10);
+        }
+      }
+      continue;
+    }
+
+    // In data section, track labels and their addresses
+    if (currentSection === 'data') {
+      // Data directive with label on same line
+      const labelWithData = line.match(/^(\w+):\s*(DB|DW|DD)\s+(.+)/i);
+      if (labelWithData) {
+        const labelName = labelWithData[1];
+        const directive = labelWithData[2].toUpperCase();
+        const values = labelWithData[3];
+        dataLabels[labelName] = dataAddress;
+        
+        // Calculate size to advance address
+        // For simplicity, count comma-separated values
+        const valueCount = values.split(',').length;
+        const size = directive === 'DB' ? 1 : directive === 'DW' ? 2 : 4;
+        
+        // Handle string literals
+        if (values.includes('"')) {
+          const strMatch = values.match(/"([^"]*)"/);
+          if (strMatch) {
+            dataAddress += strMatch[1].length;
+          }
+        } else {
+          dataAddress += valueCount * size;
+        }
+        continue;
+      }
+
+      // Standalone label in data section
+      if (line.endsWith(':')) {
+        const labelName = line.substring(0, line.length - 1);
+        dataLabels[labelName] = dataAddress;
+        continue;
+      }
+
+      // Data directive without label
+      if (/^(DB|DW|DD)\s+/i.test(line)) {
+        const dataMatch = line.match(/^(DB|DW|DD)\s+(.+)/i);
+        if (dataMatch) {
+          const directive = dataMatch[1].toUpperCase();
+          const values = dataMatch[2];
+          const valueCount = values.split(',').length;
+          const size = directive === 'DB' ? 1 : directive === 'DW' ? 2 : 4;
+          
+          // Handle string literals
+          if (values.includes('"')) {
+            const strMatch = values.match(/"([^"]*)"/);
+            if (strMatch) {
+              dataAddress += strMatch[1].length;
+            }
+          } else {
+            dataAddress += valueCount * size;
+          }
+        }
+        continue;
+      }
+    }
+  }
+
+  // Third pass: collect code labels and instructions
+  currentSection = 'text';
+  lineNumber = 0;
+  for (let i = 0; i < lines.length; i++) {
+    let line = lines[i].trim();
+    
+    // Remove comments
+    const commentIndex = line.indexOf(';');
+    if (commentIndex >= 0) {
+      line = line.substring(0, commentIndex).trim();
+    }
+
+    if (!line) continue;
+
+    // Handle section directives - track which section we're in
+    if (line.toUpperCase() === '.TEXT') {
+      currentSection = 'text';
+      continue;
+    }
+    if (line.toUpperCase() === '.DATA') {
+      currentSection = 'data';
+      continue;
+    }
+
+    // Skip ORG directive
+    if (/^ORG\s+/i.test(line)) {
+      continue;
+    }
+
+    // Skip data directives (DB, DW, DD) in data section
+    if (currentSection === 'data' && /^(\w+:)?\s*(DB|DW|DD)\s+/i.test(line)) {
+      continue;
+    }
+
+    // Only process instructions if we're in text section
+    if (currentSection !== 'text') {
+      continue;
+    }
+
+    // Check for label with instruction on same line (e.g., "start: MOV EAX, 1")
+    const labelWithInstruction = line.match(/^(\w+):\s+(.+)$/);
+    if (labelWithInstruction) {
+      const label = labelWithInstruction[1];
+      const restOfLine = labelWithInstruction[2].trim();
+      labels[label] = lineNumber;
+      
+      // Skip if rest is a directive
+      if (/^(DB|DW|DD|ORG|EQU)\s+/i.test(restOfLine)) {
+        continue;
+      }
+      
+      // Process the instruction part
+      let processedLine = restOfLine;
+      for (const [constName, constValue] of Object.entries(constants)) {
+        const regex = new RegExp(`\\b${constName}\\b`, 'g');
+        processedLine = processedLine.replace(regex, constValue);
+      }
+      // Substitute data labels with their addresses
+      for (const [labelName, address] of Object.entries(dataLabels)) {
+        const regex = new RegExp(`\\b${labelName}\\b`, 'g');
+        processedLine = processedLine.replace(regex, `0x${address.toString(16)}`);
+      }
+      instructions.push({ line: processedLine, lineNumber: i + 1 });
+      lineNumber++;
+      continue;
+    }
+
+    // Check for standalone label
     if (line.endsWith(':')) {
       const label = line.substring(0, line.length - 1);
       labels[label] = lineNumber;
@@ -98,6 +256,12 @@ function parseASM(content) {
       // Replace constant name with its value (word boundary match)
       const regex = new RegExp(`\\b${constName}\\b`, 'g');
       processedLine = processedLine.replace(regex, constValue);
+    }
+    
+    // Substitute data labels with their addresses
+    for (const [labelName, address] of Object.entries(dataLabels)) {
+      const regex = new RegExp(`\\b${labelName}\\b`, 'g');
+      processedLine = processedLine.replace(regex, `0x${address.toString(16)}`);
     }
 
     instructions.push({ line: processedLine, lineNumber: i + 1 });

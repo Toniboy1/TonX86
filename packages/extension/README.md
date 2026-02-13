@@ -103,6 +103,42 @@ Press `F5` or click **Run → Start Debugging**. VS Code will create a launch co
 | `JNE/JNZ label` | Jump if not equal/zero | `JNE loop` |
 | `HLT` | Halt execution | `HLT` |
 
+### Assembler Directives
+
+Organize your code with assembler directives:
+
+| Directive | Description | Example |
+|-----------|-------------|---------|
+| `.text` | Code section (default) | `.text` |
+| `.data` | Data section | `.data` |
+| `DB` | Define Byte (8-bit) | `message: DB "Hello", 0x00` |
+| `DW` | Define Word (16-bit) | `count: DW 100` |
+| `DD` | Define Doubleword (32-bit) | `color: DD 0xFF000000` |
+| `ORG addr` | Set origin address | `ORG 0x2000` |
+| `NAME EQU value` | Define constant | `LCD_BASE EQU 0xF000` |
+
+**Example with Data Section:**
+
+```asm
+; Constants
+SCREEN_WIDTH EQU 64
+
+; Data Section
+.data
+ORG 0x2000
+message: DB "TonX86", 0x00
+colors: DD 0xFF000000, 0xFFFFFFFF
+
+; Code Section
+.text
+ORG 0x0000
+
+main:
+  MOV ESI, message
+  MOV EAX, SCREEN_WIDTH
+  HLT
+```
+
 ## 🖥️ Memory-Mapped I/O
 
 ### LCD Display (0xF000-0xF0FF)

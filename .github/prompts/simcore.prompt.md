@@ -2,6 +2,21 @@
 
 Core CPU simulator for TonX86 assembly execution.
 
+## Assembler Directives Support (NEW in v0.5.1)
+
+TonX86 now supports assembler directives for separating code and data:
+- **`.text`** / **`.data`** - Section directives (code vs data)
+- **`DB`** / **`DW`** / **`DD`** - Data definition (byte, word, doubleword)
+- **`ORG address`** - Set origin address for current section
+- **`NAME EQU value`** - Define constants (existing feature, enhanced)
+
+### Data Loading API
+```typescript
+loadData(dataItems: Array<{address: number, size: 1|2|4, values: number[]}>): void
+```
+
+Loads data items into memory before program execution. Data is stored in little-endian format.
+
 ## CPU Architecture
 - **Registers**: 8x 32-bit (EAX, ECX, EDX, EBX, ESP, EBP, ESI, EDI)
 - **8-bit Registers**: AL, AH, CL, CH, DL, DH, BL, BH (low/high bytes of EAX-EBX)

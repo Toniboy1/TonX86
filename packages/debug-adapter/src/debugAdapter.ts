@@ -235,6 +235,7 @@ export class TonX86DebugSession extends DebugSession {
         const instructions = parseResult.instructions;
         const labels = parseResult.labels;
         this.constants = parseResult.constants;
+        const dataSegment = parseResult.dataSegment;
         console.error("[TonX86] Parsed", instructions.length, "instructions:");
         instructions.forEach((instr) => {
           console.error(
@@ -249,6 +250,14 @@ export class TonX86DebugSession extends DebugSession {
         );
         this.simulator = new Simulator(lcdWidth, lcdHeight);
         console.error(`[TonX86] Detected LCD size: ${lcdWidth}x${lcdHeight}`);
+
+        // Load data into memory before loading instructions
+        if (dataSegment.items.length > 0) {
+          this.simulator.loadData(dataSegment.items);
+          console.error(
+            `[TonX86] Loaded ${dataSegment.items.length} data items into memory`,
+          );
+        }
 
         // Load instructions and labels into simulator
         this.simulator.loadInstructions(instructions, labels);

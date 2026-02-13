@@ -23,13 +23,13 @@
     "vscode": "^1.8.0"
   },
   "scripts": {
-    "build": "npm run build -w packages/simcore && npm -ws run build",
-    "compile": "npm -ws run compile",
-    "watch": "npm -ws run watch",
+    "build": "npm run build -w packages/simcore && npm --workspaces run build",
+    "compile": "npm --workspaces run compile",
+    "watch": "npm --workspaces run watch",
     "dev": "npm run watch",
-    "test": "npm -ws run test",
+    "test": "npm --workspaces run test",
     "test:examples": "npm run build -w packages/simcore && node scripts/test-examples.js",
-    "lint": "npm -ws run lint",
+    "lint": "npm --workspaces run lint",
     "check": "npm run lint && npm run build && npm test && npm run test:examples",
     "precommit": "npm run check",
     "package": "npm run build && cd packages/extension && npm run package",
