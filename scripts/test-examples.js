@@ -185,8 +185,13 @@ function parseASM(content) {
 
     if (!line) continue;
 
-    // Skip section directives (.text, .data)
-    if (line.toUpperCase() === '.TEXT' || line.toUpperCase() === '.DATA') {
+    // Handle section directives - track which section we're in
+    if (line.toUpperCase() === '.TEXT') {
+      currentSection = 'text';
+      continue;
+    }
+    if (line.toUpperCase() === '.DATA') {
+      currentSection = 'data';
       continue;
     }
 
@@ -195,14 +200,13 @@ function parseASM(content) {
       continue;
     }
 
-    // Skip data directives (DB, DW, DD) - with or without label
-    if (/^(\w+:)?\s*(DB|DW|DD)\s+/i.test(line)) {
-      // Extract label if present
-      const labelMatch = line.match(/^(\w+):/);
-      if (labelMatch) {
-        const label = labelMatch[1];
-        labels[label] = lineNumber; // Associate label with current line (even though it's data)
-      }
+    // Skip data directives (DB, DW, DD) in data section
+    if (currentSection === 'data' && /^(\w+:)?\s*(DB|DW|DD)\s+/i.test(line)) {
+      continue;
+    }
+
+    // Only process instructions if we're in text section
+    if (currentSection !== 'text') {
       continue;
     }
 
