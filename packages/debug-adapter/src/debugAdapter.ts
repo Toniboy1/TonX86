@@ -837,7 +837,7 @@ export class TonX86DebugSession extends DebugSession {
 
 // Start the debug session only if run directly (not imported in tests)
 /* istanbul ignore next */
-if (require.main === module) {
+if (require.main === module || process.env.NODE_ENV !== "test") {
   console.error("[TonX86] Debug adapter starting...");
   DebugSession.run(TonX86DebugSession);
   console.error("[TonX86] Debug adapter started");

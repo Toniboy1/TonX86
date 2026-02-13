@@ -1,0 +1,18 @@
+PASS src/debugLogic.test.ts
+PASS src/debugAdapter.test.ts
+PASS src/parser.test.ts
+PASS src/debugAdapter.unit.test.ts
+-----------------|---------|----------|---------|---------|-------------------
+File             | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s 
+-----------------|---------|----------|---------|---------|-------------------
+All files        |     100 |      100 |     100 |     100 |                   
+ debugAdapter.ts |     100 |      100 |     100 |     100 |                   
+ debugLogic.ts   |     100 |      100 |     100 |     100 |                   
+ parser.ts       |     100 |      100 |     100 |     100 |                   
+-----------------|---------|----------|---------|---------|-------------------
+
+Test Suites: 4 passed, 4 total
+Tests:       158 passed, 158 total
+Snapshots:   0 total
+Time:        2.446 s
+Ran all test suites.

@@ -30,8 +30,10 @@ describe("TonX86DebugSession Unit Tests", () => {
 
   // Mock process.exit to prevent tests from exiting
   const originalExit = process.exit;
+  const originalNodeEnv = process.env.NODE_ENV;
 
   beforeAll(() => {
+    process.env.NODE_ENV = "test"; // Prevent guard from executing
     (process.exit as any) = jest.fn();
     jest.spyOn(console, "error").mockImplementation(() => {});
   });
@@ -41,6 +43,7 @@ describe("TonX86DebugSession Unit Tests", () => {
     // while process.exit is still mocked, then restore
     await new Promise((resolve) => setTimeout(resolve, 500));
     process.exit = originalExit;
+    process.env.NODE_ENV = originalNodeEnv;
     (console.error as any).mockRestore();
   });
 
