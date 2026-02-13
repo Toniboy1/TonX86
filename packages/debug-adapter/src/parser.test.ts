@@ -1,5 +1,5 @@
 import { describe, it, expect } from "@jest/globals";
-import { parseAssembly, DataItem } from "./parser";
+import { parseAssembly } from "./parser";
 
 /**
  * Tests for assembler directives (.text, .data, db, dw, dd, equ, org)
