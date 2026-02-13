@@ -5,6 +5,7 @@ import {
   beforeEach,
   beforeAll,
   afterAll,
+  afterEach,
   jest,
 } from "@jest/globals";
 import { TonX86DebugSession } from "./debugAdapter";
@@ -14,8 +15,8 @@ import * as path from "path";
 import * as os from "os";
 
 /**
- * Unit tests for TonX86DebugSession
- * These tests verify the debug adapter protocol implementation
+ * Comprehensive unit tests for TonX86DebugSession
+ * Targets 100% line/branch/function coverage for debugAdapter.ts
  */
 
 describe("TonX86DebugSession Unit Tests", () => {
@@ -23,28 +24,38 @@ describe("TonX86DebugSession Unit Tests", () => {
   let tempDir: string;
   let testProgramPath: string;
 
+  // Collected events and responses
+  let sentEvents: any[];
+  let sentResponses: any[];
+
   // Mock process.exit to prevent tests from exiting
   const originalExit = process.exit;
 
   beforeAll(() => {
-    // Mock process.exit to prevent it from actually exiting
     (process.exit as any) = jest.fn();
-
-    // Suppress console.error to reduce noise
     jest.spyOn(console, "error").mockImplementation(() => {});
   });
 
-  afterAll(() => {
-    // Restore process.exit
+  afterAll(async () => {
+    // Wait for any pending timers from vscode-debugadapter to fire
+    // while process.exit is still mocked, then restore
+    await new Promise((resolve) => setTimeout(resolve, 500));
     process.exit = originalExit;
-
-    // Restore console.error
     (console.error as any).mockRestore();
   });
 
   beforeEach(() => {
-    // Create a new session for each test
     session = new TonX86DebugSession();
+    sentEvents = [];
+    sentResponses = [];
+
+    // Mock sendEvent and sendResponse
+    (session as any).sendEvent = (event: any) => {
+      sentEvents.push(event);
+    };
+    (session as any).sendResponse = (resp: any) => {
+      sentResponses.push(resp);
+    };
 
     // Create temporary directory for test files
     tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "tonx86-test-"));
@@ -62,11 +73,48 @@ start:
   });
 
   afterEach(() => {
-    // Clean up temp files
     if (fs.existsSync(tempDir)) {
       fs.rmSync(tempDir, { recursive: true, force: true });
     }
   });
+
+  // ==================== Helper Functions ====================
+
+  function makeResponse(command: string): any {
+    return {
+      request_seq: 1,
+      success: true,
+      command,
+      seq: 1,
+      type: "response",
+    };
+  }
+
+  function launchProgram(
+    programPath: string,
+    options: {
+      stopOnEntry?: boolean;
+      cpuSpeed?: number;
+      enableLogging?: boolean;
+    } = {},
+  ) {
+    const response = makeResponse("launch");
+    const args: any = {
+      program: programPath,
+      stopOnEntry:
+        options.stopOnEntry !== undefined ? options.stopOnEntry : true,
+      cpuSpeed: options.cpuSpeed,
+      enableLogging: options.enableLogging,
+      __restart: undefined,
+      noDebug: false,
+    };
+    (session as any).launchRequest(response, args);
+    // Clear events from launch
+    sentEvents = [];
+    sentResponses = [];
+  }
+
+  // ==================== Constructor ====================
 
   describe("Constructor", () => {
     it("should create a debug session instance", () => {
@@ -75,80 +123,117 @@ start:
     });
   });
 
+  // ==================== Initialize Request ====================
+
   describe("Initialize Request", () => {
-    it("should handle initialize request and return capabilities", () => {
-      const response: DebugProtocol.InitializeResponse = {
-        request_seq: 1,
-        success: true,
-        command: "initialize",
-        seq: 1,
-        type: "response",
-      };
-
-      let responseBody: any = null;
-      (session as any).sendResponse = (resp: DebugProtocol.Response) => {
-        responseBody = resp.body;
-      };
-
+    it("should return capabilities", () => {
+      const response = makeResponse("initialize");
       (session as any).initializeRequest(response);
 
-      expect(responseBody).toBeDefined();
-      expect(responseBody.supportsConfigurationDoneRequest).toBe(true);
-      expect(responseBody.supportsSetVariable).toBe(true);
+      expect(sentResponses).toHaveLength(1);
+      expect(sentResponses[0].body.supportsConfigurationDoneRequest).toBe(true);
+      expect(sentResponses[0].body.supportsSetVariable).toBe(true);
+      expect(sentResponses[0].body.supportsConditionalBreakpoints).toBe(false);
+      expect(sentResponses[0].body.supportsFunctionBreakpoints).toBe(false);
+      expect(sentResponses[0].body.supportsStepBack).toBe(false);
     });
   });
 
+  // ==================== Launch Request ====================
+
   describe("Launch Request", () => {
     it("should load and parse a program file", () => {
-      const response: DebugProtocol.LaunchResponse = {
-        request_seq: 2,
-        success: true,
-        command: "launch",
-        seq: 2,
-        type: "response",
-      };
-
-      const args: any = {
-        program: testProgramPath,
-        stopOnEntry: true,
-        __restart: undefined,
-        noDebug: false,
-      };
-
-      let responseReceived = false;
-      (session as any).sendResponse = () => {
-        responseReceived = true;
-      };
-      (session as any).sendEvent = () => {};
-
-      (session as any).launchRequest(response, args);
-
-      expect(responseReceived).toBe(true);
+      launchProgram(testProgramPath);
       expect((session as any).programPath).toBe(testProgramPath);
     });
 
     it("should handle cpuSpeed parameter", () => {
-      const response: DebugProtocol.LaunchResponse = {
-        request_seq: 2,
-        success: true,
-        command: "launch",
-        seq: 2,
-        type: "response",
-      };
+      launchProgram(testProgramPath, { cpuSpeed: 150 });
+      expect((session as any).cpuSpeed).toBe(150);
+    });
 
+    it("should handle enableLogging=true", () => {
+      launchProgram(testProgramPath, { enableLogging: true });
+      // Check that log file was created
+      const logPath = path.join(tempDir, "tonx86-debug.log");
+      expect(fs.existsSync(logPath)).toBe(true);
+      const logContent = fs.readFileSync(logPath, "utf-8");
+      expect(logContent).toContain("TonX86 Debug Session Started");
+    });
+
+    it("should handle program with .data section", () => {
+      const dataProgram = `.data
+msg: DB 72, 101, 108, 108, 111
+.text
+start:
+  MOV EAX, 1
+  HLT
+`;
+      const dataPath = path.join(tempDir, "data.asm");
+      fs.writeFileSync(dataPath, dataProgram);
+      launchProgram(dataPath);
+      expect((session as any).programPath).toBe(dataPath);
+    });
+
+    it("should handle non-existent file gracefully", () => {
+      const fakePath = path.join(tempDir, "nonexistent.asm");
+      launchProgram(fakePath);
+      expect((session as any).programPath).toBe(fakePath);
+    });
+
+    it("should handle empty program path", () => {
+      const response = makeResponse("launch");
       const args: any = {
-        program: testProgramPath,
+        program: "",
         stopOnEntry: true,
-        cpuSpeed: 150,
         __restart: undefined,
         noDebug: false,
       };
-
-      (session as any).sendResponse = () => {};
-      (session as any).sendEvent = () => {};
-
       (session as any).launchRequest(response, args);
-      expect((session as any).cpuSpeed).toBe(150);
+      expect((session as any).programPath).toBe("");
+    });
+
+    it("should handle no instructions with TerminatedEvent", () => {
+      const emptyProgram = `; Just a comment, no instructions
+`;
+      const emptyPath = path.join(tempDir, "empty.asm");
+      fs.writeFileSync(emptyPath, emptyProgram);
+
+      const response = makeResponse("launch");
+      const args: any = {
+        program: emptyPath,
+        stopOnEntry: true,
+        __restart: undefined,
+        noDebug: false,
+      };
+      (session as any).launchRequest(response, args);
+
+      // Should send TerminatedEvent when no instructions
+      const terminatedEvents = sentEvents.filter(
+        (e: any) => e.event === "terminated",
+      );
+      expect(terminatedEvents.length).toBeGreaterThan(0);
+    });
+
+    it("should handle stopOnEntry=false", () => {
+      jest.useFakeTimers();
+      launchProgram(testProgramPath, { stopOnEntry: false });
+      expect((session as any).stopOnEntry).toBe(false);
+      jest.useRealTimers();
+    });
+
+    it("should default stopOnEntry to true when undefined", () => {
+      jest.useFakeTimers();
+      const response = makeResponse("launch");
+      const args: any = {
+        program: testProgramPath,
+        // stopOnEntry intentionally omitted
+        __restart: undefined,
+        noDebug: false,
+      };
+      (session as any).launchRequest(response, args);
+      expect((session as any).stopOnEntry).toBe(true);
+      jest.useRealTimers();
     });
 
     it("should detect LCD dimensions from constants", () => {
@@ -158,520 +243,865 @@ start:
   MOV EAX, 1
   HLT
 `;
-      const lcdProgramPath = path.join(tempDir, "lcd.asm");
-      fs.writeFileSync(lcdProgramPath, programWithLCD);
-
-      const response: DebugProtocol.LaunchResponse = {
-        request_seq: 2,
-        success: true,
-        command: "launch",
-        seq: 2,
-        type: "response",
-      };
-
-      const args: any = {
-        program: lcdProgramPath,
-        stopOnEntry: false,
-        __restart: undefined,
-        noDebug: false,
-      };
-
-      (session as any).sendResponse = () => {};
-      (session as any).sendEvent = () => {};
-
-      (session as any).launchRequest(response, args);
-      expect((session as any).programPath).toBe(lcdProgramPath);
-    });
-
-    it("should detect LCD from hardcoded addresses", () => {
-      const programWithLCDAddresses = `start:
-  MOV [0xF000], 1
-  MOV [0xF100], 2
-  HLT
-`;
-      const lcdProgPath = path.join(tempDir, "lcd-inst.asm");
-      fs.writeFileSync(lcdProgPath, programWithLCDAddresses);
-
-      const response: DebugProtocol.LaunchResponse = {
-        request_seq: 1,
-        success: true,
-        command: "launch",
-        seq: 1,
-        type: "response",
-      };
-
-      const args: any = {
-        program: lcdProgPath,
-        stopOnEntry: false,
-        __restart: undefined,
-        noDebug: false,
-      };
-
-      (session as any).sendResponse = () => {};
-      (session as any).sendEvent = () => {};
-
-      (session as any).launchRequest(response, args);
-      expect((session as any).programPath).toBe(lcdProgPath);
-    });
-
-    it("should default to 8x8 LCD when no LCD access detected", () => {
-      const noLcdProgram = `start:
-  MOV EAX, 1
-  MOV EBX, 2
-  HLT
-`;
-      const noLcdPath = path.join(tempDir, "no-lcd.asm");
-      fs.writeFileSync(noLcdPath, noLcdProgram);
-
-      const response: DebugProtocol.LaunchResponse = {
-        request_seq: 1,
-        success: true,
-        command: "launch",
-        seq: 1,
-        type: "response",
-      };
-
-      const args: any = {
-        program: noLcdPath,
-        stopOnEntry: false,
-        __restart: undefined,
-        noDebug: false,
-      };
-
-      (session as any).sendResponse = () => {};
-      (session as any).sendEvent = () => {};
-
-      (session as any).launchRequest(response, args);
-      expect((session as any).programPath).toBe(noLcdPath);
+      const lcdPath = path.join(tempDir, "lcd.asm");
+      fs.writeFileSync(lcdPath, programWithLCD);
+      launchProgram(lcdPath);
+      expect((session as any).programPath).toBe(lcdPath);
     });
   });
+
+  // ==================== Configuration Done ====================
 
   describe("Configuration Done Request", () => {
-    it("should handle configurationDone request", () => {
-      const response: DebugProtocol.ConfigurationDoneResponse = {
-        request_seq: 3,
-        success: true,
-        command: "configurationDone",
-        seq: 3,
-        type: "response",
-      };
-
-      // First launch a program
-      const launchResponse: DebugProtocol.LaunchResponse = {
-        request_seq: 1,
-        success: true,
-        command: "launch",
-        seq: 1,
-        type: "response",
-      };
-
-      const launchArgs: any = {
-        program: testProgramPath,
-        stopOnEntry: true,
-        __restart: undefined,
-        noDebug: false,
-      };
-
-      (session as any).sendResponse = () => {};
-      (session as any).sendEvent = () => {};
-
-      (session as any).launchRequest(launchResponse, launchArgs);
-
-      // Now call configurationDone
-      let configDoneReceived = false;
-      (session as any).sendResponse = () => {
-        configDoneReceived = true;
-      };
-
+    it("should set configurationDone flag", () => {
+      launchProgram(testProgramPath);
+      const response = makeResponse("configurationDone");
       (session as any).configurationDoneRequest(response);
-      expect(configDoneReceived).toBe(true);
+      expect((session as any).configurationDone).toBe(true);
+    });
+
+    it("should auto-start when stopOnEntry=false and instructions exist", () => {
+      jest.useFakeTimers();
+      launchProgram(testProgramPath, { stopOnEntry: false });
+      (session as any).stopOnEntry = false;
+      const response = makeResponse("configurationDone");
+      (session as any).configurationDoneRequest(response);
+      expect((session as any).configurationDone).toBe(true);
+      // The auto-start is dispatched via setTimeout
+      jest.advanceTimersByTime(100);
+      jest.useRealTimers();
     });
   });
+
+  // ==================== Breakpoints ====================
 
   describe("Breakpoints", () => {
-    it("should set breakpoints", () => {
-      // First launch
-      const launchResponse: DebugProtocol.LaunchResponse = {
-        request_seq: 1,
-        success: true,
-        command: "launch",
-        seq: 1,
-        type: "response",
-      };
+    it("should set valid breakpoints", () => {
+      launchProgram(testProgramPath);
 
-      const launchArgs: any = {
-        program: testProgramPath,
-        stopOnEntry: false,
-        __restart: undefined,
-        noDebug: false,
-      };
+      const response = makeResponse("setBreakpoints");
+      response.body = { breakpoints: [] };
 
-      (session as any).sendResponse = () => {};
-      (session as any).sendEvent = () => {};
-      (session as any).launchRequest(launchResponse, launchArgs);
-
-      // Now set breakpoints
-      const bpResponse: DebugProtocol.SetBreakpointsResponse = {
-        request_seq: 2,
-        success: true,
-        command: "setBreakpoints",
-        seq: 2,
-        type: "response",
-        body: { breakpoints: [] },
-      };
-
-      const bpArgs: DebugProtocol.SetBreakpointsArguments = {
+      const args: DebugProtocol.SetBreakpointsArguments = {
         source: { path: testProgramPath },
-        breakpoints: [{ line: 3 }, { line: 5 }],
+        breakpoints: [{ line: 3 }], // Line 3 has MOV EAX, 10
       };
+      (session as any).setBreakPointsRequest(response, args);
 
-      let breakpointsSet: any[] = [];
-      (session as any).sendResponse = (resp: DebugProtocol.Response) => {
-        if (resp.body && resp.body.breakpoints) {
-          breakpointsSet = resp.body.breakpoints;
-        }
+      const bps = sentResponses[0].body.breakpoints;
+      const verified = bps.filter((bp: any) => bp.verified);
+      expect(verified.length).toBeGreaterThan(0);
+    });
+
+    it("should reject breakpoints on non-instruction lines", () => {
+      launchProgram(testProgramPath);
+
+      const response = makeResponse("setBreakpoints");
+      response.body = { breakpoints: [] };
+
+      const args: DebugProtocol.SetBreakpointsArguments = {
+        source: { path: testProgramPath },
+        breakpoints: [{ line: 1 }, { line: 999 }],
       };
+      (session as any).setBreakPointsRequest(response, args);
 
-      (session as any).setBreakPointsRequest(bpResponse, bpArgs);
-      expect(breakpointsSet.length).toBeGreaterThan(0);
+      const bps = sentResponses[0].body.breakpoints;
+      const rejected = bps.filter((bp: any) => !bp.verified);
+      expect(rejected.length).toBe(2);
+    });
+
+    it("should handle empty breakpoints array", () => {
+      launchProgram(testProgramPath);
+
+      const response = makeResponse("setBreakpoints");
+      response.body = { breakpoints: [] };
+
+      const args: DebugProtocol.SetBreakpointsArguments = {
+        source: { path: testProgramPath },
+      };
+      (session as any).setBreakPointsRequest(response, args);
+      expect(sentResponses[0].body.breakpoints).toEqual([]);
     });
   });
+
+  // ==================== Threads ====================
 
   describe("Threads Request", () => {
     it("should return a single thread", () => {
-      const response: DebugProtocol.ThreadsResponse = {
-        request_seq: 1,
-        success: true,
-        command: "threads",
-        seq: 1,
-        type: "response",
-        body: { threads: [] },
-      };
-
-      let threads: any[] = [];
-      (session as any).sendResponse = (resp: DebugProtocol.Response) => {
-        threads = resp.body.threads;
-      };
-
+      const response = makeResponse("threads");
+      response.body = { threads: [] };
       (session as any).threadsRequest(response);
-      expect(threads).toHaveLength(1);
-      expect(threads[0].id).toBe(1);
-      expect(threads[0].name).toBe("Main Thread");
+
+      expect(sentResponses[0].body.threads).toHaveLength(1);
+      expect(sentResponses[0].body.threads[0].id).toBe(1);
+      expect(sentResponses[0].body.threads[0].name).toBe("Main Thread");
     });
   });
+
+  // ==================== Stack Trace ====================
 
   describe("Stack Trace Request", () => {
-    it("should return stack trace after launch", () => {
-      // First launch
-      const launchResponse: DebugProtocol.LaunchResponse = {
-        request_seq: 1,
-        success: true,
-        command: "launch",
-        seq: 1,
-        type: "response",
-      };
+    it("should return stack frame after launch", () => {
+      launchProgram(testProgramPath);
 
-      const launchArgs: any = {
-        program: testProgramPath,
-        stopOnEntry: true,
-        __restart: undefined,
-        noDebug: false,
-      };
+      const response = makeResponse("stackTrace");
+      response.body = { stackFrames: [], totalFrames: 0 };
+      const args: DebugProtocol.StackTraceArguments = { threadId: 1 };
+      (session as any).stackTraceRequest(response, args);
 
-      (session as any).sendResponse = () => {};
-      (session as any).sendEvent = () => {};
-      (session as any).launchRequest(launchResponse, launchArgs);
+      const frames = sentResponses[0].body.stackFrames;
+      expect(frames).toHaveLength(1);
+      expect(frames[0].name).toBe("Main");
+      expect(frames[0].source.path).toBe(testProgramPath);
+    });
 
-      // Request stack trace
-      const stResponse: DebugProtocol.StackTraceResponse = {
-        request_seq: 2,
-        success: true,
-        command: "stackTrace",
-        seq: 2,
-        type: "response",
-        body: { stackFrames: [], totalFrames: 0 },
-      };
+    it("should return stack frame without source", () => {
+      const response = makeResponse("stackTrace");
+      response.body = { stackFrames: [], totalFrames: 0 };
+      const args: DebugProtocol.StackTraceArguments = { threadId: 1 };
+      (session as any).stackTraceRequest(response, args);
 
-      const stArgs: DebugProtocol.StackTraceArguments = {
-        threadId: 1,
-      };
-
-      let stackFrames: any[] = [];
-      (session as any).sendResponse = (resp: DebugProtocol.Response) => {
-        if (resp.body && resp.body.stackFrames) {
-          stackFrames = resp.body.stackFrames;
-        }
-      };
-
-      (session as any).stackTraceRequest(stResponse, stArgs);
-      expect(stackFrames.length).toBeGreaterThan(0);
+      const frames = sentResponses[0].body.stackFrames;
+      expect(frames).toHaveLength(1);
+      expect(frames[0].source).toBeUndefined();
     });
   });
+
+  // ==================== Scopes ====================
 
   describe("Scopes Request", () => {
-    it("should return at least registers scope", () => {
-      const response: DebugProtocol.ScopesResponse = {
-        request_seq: 1,
-        success: true,
-        command: "scopes",
-        seq: 1,
-        type: "response",
-        body: { scopes: [] },
-      };
-
-      const args: DebugProtocol.ScopesArguments = {
-        frameId: 0,
-      };
-
-      let scopes: any[] = [];
-      (session as any).sendResponse = (resp: DebugProtocol.Response) => {
-        scopes = resp.body.scopes;
-      };
-
+    it("should return Registers scope", () => {
+      const response = makeResponse("scopes");
+      response.body = { scopes: [] };
+      const args: DebugProtocol.ScopesArguments = { frameId: 0 };
       (session as any).scopesRequest(response, args);
-      expect(scopes.length).toBeGreaterThanOrEqual(1);
-      const scopeNames = scopes.map((s: any) => s.name);
-      expect(scopeNames).toContain("Registers");
+
+      expect(sentResponses[0].body.scopes).toHaveLength(1);
+      expect(sentResponses[0].body.scopes[0].name).toBe("Registers");
+      expect(sentResponses[0].body.scopes[0].variablesReference).toBe(1);
     });
   });
+
+  // ==================== Variables ====================
 
   describe("Variables Request", () => {
-    it("should return register variables", () => {
-      const response: DebugProtocol.VariablesResponse = {
-        request_seq: 1,
-        success: true,
-        command: "variables",
-        seq: 1,
-        type: "response",
-        body: { variables: [] },
-      };
-
-      const args: DebugProtocol.VariablesArguments = {
-        variablesReference: 1, // Registers scope
-      };
-
-      let variables: any[] = [];
-      (session as any).sendResponse = (resp: DebugProtocol.Response) => {
-        variables = resp.body.variables;
-      };
-
+    it("should return all 8 register variables", () => {
+      const response = makeResponse("variables");
+      response.body = { variables: [] };
+      const args: DebugProtocol.VariablesArguments = { variablesReference: 1 };
       (session as any).variablesRequest(response, args);
-      expect(variables.length).toBeGreaterThan(0);
-      const varNames = variables.map((v: any) => v.name);
-      expect(varNames).toContain("EAX");
-      expect(varNames).toContain("EBX");
+
+      const vars = sentResponses[0].body.variables;
+      expect(vars.length).toBe(8);
+      const names = vars.map((v: any) => v.name);
+      expect(names).toContain("EAX");
+      expect(names).toContain("ECX");
+      expect(names).toContain("EDX");
+      expect(names).toContain("EBX");
+      expect(names).toContain("ESP");
+      expect(names).toContain("EBP");
+      expect(names).toContain("ESI");
+      expect(names).toContain("EDI");
     });
   });
 
-  describe("Disconnect Request", () => {
-    it("should handle disconnect", () => {
-      const response: DebugProtocol.DisconnectResponse = {
-        request_seq: 1,
-        success: true,
-        command: "disconnect",
-        seq: 1,
-        type: "response",
-      };
+  // ==================== Source Request ====================
 
-      const args: DebugProtocol.DisconnectArguments = {};
+  describe("Source Request", () => {
+    it("should return source content after launch", () => {
+      launchProgram(testProgramPath);
 
-      let disconnectReceived = false;
-      (session as any).sendResponse = () => {
-        disconnectReceived = true;
-      };
-      (session as any).sendEvent = () => {};
+      const response = makeResponse("source");
+      response.body = { content: "" };
+      const args: DebugProtocol.SourceArguments = { sourceReference: 1 };
+      (session as any).sourceRequest(response, args);
 
-      (session as any).disconnectRequest(response, args);
-      expect(disconnectReceived).toBe(true);
+      expect(sentResponses[0].body.content).toContain("MOV EAX");
+      expect(sentResponses[0].body.mimeType).toBe("text/x-asm");
+    });
+
+    it("should return fallback when no source loaded", () => {
+      const response = makeResponse("source");
+      response.body = { content: "" };
+      const args: DebugProtocol.SourceArguments = { sourceReference: 1 };
+      (session as any).sourceRequest(response, args);
+
+      expect(sentResponses[0].body.content).toBe("; Source not available");
+      expect(sentResponses[0].body.mimeType).toBe("text/x-asm");
     });
   });
+
+  // ==================== Continue Request ====================
+
+  describe("Continue Request", () => {
+    it("should send response and trigger continueExecution", () => {
+      launchProgram(testProgramPath);
+
+      const response = makeResponse("continue");
+      response.body = { allThreadsContinued: false };
+      const args: DebugProtocol.ContinueArguments = { threadId: 1 };
+      (session as any).continueRequest(response, args);
+
+      expect(sentResponses).toHaveLength(1);
+    });
+
+    it("should handle continueExecution error in catch", () => {
+      launchProgram(testProgramPath);
+
+      // Make continueExecution throw
+      (session as any).continueExecution = () =>
+        Promise.reject(new Error("Execution failed"));
+
+      const response = makeResponse("continue");
+      response.body = { allThreadsContinued: false };
+      (session as any).continueRequest(response, { threadId: 1 });
+
+      // Restore
+      expect(sentResponses).toHaveLength(1);
+    });
+  });
+
+  // ==================== Continue Execution ====================
+
+  describe("continueExecution", () => {
+    it("should execute until HLT and terminate", async () => {
+      launchProgram(testProgramPath);
+      sentEvents = [];
+
+      await (session as any).continueExecution();
+
+      const terminated = sentEvents.filter(
+        (e: any) => e.event === "terminated",
+      );
+      expect(terminated.length).toBeGreaterThan(0);
+    });
+
+    it("should stop at breakpoints", async () => {
+      launchProgram(testProgramPath);
+
+      // Set breakpoint at line 4 (MOV EBX, 20)
+      const bpResponse = makeResponse("setBreakpoints");
+      bpResponse.body = { breakpoints: [] };
+      (session as any).setBreakPointsRequest(bpResponse, {
+        source: { path: testProgramPath },
+        breakpoints: [{ line: 4 }],
+      });
+      sentEvents = [];
+
+      await (session as any).continueExecution();
+
+      const stopped = sentEvents.filter(
+        (e: any) =>
+          e.event === "stopped" && e.body && e.body.reason === "breakpoint",
+      );
+      expect(stopped.length).toBe(1);
+    });
+
+    it("should handle cpuSpeed <= 50", async () => {
+      launchProgram(testProgramPath, { cpuSpeed: 30 });
+      sentEvents = [];
+
+      await (session as any).continueExecution();
+
+      const terminated = sentEvents.filter(
+        (e: any) => e.event === "terminated",
+      );
+      expect(terminated.length).toBeGreaterThan(0);
+    });
+
+    it("should handle cpuSpeed between 51 and 99", async () => {
+      launchProgram(testProgramPath, { cpuSpeed: 75 });
+      sentEvents = [];
+
+      await (session as any).continueExecution();
+
+      const terminated = sentEvents.filter(
+        (e: any) => e.event === "terminated",
+      );
+      expect(terminated.length).toBeGreaterThan(0);
+    });
+
+    it("should handle cpuSpeed > 100", async () => {
+      launchProgram(testProgramPath, { cpuSpeed: 200 });
+      sentEvents = [];
+
+      await (session as any).continueExecution();
+
+      const terminated = sentEvents.filter(
+        (e: any) => e.event === "terminated",
+      );
+      expect(terminated.length).toBeGreaterThan(0);
+    });
+
+    it("should handle program without HLT (reaches end)", async () => {
+      const noHltProgram = `start:
+  MOV EAX, 1
+  MOV EBX, 2
+`;
+      const noHltPath = path.join(tempDir, "nohlt.asm");
+      fs.writeFileSync(noHltPath, noHltProgram);
+      launchProgram(noHltPath);
+      sentEvents = [];
+
+      await (session as any).continueExecution();
+
+      const terminated = sentEvents.filter(
+        (e: any) => e.event === "terminated",
+      );
+      expect(terminated.length).toBeGreaterThan(0);
+    });
+
+    it("should handle execution error gracefully", async () => {
+      launchProgram(testProgramPath);
+
+      // Force simulator to throw on step
+      (session as any).simulator.step = () => {
+        throw new Error("Simulated execution error");
+      };
+      sentEvents = [];
+
+      await (session as any).continueExecution();
+
+      const outputEvents = sentEvents.filter(
+        (e: any) => e.event === "output" && e.body.category === "stderr",
+      );
+      expect(outputEvents.length).toBeGreaterThan(0);
+    });
+
+    it("should log execution when enableLogging is true", async () => {
+      launchProgram(testProgramPath, { enableLogging: true });
+      sentEvents = [];
+
+      await (session as any).continueExecution();
+
+      const logPath = path.join(tempDir, "tonx86-debug.log");
+      const logContent = fs.readFileSync(logPath, "utf-8");
+      expect(logContent).toContain("continueExecution called");
+    });
+
+    it("should skip breakpoint on first iteration", async () => {
+      launchProgram(testProgramPath);
+
+      // Set breakpoint on first instruction (line 3)
+      const bpResponse = makeResponse("setBreakpoints");
+      bpResponse.body = { breakpoints: [] };
+      (session as any).setBreakPointsRequest(bpResponse, {
+        source: { path: testProgramPath },
+        breakpoints: [{ line: 3 }],
+      });
+      sentEvents = [];
+
+      await (session as any).continueExecution();
+
+      // Should NOT stop on first iteration breakpoint, should terminate
+      const terminated = sentEvents.filter(
+        (e: any) => e.event === "terminated",
+      );
+      expect(terminated.length).toBeGreaterThan(0);
+    });
+  });
+
+  // ==================== Next Request (Step Over) ====================
+
+  describe("Next Request", () => {
+    it("should step one instruction with loaded program", () => {
+      jest.useFakeTimers();
+      launchProgram(testProgramPath);
+      sentEvents = [];
+
+      const response = makeResponse("next");
+      const args: DebugProtocol.NextArguments = { threadId: 1 };
+      (session as any).nextRequest(response, args);
+
+      jest.advanceTimersByTime(100);
+
+      const stoppedEvents = sentEvents.filter(
+        (e: any) => e.event === "stopped",
+      );
+      expect(stoppedEvents.length).toBeGreaterThan(0);
+      jest.useRealTimers();
+    });
+
+    it("should terminate if no current instruction", () => {
+      jest.useFakeTimers();
+      const response = makeResponse("next");
+      const args: DebugProtocol.NextArguments = { threadId: 1 };
+      (session as any).nextRequest(response, args);
+      jest.advanceTimersByTime(100);
+
+      const terminated = sentEvents.filter(
+        (e: any) => e.event === "terminated",
+      );
+      expect(terminated.length).toBeGreaterThan(0);
+      jest.useRealTimers();
+    });
+
+    it("should terminate at HLT instruction", () => {
+      jest.useFakeTimers();
+      const hltProgram = `start:
+  HLT
+`;
+      const hltPath = path.join(tempDir, "hlt.asm");
+      fs.writeFileSync(hltPath, hltProgram);
+      launchProgram(hltPath);
+      sentEvents = [];
+
+      const response = makeResponse("next");
+      const args: DebugProtocol.NextArguments = { threadId: 1 };
+      (session as any).nextRequest(response, args);
+      jest.advanceTimersByTime(100);
+
+      const terminated = sentEvents.filter(
+        (e: any) => e.event === "terminated",
+      );
+      expect(terminated.length).toBeGreaterThan(0);
+      jest.useRealTimers();
+    });
+
+    it("should handle execution error in next", () => {
+      launchProgram(testProgramPath);
+
+      (session as any).simulator.step = () => {
+        throw new Error("Step error");
+      };
+      sentEvents = [];
+
+      const response = makeResponse("next");
+      const args: DebugProtocol.NextArguments = { threadId: 1 };
+      (session as any).nextRequest(response, args);
+
+      const terminated = sentEvents.filter(
+        (e: any) => e.event === "terminated",
+      );
+      expect(terminated.length).toBeGreaterThan(0);
+      const errorOutput = sentEvents.filter(
+        (e: any) => e.event === "output" && e.body.category === "stderr",
+      );
+      expect(errorOutput.length).toBeGreaterThan(0);
+    });
+
+    it("should handle logging during next with enableLogging", () => {
+      jest.useFakeTimers();
+      launchProgram(testProgramPath, { enableLogging: true });
+      sentEvents = [];
+
+      const response = makeResponse("next");
+      const args: DebugProtocol.NextArguments = { threadId: 1 };
+      (session as any).nextRequest(response, args);
+      jest.advanceTimersByTime(100);
+      jest.useRealTimers();
+
+      const logPath = path.join(tempDir, "tonx86-debug.log");
+      const logContent = fs.readFileSync(logPath, "utf-8");
+      expect(logContent).toContain("NEXT");
+    });
+
+    it("should log active LCD pixels with non-zero values during next", () => {
+      jest.useFakeTimers();
+      launchProgram(testProgramPath, { enableLogging: true });
+
+      const sim = (session as any).simulator;
+      const origGetLCD = sim.getLCDDisplay.bind(sim);
+      // Return LCD data with some non-zero (active) pixels
+      sim.getLCDDisplay = () => {
+        const data = new Uint8Array(64 * 64);
+        data[0] = 1;
+        data[5] = 255;
+        data[100] = 42;
+        return data;
+      };
+      sentEvents = [];
+
+      const response = makeResponse("next");
+      (session as any).nextRequest(response, { threadId: 1 });
+      jest.advanceTimersByTime(100);
+      jest.useRealTimers();
+
+      const logPath = path.join(tempDir, "tonx86-debug.log");
+      const logContent = fs.readFileSync(logPath, "utf-8");
+      expect(logContent).toContain("lcdPixels");
+
+      sim.getLCDDisplay = origGetLCD;
+    });
+
+    it("should handle LCD logging error during next", () => {
+      jest.useFakeTimers();
+      launchProgram(testProgramPath, { enableLogging: true });
+
+      const sim = (session as any).simulator;
+      const origGetLCD = sim.getLCDDisplay.bind(sim);
+      sim.getLCDDisplay = () => {
+        throw new Error("LCD error");
+      };
+      sentEvents = [];
+
+      const response = makeResponse("next");
+      (session as any).nextRequest(response, { threadId: 1 });
+      jest.advanceTimersByTime(100);
+      jest.useRealTimers();
+
+      // Should still succeed despite LCD logging error
+      expect(sentResponses).toHaveLength(1);
+
+      sim.getLCDDisplay = origGetLCD;
+    });
+  });
+
+  // ==================== Step In Request ====================
+
+  describe("Step In Request", () => {
+    it("should step one instruction with loaded program", () => {
+      jest.useFakeTimers();
+      launchProgram(testProgramPath);
+      sentEvents = [];
+
+      const response = makeResponse("stepIn");
+      const args: DebugProtocol.StepInArguments = { threadId: 1 };
+      (session as any).stepInRequest(response, args);
+      jest.advanceTimersByTime(100);
+
+      const stopped = sentEvents.filter((e: any) => e.event === "stopped");
+      expect(stopped.length).toBeGreaterThan(0);
+      jest.useRealTimers();
+    });
+
+    it("should terminate if no current instruction", () => {
+      jest.useFakeTimers();
+      const response = makeResponse("stepIn");
+      const args: DebugProtocol.StepInArguments = { threadId: 1 };
+      (session as any).stepInRequest(response, args);
+      jest.advanceTimersByTime(100);
+
+      const terminated = sentEvents.filter(
+        (e: any) => e.event === "terminated",
+      );
+      expect(terminated.length).toBeGreaterThan(0);
+      jest.useRealTimers();
+    });
+
+    it("should terminate at HLT instruction", () => {
+      jest.useFakeTimers();
+      const hltProgram = `start:
+  HLT
+`;
+      const hltPath = path.join(tempDir, "hlt-stepin.asm");
+      fs.writeFileSync(hltPath, hltProgram);
+      launchProgram(hltPath);
+      sentEvents = [];
+
+      const response = makeResponse("stepIn");
+      const args: DebugProtocol.StepInArguments = { threadId: 1 };
+      (session as any).stepInRequest(response, args);
+      jest.advanceTimersByTime(100);
+
+      const terminated = sentEvents.filter(
+        (e: any) => e.event === "terminated",
+      );
+      expect(terminated.length).toBeGreaterThan(0);
+      jest.useRealTimers();
+    });
+
+    it("should handle execution error in stepIn", () => {
+      jest.useFakeTimers();
+      launchProgram(testProgramPath);
+      (session as any).simulator.step = () => {
+        throw new Error("Step in error");
+      };
+      sentEvents = [];
+
+      const response = makeResponse("stepIn");
+      const args: DebugProtocol.StepInArguments = { threadId: 1 };
+      (session as any).stepInRequest(response, args);
+      jest.advanceTimersByTime(100);
+
+      const terminated = sentEvents.filter(
+        (e: any) => e.event === "terminated",
+      );
+      expect(terminated.length).toBeGreaterThan(0);
+      jest.useRealTimers();
+    });
+  });
+
+  // ==================== Step Out Request ====================
+
+  describe("Step Out Request", () => {
+    it("should step with loaded program", () => {
+      jest.useFakeTimers();
+      launchProgram(testProgramPath);
+      sentEvents = [];
+
+      const response = makeResponse("stepOut");
+      const args: DebugProtocol.StepOutArguments = { threadId: 1 };
+      (session as any).stepOutRequest(response, args);
+      jest.advanceTimersByTime(100);
+
+      const stopped = sentEvents.filter((e: any) => e.event === "stopped");
+      expect(stopped.length).toBeGreaterThan(0);
+      jest.useRealTimers();
+    });
+
+    it("should handle no current instruction", () => {
+      jest.useFakeTimers();
+      const response = makeResponse("stepOut");
+      const args: DebugProtocol.StepOutArguments = { threadId: 1 };
+      (session as any).stepOutRequest(response, args);
+      jest.advanceTimersByTime(100);
+
+      const stopped = sentEvents.filter((e: any) => e.event === "stopped");
+      expect(stopped.length).toBeGreaterThan(0);
+      jest.useRealTimers();
+    });
+
+    it("should handle step error gracefully", () => {
+      jest.useFakeTimers();
+      launchProgram(testProgramPath);
+      (session as any).simulator.step = () => {
+        throw new Error("Step out error");
+      };
+      sentEvents = [];
+
+      const response = makeResponse("stepOut");
+      const args: DebugProtocol.StepOutArguments = { threadId: 1 };
+      (session as any).stepOutRequest(response, args);
+      jest.advanceTimersByTime(100);
+
+      expect(sentResponses).toHaveLength(1);
+      jest.useRealTimers();
+    });
+  });
+
+  // ==================== Pause Request ====================
 
   describe("Pause Request", () => {
     it("should handle pause request", () => {
-      const response: DebugProtocol.PauseResponse = {
-        request_seq: 1,
-        success: true,
-        command: "pause",
-        seq: 1,
-        type: "response",
-      };
-
-      const args: DebugProtocol.PauseArguments = {
-        threadId: 1,
-      };
-
-      let pauseReceived = false;
-      (session as any).sendResponse = () => {
-        pauseReceived = true;
-      };
-
+      const response = makeResponse("pause");
+      const args: DebugProtocol.PauseArguments = { threadId: 1 };
       (session as any).pauseRequest(response, args);
-      expect(pauseReceived).toBe(true);
+      expect(sentResponses).toHaveLength(1);
     });
   });
 
-  describe("Source Request", () => {
-    it("should return source content", () => {
-      // First launch to load source
-      const launchResponse: DebugProtocol.LaunchResponse = {
-        request_seq: 1,
-        success: true,
-        command: "launch",
-        seq: 1,
-        type: "response",
+  // ==================== Disconnect Request ====================
+
+  describe("Disconnect Request", () => {
+    it("should handle disconnect", () => {
+      const response = makeResponse("disconnect");
+      const args: DebugProtocol.DisconnectArguments = {};
+      (session as any).disconnectRequest(response, args);
+      expect(sentResponses).toHaveLength(1);
+    });
+  });
+
+  // ==================== Custom Requests ====================
+
+  describe("Custom Request", () => {
+    it("should handle getLCDState", () => {
+      const response = makeResponse("getLCDState");
+      (session as any).customRequest("getLCDState", response, {});
+
+      expect(sentResponses[0].body).toBeDefined();
+      expect(sentResponses[0].body.pixels).toBeDefined();
+      expect(Array.isArray(sentResponses[0].body.pixels)).toBe(true);
+    });
+
+    it("should handle getMemoryState with default params", () => {
+      const response = makeResponse("getMemoryState");
+      (session as any).customRequest("getMemoryState", response, {});
+
+      expect(sentResponses[0].body).toBeDefined();
+      expect(sentResponses[0].body.memoryA).toBeDefined();
+      expect(sentResponses[0].body.memoryB).toBeDefined();
+    });
+
+    it("should handle getMemoryState with custom start/length", () => {
+      const response = makeResponse("getMemoryState");
+      (session as any).customRequest("getMemoryState", response, {
+        start: 10,
+        length: 32,
+      });
+
+      expect(sentResponses[0].body.memoryA).toBeDefined();
+      expect(sentResponses[0].body.memoryB).toBeDefined();
+    });
+
+    it("should handle getMemoryState with null args", () => {
+      const response = makeResponse("getMemoryState");
+      (session as any).customRequest("getMemoryState", response, null);
+
+      expect(sentResponses[0].body).toBeDefined();
+      expect(sentResponses[0].body.memoryA).toBeDefined();
+    });
+
+    it("should handle keyboardEvent with valid args", () => {
+      const response = makeResponse("keyboardEvent");
+      (session as any).customRequest("keyboardEvent", response, {
+        keyCode: 65,
+        pressed: true,
+      });
+      expect(sentResponses).toHaveLength(1);
+    });
+
+    it("should handle keyboardEvent with default args", () => {
+      const response = makeResponse("keyboardEvent");
+      (session as any).customRequest("keyboardEvent", response, {});
+      expect(sentResponses).toHaveLength(1);
+    });
+
+    it("should handle keyboardEvent with null args", () => {
+      const response = makeResponse("keyboardEvent");
+      (session as any).customRequest("keyboardEvent", response, null);
+      expect(sentResponses).toHaveLength(1);
+    });
+
+    it("should handle keyboardEvent when simulator not initialized", () => {
+      const response = makeResponse("keyboardEvent");
+      const origSim = (session as any).simulator;
+      (session as any).simulator = null;
+      (session as any).customRequest("keyboardEvent", response, {
+        keyCode: 65,
+        pressed: true,
+      });
+      expect(sentResponses[0].success).toBe(false);
+      (session as any).simulator = origSim;
+    });
+
+    it("should fall through to super for unknown commands", () => {
+      const response = makeResponse("unknownCommand");
+      try {
+        (session as any).customRequest("unknownCommand", response, {});
+      } catch {
+        // super might throw
+      }
+    });
+  });
+
+  // ==================== emitConsoleOutput ====================
+
+  describe("emitConsoleOutput", () => {
+    it("should emit output when simulator has console output", () => {
+      launchProgram(testProgramPath);
+
+      const sim = (session as any).simulator;
+      const origGetOutput = sim.getConsoleOutput.bind(sim);
+      const origClearOutput = sim.clearConsoleOutput.bind(sim);
+      sim.getConsoleOutput = () => "Hello from interrupt!";
+      let cleared = false;
+      sim.clearConsoleOutput = () => {
+        cleared = true;
       };
 
-      const launchArgs: any = {
-        program: testProgramPath,
+      sentEvents = [];
+      (session as any).emitConsoleOutput();
+
+      const outputEvents = sentEvents.filter(
+        (e: any) => e.event === "output" && e.body.category === "stdout",
+      );
+      expect(outputEvents.length).toBe(1);
+      expect(outputEvents[0].body.output).toBe("Hello from interrupt!");
+      expect(cleared).toBe(true);
+
+      sim.getConsoleOutput = origGetOutput;
+      sim.clearConsoleOutput = origClearOutput;
+    });
+
+    it("should not emit when no console output", () => {
+      sentEvents = [];
+      (session as any).emitConsoleOutput();
+      const outputEvents = sentEvents.filter(
+        (e: any) => e.event === "output" && e.body.category === "stdout",
+      );
+      expect(outputEvents).toHaveLength(0);
+    });
+  });
+
+  // ==================== Sleep ====================
+
+  describe("sleep", () => {
+    it("should resolve after specified delay", async () => {
+      const start = Date.now();
+      await (session as any).sleep(10);
+      const elapsed = Date.now() - start;
+      expect(elapsed).toBeGreaterThanOrEqual(5);
+    });
+  });
+
+  // ==================== Edge Cases ====================
+
+  describe("Edge Cases", () => {
+    it("should handle launch with enableLogging but log creation failure", () => {
+      const invalidDir = path.join(tempDir, "nonexistent-dir", "sub");
+      const response = makeResponse("launch");
+      const args: any = {
+        program: path.join(invalidDir, "test.asm"),
+        stopOnEntry: true,
+        enableLogging: true,
+        __restart: undefined,
+        noDebug: false,
+      };
+      (session as any).launchRequest(response, args);
+      expect(sentResponses.length).toBeGreaterThan(0);
+    });
+
+    it("should handle parse error in source file (catch branch)", () => {
+      // Create a file that triggers a parser error in the catch block
+      const invalidProgram = ".data\nNOT_A_DIRECTIVE\n";
+      const invalidPath = path.join(tempDir, "invalid-parse.asm");
+      fs.writeFileSync(invalidPath, invalidProgram);
+
+      // Verify parseAssembly throws for this input
+      const { parseAssembly } = require("./parser");
+      expect(() => parseAssembly([".data", "NOT_A_DIRECTIVE"])).toThrow();
+
+      const response = makeResponse("launch");
+      const args: any = {
+        program: invalidPath,
         stopOnEntry: true,
         __restart: undefined,
         noDebug: false,
       };
-
-      (session as any).sendResponse = () => {};
-      (session as any).sendEvent = () => {};
-      (session as any).launchRequest(launchResponse, launchArgs);
-
-      // Request source
-      const sourceResponse: DebugProtocol.SourceResponse = {
-        request_seq: 2,
-        success: true,
-        command: "source",
-        seq: 2,
-        type: "response",
-        body: { content: "" },
-      };
-
-      const sourceArgs: DebugProtocol.SourceArguments = {
-        sourceReference: 1,
-        source: { path: testProgramPath },
-      };
-
-      let sourceContent = "";
-      (session as any).sendResponse = (resp: DebugProtocol.Response) => {
-        if (resp.body && resp.body.content) {
-          sourceContent = resp.body.content;
-        }
-      };
-
-      (session as any).sourceRequest(sourceResponse, sourceArgs);
-      expect(sourceContent.length).toBeGreaterThan(0);
-    });
-  });
-
-  describe("Continue Request", () => {
-    it("should call continueRequest", () => {
-      // Just verify the method can be called
-      const contResponse: DebugProtocol.ContinueResponse = {
-        request_seq: 3,
-        success: true,
-        command: "continue",
-        seq: 3,
-        type: "response",
-        body: { allThreadsContinued: false },
-      };
-
-      const contArgs: DebugProtocol.ContinueArguments = {
-        threadId: 1,
-      };
-
-      let responseReceived = false;
-      (session as any).sendResponse = () => {
-        responseReceived = true;
-      };
-
-      (session as any).continueRequest(contResponse, contArgs);
-      expect(responseReceived).toBe(true);
-    });
-  });
-
-  describe("Step Requests", () => {
-    it("should call nextRequest", () => {
-      const stepResponse: DebugProtocol.NextResponse = {
-        request_seq: 3,
-        success: true,
-        command: "next",
-        seq: 3,
-        type: "response",
-      };
-
-      const stepArgs: DebugProtocol.NextArguments = {
-        threadId: 1,
-      };
-
-      let responseReceived = false;
-      (session as any).sendResponse = () => {
-        responseReceived = true;
-      };
-
-      (session as any).nextRequest(stepResponse, stepArgs);
-      expect(responseReceived).toBe(true);
+      (session as any).launchRequest(response, args);
+      // Should complete without crashing (error caught)
+      expect(sentResponses.length).toBeGreaterThan(0);
     });
 
-    it("should call stepInRequest", () => {
-      const stepInResponse: DebugProtocol.StepInResponse = {
-        request_seq: 3,
-        success: true,
-        command: "stepIn",
-        seq: 3,
-        type: "response",
-      };
+    it("should handle null currentInstruction during continueExecution", async () => {
+      launchProgram(testProgramPath);
 
-      const stepInArgs: DebugProtocol.StepInArguments = {
-        threadId: 1,
-      };
+      // Mock getCurrentInstruction to return null while EIP < instructions.length
+      const sim = (session as any).simulator;
+      sim.getCurrentInstruction = () => null;
+      sentEvents = [];
 
-      let responseReceived = false;
-      (session as any).sendResponse = () => {
-        responseReceived = true;
-      };
+      await (session as any).continueExecution();
 
-      (session as any).stepInRequest(stepInResponse, stepInArgs);
-      expect(responseReceived).toBe(true);
+      // Should break out of loop and terminate
+      const terminated = sentEvents.filter(
+        (e: any) => e.event === "terminated",
+      );
+      expect(terminated.length).toBeGreaterThan(0);
     });
 
-    it("should call stepOutRequest", () => {
-      const stepOutResponse: DebugProtocol.StepOutResponse = {
-        request_seq: 3,
-        success: true,
-        command: "stepOut",
-        seq: 3,
-        type: "response",
-      };
+    it("should trigger yield interval during long execution", async () => {
+      // Create a program with a loop that executes many instructions
+      const loopProgram = `start:
+  MOV ECX, 200
+loop:
+  DEC ECX
+  JNZ loop
+  HLT
+`;
+      const loopPath = path.join(tempDir, "loop.asm");
+      fs.writeFileSync(loopPath, loopProgram);
+      launchProgram(loopPath);
+      sentEvents = [];
 
-      const stepOutArgs: DebugProtocol.StepOutArguments = {
-        threadId: 1,
-      };
+      await (session as any).continueExecution();
 
-      let responseReceived = false;
-      (session as any).sendResponse = () => {
-        responseReceived = true;
-      };
-
-      (session as any).stepOutRequest(stepOutResponse, stepOutArgs);
-      expect(responseReceived).toBe(true);
-    });
-  });
-
-  describe("Custom Request", () => {
-    it("should handle getLCD custom request", () => {
-      const customResponse: DebugProtocol.Response = {
-        request_seq: 1,
-        success: true,
-        command: "getLCD",
-        seq: 1,
-        type: "response",
-      };
-
-      let lcdData: any = null;
-      (session as any).sendResponse = (resp: DebugProtocol.Response) => {
-        if (resp.body) {
-          lcdData = resp.body;
-        }
-      };
-
-      (session as any).customRequest("getLCD", [], customResponse);
-      expect(lcdData).toBeDefined();
+      // Should have terminated after executing all iterations
+      const terminated = sentEvents.filter(
+        (e: any) => e.event === "terminated",
+      );
+      expect(terminated.length).toBeGreaterThan(0);
     });
   });
 });
