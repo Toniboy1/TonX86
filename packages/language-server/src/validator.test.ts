@@ -1288,7 +1288,9 @@ describe("functional: example file validation", () => {
         const errMessages = errs.map(
           (d) => `  Line ${d.range.start.line + 1}: ${d.message}`,
         );
-        fail(`${file} has ${errs.length} error(s):\n${errMessages.join("\n")}`);
+        throw new Error(
+          `${file} has ${errs.length} error(s):\n${errMessages.join("\n")}`,
+        );
       }
 
       if (!isKnownWarning) {
@@ -1297,7 +1299,7 @@ describe("functional: example file validation", () => {
           const warnMessages = warns.map(
             (d) => `  Line ${d.range.start.line + 1}: ${d.message}`,
           );
-          fail(
+          throw new Error(
             `${file} has ${warns.length} unexpected warning(s):\n${warnMessages.join("\n")}`,
           );
         }

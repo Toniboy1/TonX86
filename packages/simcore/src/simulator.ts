@@ -612,6 +612,38 @@ export class Simulator {
   }
 
   /**
+   * Load data into memory from data items
+   * @param dataItems Array of data items with address, size, and values
+   */
+  loadData(
+    dataItems: Array<{
+      address: number;
+      size: 1 | 2 | 4;
+      values: number[];
+    }>,
+  ): void {
+    for (const item of dataItems) {
+      let address = item.address;
+      for (const value of item.values) {
+        if (item.size === 1) {
+          // Byte (DB)
+          this.memory.writeA(address, value & 0xff);
+          address += 1;
+        } else if (item.size === 2) {
+          // Word (DW) - little-endian
+          this.memory.writeA(address, value & 0xff);
+          this.memory.writeA(address + 1, (value >> 8) & 0xff);
+          address += 2;
+        } else if (item.size === 4) {
+          // Dword (DD) - little-endian
+          this.writeMemory32(address, value);
+          address += 4;
+        }
+      }
+    }
+  }
+
+  /**
    * Get the current instruction pointer (EIP)
    */
   getEIP(): number {
