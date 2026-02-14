@@ -336,6 +336,19 @@ describe("Flag Semantics", () => {
       expect((sim.getState().flags & 0x800) !== 0).toBe(true); // OF = bit 31 XOR bit 30
     });
 
+    it("clears OF when top two bits are equal for single-bit rotate", () => {
+      const instructions = [
+        { line: 1, mnemonic: "MOV", operands: ["EAX", "2"], raw: "MOV EAX, 2" },
+        { line: 2, mnemonic: "ROR", operands: ["EAX", "1"], raw: "ROR EAX, 1" },
+        { line: 3, mnemonic: "HLT", operands: [], raw: "HLT" },
+      ];
+      sim.loadInstructions(instructions, new Map());
+      sim.step(); // MOV
+      sim.step(); // ROR: 2 >> 1 = 1, bit 31=0, bit 30=0 → OF cleared
+      expect(sim.getState().registers[0]).toBe(1);
+      expect((sim.getState().flags & 0x800) !== 0).toBe(false); // OF = 0
+    });
+
     it("does not modify flags when count is zero", () => {
       const instructions = [
         {
