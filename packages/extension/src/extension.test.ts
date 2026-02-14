@@ -17,7 +17,17 @@ describe("TonX86 Extension", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    jest.useRealTimers();
+    jest.useFakeTimers();
+
+    // Suppress console output during tests
+    jest.spyOn(console, "log").mockImplementation();
+    jest.spyOn(console, "warn").mockImplementation();
+    jest.spyOn(console, "error").mockImplementation();
+
+    // Restore default getConfiguration mock (may have been overridden by previous test)
+    (vscode.workspace.getConfiguration as jest.Mock).mockImplementation(() => ({
+      get: jest.fn((_key: string, defaultValue?: any) => defaultValue),
+    }));
 
     mockContext = {
       subscriptions: [],
@@ -54,11 +64,7 @@ describe("TonX86 Extension", () => {
   afterEach(() => {
     jest.clearAllTimers();
     jest.useRealTimers();
-    // Clear any running intervals to prevent Jest from hanging
-    const highestId = setTimeout(() => {}, 0) as unknown as number;
-    for (let i = 0; i < highestId; i++) {
-      clearInterval(i);
-    }
+    jest.restoreAllMocks();
   });
 
   describe("activate", () => {
@@ -117,21 +123,17 @@ describe("TonX86 Extension", () => {
 
   describe("deactivate", () => {
     it("should stop the language client", async () => {
-      const consoleSpy = jest.spyOn(console, "log");
-
       activate(mockContext);
       const result = deactivate();
 
       expect(result).toBeDefined();
-      expect(consoleSpy).toHaveBeenCalledWith(
+      expect(console.log).toHaveBeenCalledWith(
         "TonX86 extension is now deactivated",
       );
 
       if (result) {
         await expect(result).resolves.toBeUndefined();
       }
-
-      consoleSpy.mockRestore();
     });
 
     it("should handle multiple deactivation calls safely", async () => {
@@ -481,7 +483,7 @@ describe("TonX86 Extension", () => {
       });
     });
 
-    it("should handle panel disposal", async () => {
+    it("should handle panel disposal", () => {
       activate(mockContext);
 
       const providerCall = (
@@ -492,8 +494,8 @@ describe("TonX86 Extension", () => {
       provider.popOut();
       expect(provider.isPopped()).toBe(true);
 
-      // Wait for disposal handler to be called
-      await new Promise((resolve) => setTimeout(resolve, 20));
+      // Advance fake timers to trigger the disposal handler
+      jest.advanceTimersByTime(20);
 
       expect(provider.isPopped()).toBe(false);
     });
@@ -554,6 +556,45 @@ describe("TonX86 Extension", () => {
       onMessageHandler({ type: "keyboardEvent", keyCode: 13, pressed: false });
 
       expect(mockHandler).toHaveBeenCalledWith(13, false);
+    });
+
+    it("should render webview with keyboard disabled when configured", () => {
+      const mockWorkspaceConfig = vscode.workspace
+        .getConfiguration as jest.Mock;
+      mockWorkspaceConfig.mockImplementation((section: string) => {
+        if (section === "tonx86.keyboard") {
+          return {
+            get: jest.fn((key: string, defaultValue?: any) => {
+              if (key === "enabled") return false;
+              return defaultValue;
+            }),
+          };
+        }
+        return {
+          get: jest.fn((key: string, defaultValue?: any) => defaultValue),
+        };
+      });
+
+      activate(mockContext);
+
+      const providerCall = (
+        vscode.window.registerWebviewViewProvider as jest.Mock
+      ).mock.calls[0];
+      const provider = providerCall[1];
+
+      const mockWebviewView: any = {
+        webview: {
+          options: {},
+          html: "",
+          onDidReceiveMessage: jest.fn(() => ({ dispose: jest.fn() })),
+        },
+      };
+
+      provider.resolveWebviewView(mockWebviewView);
+
+      // Check that HTML contains disabled keyboard indicators
+      expect(mockWebviewView.webview.html).toContain("Keyboard: Disabled");
+      expect(mockWebviewView.webview.html).toContain('color: #999');
     });
   });
 
@@ -878,7 +919,6 @@ describe("TonX86 Extension", () => {
 
   describe("Debug session events", () => {
     it("should handle debug session start", async () => {
-      jest.useFakeTimers();
       activate(mockContext);
 
       const startHandler = (vscode.debug.onDidStartDebugSession as jest.Mock)
@@ -901,13 +941,9 @@ describe("TonX86 Extension", () => {
       }
 
       expect(mockSession.customRequest).toHaveBeenCalled();
-
-      jest.clearAllTimers();
-      jest.useRealTimers();
     });
 
     it("should handle debug session terminate", async () => {
-      jest.useFakeTimers();
       activate(mockContext);
 
       const startHandler = (vscode.debug.onDidStartDebugSession as jest.Mock)
@@ -936,9 +972,6 @@ describe("TonX86 Extension", () => {
 
       // Interval should be cleared
       expect(mockSession.type).toBe("tonx86");
-
-      jest.clearAllTimers();
-      jest.useRealTimers();
     });
 
     it("should ignore non-tonx86 debug sessions", () => {
@@ -1095,8 +1128,6 @@ describe("TonX86 Extension", () => {
 
   describe("Keyboard event handling", () => {
     it("should forward keyboard events to debug adapter when session is active", async () => {
-      const consoleSpy = jest.spyOn(console, "log");
-
       activate(mockContext);
 
       // Start a debug session
@@ -1105,14 +1136,9 @@ describe("TonX86 Extension", () => {
 
       const mockSession = {
         type: "tonx86",
-        customRequest: jest.fn((command) => {
-          // Return a promise that will resolve on next tick
-          return new Promise((resolve) => {
-            process.nextTick(() => {
-              resolve({ pixels: [], memoryA: [], memoryB: [] });
-            });
-          });
-        }),
+        customRequest: jest.fn(() =>
+          Promise.resolve({ pixels: [], memoryA: [], memoryB: [] }),
+        ),
       };
 
       startHandler(mockSession);
@@ -1142,13 +1168,9 @@ describe("TonX86 Extension", () => {
         keyCode: 65,
         pressed: true,
       });
-
-      consoleSpy.mockRestore();
     });
 
     it("should ignore keyboard events when no debug session is active", () => {
-      const consoleSpy = jest.spyOn(console, "log");
-
       activate(mockContext);
 
       // Ensure no debug session is active by calling terminate handler
@@ -1177,16 +1199,12 @@ describe("TonX86 Extension", () => {
       provider.resolveWebviewView(mockWebviewView);
 
       // Should log that keyboard event is ignored
-      expect(consoleSpy).toHaveBeenCalledWith(
+      expect(console.log).toHaveBeenCalledWith(
         expect.stringContaining("Keyboard event ignored"),
       );
-
-      consoleSpy.mockRestore();
     });
 
     it("should send keyboard events during active debug session", async () => {
-      const consoleSpy = jest.spyOn(console, "log");
-
       activate(mockContext);
 
       const startHandler = (vscode.debug.onDidStartDebugSession as jest.Mock)
@@ -1234,14 +1252,11 @@ describe("TonX86 Extension", () => {
         keyCode: 75,
         pressed: true,
       });
-
-      consoleSpy.mockRestore();
     });
   });
 
   describe("Edge cases", () => {
     it("should handle getLCDState request failure gracefully", async () => {
-      jest.useFakeTimers();
       activate(mockContext);
 
       const startHandler = (vscode.debug.onDidStartDebugSession as jest.Mock)
@@ -1260,13 +1275,9 @@ describe("TonX86 Extension", () => {
       await Promise.resolve();
 
       // Should not throw error
-
-      jest.clearAllTimers();
-      jest.useRealTimers();
     });
 
     it("should handle getMemoryState request failure gracefully", async () => {
-      jest.useFakeTimers();
       activate(mockContext);
 
       const startHandler = (vscode.debug.onDidStartDebugSession as jest.Mock)
@@ -1288,9 +1299,6 @@ describe("TonX86 Extension", () => {
       await Promise.resolve();
 
       // Should not throw error
-
-      jest.clearAllTimers();
-      jest.useRealTimers();
     });
 
     it("should handle keyboard event request failure gracefully", async () => {
@@ -1330,7 +1338,10 @@ describe("TonX86 Extension", () => {
 
       provider.resolveWebviewView(mockWebviewView);
 
-      await new Promise((resolve) => setTimeout(resolve, 20));
+      // Flush microtask queue for promise rejection handling
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
 
       // Should not throw error
     });
@@ -1344,7 +1355,7 @@ describe("TonX86 Extension - Deactivate without client", () => {
     // Use dynamic import to ensure we get module in its initial state
     jest.isolateModules(() => {
       const { deactivate } = require("./extension");
-      const consoleSpy = jest.spyOn(console, "log");
+      const consoleSpy = jest.spyOn(console, "log").mockImplementation();
 
       const result = deactivate();
 
