@@ -1,5 +1,6 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import * as vscode from "vscode";
-import { activate, deactivate, LCDViewProvider } from "./extension";
+import { activate, deactivate } from "./extension";
 
 // Mock vscode-languageclient
 jest.mock("vscode-languageclient/node", () => ({
@@ -1354,6 +1355,7 @@ describe("TonX86 Extension - Deactivate without client", () => {
   it("should return undefined when deactivate is called with no client", async () => {
     // Use dynamic import to ensure we get module in its initial state
     jest.isolateModules(() => {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
       const { deactivate } = require("./extension");
       const consoleSpy = jest.spyOn(console, "log").mockImplementation();
 

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import {
   describe,
   it,
@@ -13,6 +14,7 @@ import { DebugProtocol } from "vscode-debugprotocol";
 import * as fs from "fs";
 import * as path from "path";
 import * as os from "os";
+import { parseAssembly } from "./parser";
 
 /**
  * Comprehensive unit tests for TonX86DebugSession
@@ -1052,7 +1054,6 @@ start:
       fs.writeFileSync(invalidPath, invalidProgram);
 
       // Verify parseAssembly throws for this input
-      const { parseAssembly } = require("./parser");
       expect(() => parseAssembly([".data", "NOT_A_DIRECTIVE"])).toThrow();
 
       const response = makeResponse("launch");

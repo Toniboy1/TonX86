@@ -27,7 +27,7 @@ export const ViewColumn = {
 };
 
 const mockWorkspaceConfiguration = {
-  get: jest.fn((key: string, defaultValue?: any) => {
+  get: jest.fn((key: string, defaultValue?: unknown) => {
     // LCD config defaults
     if (key === "enabled") return defaultValue ?? true;
     if (key === "width") return defaultValue ?? 16;
@@ -38,14 +38,14 @@ const mockWorkspaceConfiguration = {
 };
 
 export const workspace = {
-  getConfiguration: jest.fn((section: string) => mockWorkspaceConfiguration),
+  getConfiguration: jest.fn((_section: string) => mockWorkspaceConfiguration),
   createFileSystemWatcher: jest.fn(() => ({
     onDidChange: jest.fn(),
     onDidCreate: jest.fn(),
     onDidDelete: jest.fn(),
     dispose: jest.fn(),
   })),
-  onDidChangeConfiguration: jest.fn((handler) => ({
+  onDidChangeConfiguration: jest.fn((_handler) => ({
     dispose: jest.fn(),
   })),
 };
@@ -60,11 +60,11 @@ export const window = {
   registerTreeDataProvider: jest.fn(() => ({ dispose: jest.fn() })),
   registerWebviewViewProvider: jest.fn(() => ({ dispose: jest.fn() })),
   showInformationMessage: jest.fn(),
-  createWebviewPanel: jest.fn((viewType, title, showOptions, options) => ({
+  createWebviewPanel: jest.fn((_viewType, _title, _showOptions, _options) => ({
     webview: {
       html: "",
       postMessage: jest.fn(),
-      onDidReceiveMessage: jest.fn((handler) => ({ dispose: jest.fn() })),
+      onDidReceiveMessage: jest.fn((_handler) => ({ dispose: jest.fn() })),
     },
     reveal: jest.fn(),
     dispose: jest.fn(),
@@ -77,12 +77,12 @@ export const window = {
 };
 
 export const commands = {
-  registerCommand: jest.fn((command, handler) => ({ dispose: jest.fn() })),
+  registerCommand: jest.fn((_command, _handler) => ({ dispose: jest.fn() })),
 };
 
 export const debug = {
-  onDidStartDebugSession: jest.fn((handler) => ({ dispose: jest.fn() })),
-  onDidTerminateDebugSession: jest.fn((handler) => ({ dispose: jest.fn() })),
+  onDidStartDebugSession: jest.fn((_handler) => ({ dispose: jest.fn() })),
+  onDidTerminateDebugSession: jest.fn((_handler) => ({ dispose: jest.fn() })),
   registerDebugConfigurationProvider: jest.fn(() => ({ dispose: jest.fn() })),
   registerDebugAdapterTrackerFactory: jest.fn(() => ({ dispose: jest.fn() })),
 };

@@ -16,17 +16,9 @@ interface TonX86LaunchRequestArguments
 }
 import * as fs from "fs";
 import * as path from "path";
-import { Simulator, Instruction } from "@tonx86/simcore";
+import { Simulator } from "@tonx86/simcore";
 import { parseAssembly } from "./parser";
-import {
-  detectLCDDimensions,
-  getNextInstructionLine,
-  formatRegisterValue,
-  formatFlagValue,
-  validateCPUSpeed,
-  isExecutableLine,
-  findInstructionByLine,
-} from "./debugLogic";
+import { detectLCDDimensions, validateCPUSpeed } from "./debugLogic";
 
 // File-based logger for debugging - will be set after launch
 let LOG_FILE = "";
