@@ -271,26 +271,11 @@ export function validateInstructions(
 
     // Strip inline comments
     const cleanLine = stripComment(trimmed);
-    if (!cleanLine) return;
 
     // Skip EQU directives
     if (/\bEQU\b/i.test(cleanLine)) {
       const equMatch = /^(\w+:?)\s+EQU\s+(.+)/i.exec(cleanLine);
-      if (equMatch) {
-        const constantName = equMatch[1];
-        const value = equMatch[2].trim();
-        if (!value) {
-          diagnostics.push({
-            severity: DiagnosticSeverity.Error,
-            range: {
-              start: { line: lineIndex, character: 0 },
-              end: { line: lineIndex, character: trimmed.length },
-            },
-            message: `EQU directive for '${constantName}' is missing a value`,
-            source: "tonx86",
-          });
-        }
-      } else {
+      if (!equMatch) {
         diagnostics.push({
           severity: DiagnosticSeverity.Error,
           range: {
@@ -305,65 +290,23 @@ export function validateInstructions(
     }
 
     // Skip ORG directive
-    if (/^ORG\s+/i.test(cleanLine)) {
-      const orgMatch = /^ORG\s+(.+)$/i.exec(cleanLine);
-      if (!orgMatch || !orgMatch[1].trim()) {
-        diagnostics.push({
-          severity: DiagnosticSeverity.Error,
-          range: {
-            start: { line: lineIndex, character: 0 },
-            end: { line: lineIndex, character: trimmed.length },
-          },
-          message: `ORG directive requires an address value`,
-          source: "tonx86",
-        });
-      }
+    if (/^ORG\s/i.test(cleanLine)) {
       return;
     }
 
     // Skip data directives (DB, DW, DD)
-    if (/^(DB|DW|DD)\s+/i.test(cleanLine)) {
-      const dataMatch = /^(DB|DW|DD)\s+(.+)$/i.exec(cleanLine);
-      if (!dataMatch || !dataMatch[2].trim()) {
-        const directive = dataMatch ? dataMatch[1] : "DB/DW/DD";
-        diagnostics.push({
-          severity: DiagnosticSeverity.Error,
-          range: {
-            start: { line: lineIndex, character: 0 },
-            end: { line: lineIndex, character: trimmed.length },
-          },
-          message: `${directive} directive requires data values`,
-          source: "tonx86",
-        });
-      }
+    if (/^(DB|DW|DD)\s/i.test(cleanLine)) {
       return;
     }
 
     // Handle labels with directives on same line (e.g., "message: DB 'Hi'")
     // Must be checked BEFORE tokenization to avoid treating "label:" as instruction
-    const labelWithDirective = cleanLine.match(
-      /^(\w+):\s+(DB|DW|DD|ORG|EQU)\s+(.+)$/i,
-    );
-    if (labelWithDirective) {
-      const directive = labelWithDirective[2].toUpperCase();
-      const value = labelWithDirective[3].trim();
-      if (!value) {
-        diagnostics.push({
-          severity: DiagnosticSeverity.Error,
-          range: {
-            start: { line: lineIndex, character: 0 },
-            end: { line: lineIndex, character: trimmed.length },
-          },
-          message: `${directive} directive requires ${directive === "ORG" ? "an address" : directive === "EQU" ? "a value" : "data values"}`,
-          source: "tonx86",
-        });
-      }
+    if (/^\w+:\s+(DB|DW|DD|ORG|EQU)\s/i.test(cleanLine)) {
       return;
     }
 
     // Tokenize
     const tokens = cleanLine.split(/[\s,]+/).filter((t) => t.length > 0);
-    if (tokens.length === 0) return;
 
     const instruction = tokens[0].toUpperCase();
 
@@ -499,36 +442,26 @@ export function validateInstructions(
     });
 
     // Check for jump/call with undefined labels
+    // Note: operands.length is always >= 1 here because LABEL_INSTRUCTIONS
+    // are all in REQUIRES_ONE_OPERAND, which returns early above if count != 1
     if (LABEL_INSTRUCTIONS.includes(instruction)) {
-      if (operands.length < 1) {
+      const label = operands[0];
+      if (
+        !label.startsWith("0x") &&
+        !label.startsWith("0X") &&
+        !VALID_REGISTERS.includes(label.toUpperCase()) &&
+        !labels.has(label) &&
+        !equConstants.has(label)
+      ) {
         diagnostics.push({
-          severity: DiagnosticSeverity.Error,
+          severity: DiagnosticSeverity.Warning,
           range: {
             start: { line: lineIndex, character: 0 },
             end: { line: lineIndex, character: trimmed.length },
           },
-          message: `${instruction} requires a label operand`,
+          message: `Label '${label}' is not defined`,
           source: "tonx86",
         });
-      } else {
-        const label = operands[0];
-        if (
-          !label.startsWith("0x") &&
-          !label.startsWith("0X") &&
-          !VALID_REGISTERS.includes(label.toUpperCase()) &&
-          !labels.has(label) &&
-          !equConstants.has(label)
-        ) {
-          diagnostics.push({
-            severity: DiagnosticSeverity.Warning,
-            range: {
-              start: { line: lineIndex, character: 0 },
-              end: { line: lineIndex, character: trimmed.length },
-            },
-            message: `Label '${label}' is not defined`,
-            source: "tonx86",
-          });
-        }
       }
     }
   });
@@ -586,7 +519,6 @@ export function validateControlFlow(
     if (/\bEQU\b/i.test(cleanLine)) continue;
 
     const tokens = cleanLine.split(/[\s,]+/);
-    if (tokens.length === 0) continue;
 
     const instruction = tokens[0].toUpperCase();
 
@@ -804,10 +736,7 @@ export function validateCallingConventions(
 
     if (!currentFunction) continue;
 
-    if (!fnClean) continue;
-
     const tokens = fnClean.split(/[\s,]+/).filter((t) => t.length > 0);
-    if (tokens.length === 0) continue;
 
     const instruction = tokens[0].toUpperCase();
 
@@ -899,7 +828,7 @@ export function validateCallingConventions(
             start: { line: func.prologuePushEBPLine, character: 0 },
             end: {
               line: func.prologuePushEBPLine,
-              character: lines[func.prologuePushEBPLine]?.length || 0,
+              character: lines[func.prologuePushEBPLine].length,
             },
           },
           message: `Function '${func.name}' should follow 'PUSH EBP' with 'MOV EBP, ESP' (standard prologue)`,
@@ -914,7 +843,7 @@ export function validateCallingConventions(
             start: { line: func.startLine, character: 0 },
             end: {
               line: func.endLine,
-              character: lines[func.endLine]?.length || 0,
+              character: lines[func.endLine].length,
             },
           },
           message: `Function '${func.name}' has 'PUSH EBP' but missing 'POP EBP' (unbalanced stack)`,
@@ -930,7 +859,7 @@ export function validateCallingConventions(
           start: { line: func.startLine, character: 0 },
           end: {
             line: func.endLine,
-            character: lines[func.endLine]?.length || 0,
+            character: lines[func.endLine].length,
           },
         },
         message: `Function '${func.name}' has ${func.pushCount} PUSH but ${func.popCount} POP (unbalanced stack)`,
@@ -946,7 +875,7 @@ export function validateCallingConventions(
             start: { line: func.startLine, character: 0 },
             end: {
               line: func.endLine,
-              character: lines[func.endLine]?.length || 0,
+              character: lines[func.endLine].length,
             },
           },
           message: `Function '${func.name}' modifies callee-saved register ${reg} but doesn't save/restore it`,
@@ -962,10 +891,8 @@ export function validateCallingConventions(
     if (!trimmed || trimmed.startsWith(";")) continue;
 
     const siteClean = stripComment(trimmed);
-    if (!siteClean) continue;
 
     const tokens = siteClean.split(/[\s,]+/).filter((t) => t.length > 0);
-    if (tokens.length === 0) continue;
 
     const instruction = tokens[0].toUpperCase();
 
@@ -985,8 +912,7 @@ export function validateCallingConventions(
         const nextTokens = nextClean
           .split(/[\s,]+/)
           .filter((t) => t.length > 0);
-        const nextInstruction =
-          nextTokens.length > 0 ? nextTokens[0].toUpperCase() : "";
+        const nextInstruction = nextTokens[0].toUpperCase();
 
         if (nextInstruction === "ADD" && nextTokens.length >= 3) {
           const dest = nextTokens[1].toUpperCase();
@@ -1022,16 +948,13 @@ export function validateCallingConventions(
         const futureTokens = futureClean
           .split(/[\s,]+/)
           .filter((t) => t.length > 0);
-        if (
-          futureTokens.length > 0 &&
-          futureTokens[0].toUpperCase() === "CALL"
-        ) {
+        if (futureTokens[0].toUpperCase() === "CALL") {
           foundCall = true;
           break;
         }
         if (
           futureClean.endsWith(":") ||
-          controlFlowInstructions.includes(futureTokens[0]?.toUpperCase())
+          controlFlowInstructions.includes(futureTokens[0].toUpperCase())
         ) {
           break;
         }

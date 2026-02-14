@@ -566,7 +566,7 @@ describe("validateInstructions", () => {
     });
 
     test("EQU with missing value produces error", () => {
-      // Test with EQU format that has invalid structure
+      // "VALUE: EQU" — no value after EQU, regex won't match → Invalid format
       const lines = ["VALUE: EQU", "main:", "  HLT"];
       const diags = validateInstructions(
         lines,
@@ -574,11 +574,9 @@ describe("validateInstructions", () => {
         new Set(["main"]),
         new Set(),
       );
-      const equErrors = diags.filter(
-        (d) =>
-          d.severity === DiagnosticSeverity.Error && d.message.includes("EQU"),
-      );
-      expect(equErrors.length).toBeGreaterThanOrEqual(1);
+      const errs = errors(diags);
+      expect(errs).toHaveLength(1);
+      expect(errs[0].message).toContain("Invalid EQU directive format");
     });
 
     test("invalid EQU format produces error", () => {
