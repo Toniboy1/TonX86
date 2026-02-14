@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.4.3](https://github.com/Toniboy1/TonX86/compare/v0.4.2...v0.4.3) (2026-02-14)
+
+
+### Features
+
+* Add assembler directives support (.text, .data, DB/DW/DD, ORG, EQU)give me the markdown to copy paste with the data ([#82](https://github.com/Toniboy1/TonX86/issues/82)) ([9cfde6a](https://github.com/Toniboy1/TonX86/commit/9cfde6a30b60baa5d26472b3bb1e5d4977ac35d7)), closes [#77](https://github.com/Toniboy1/TonX86/issues/77)
+* implement accurate x86 flag semantics and fix all ESLint warnings ([#76](https://github.com/Toniboy1/TonX86/issues/76)) ([2696fd6](https://github.com/Toniboy1/TonX86/commit/2696fd65603bc1b6bf201a29c97f151d1f09686d))
+
+
+### Documentation
+
+* remove redundant root-level summary files ([f24cc71](https://github.com/Toniboy1/TonX86/commit/f24cc7194ec80d872c483452b04eca56d462ee91))
+
 ## [0.6.0](https://github.com/Toniboy1/TonX86/compare/v0.4.2...v0.6.0) (2026-02-12)
 
 ### Features
