@@ -36,7 +36,7 @@ Educational x86-like assembly language environment for learning low-level progra
 - Click Install
 
 ### Step 2: Explore Examples
-The extension includes 27 example programs to help you learn. Find them in the [examples folder on GitHub](https://github.com/Toniboy1/TonX86/tree/main/examples):
+The extension includes 30+ example programs to help you learn. Find them in the [examples folder on GitHub](https://github.com/Toniboy1/TonX86/tree/main/examples):
 
 - **[01-basic-instructions.asm](https://github.com/Toniboy1/TonX86/blob/main/examples/01-basic-instructions.asm)** - MOV, ADD, SUB operations
 - **[02-jumps.asm](https://github.com/Toniboy1/TonX86/blob/main/examples/02-jumps.asm)** - Conditional and unconditional jumps
@@ -254,7 +254,7 @@ Contributions are welcome! Visit the [GitHub repository](https://github.com/Toni
 
 MIT License - Free to use for educational and commercial purposes.
 
-**Attribution Required**: When using this software, please credit **Anthony (Toniboy1)** and link to the repository.
+**Attribution Required**: When using this software, please credit **Anthony Fasano (Toniboy1)** and link to the repository.
 
 ---
 

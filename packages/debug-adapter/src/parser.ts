@@ -283,7 +283,6 @@ export function parseAssembly(lines: string[]): ParseResult {
 
     // Parse instruction: MNEMONIC operand1, operand2, ...
     const parts = trimmed.split(/\s+/);
-    if (parts.length === 0) continue;
 
     const mnemonic = parts[0].toUpperCase();
     const operandString = parts.slice(1).join(" ");

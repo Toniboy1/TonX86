@@ -5,7 +5,7 @@
   "version": "0.4.2",
   "publisher": "Toniboy1",
   "author": {
-    "name": "Anthony (Toniboy1)",
+    "name": "Anthony Fasano (Toniboy1)",
     "url": "https://github.com/Toniboy1"
   },
   "license": "MIT",
@@ -315,14 +315,18 @@
     "package": "vsce package --no-dependencies",
     "copy-debug-adapter": "node copy-debug-adapter.js",
     "lint": "eslint src",
-    "test": "echo no tests"
+    "test": "jest",
+    "test:coverage": "jest --coverage"
   },
   "devDependencies": {
+    "@types/jest": "^29.0.0",
     "@types/node": "^20.0.0",
     "@types/vscode": "^1.84.0",
     "@typescript-eslint/eslint-plugin": "^6.0.0",
     "@typescript-eslint/parser": "^8.55.0",
     "eslint": "^8.0.0",
+    "jest": "^29.0.0",
+    "ts-jest": "^29.0.0",
     "typescript": "^5.0.0"
   },
   "dependencies": {

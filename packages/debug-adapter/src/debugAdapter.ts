@@ -16,8 +16,9 @@ interface TonX86LaunchRequestArguments
 }
 import * as fs from "fs";
 import * as path from "path";
-import { Simulator, Instruction } from "@tonx86/simcore";
+import { Simulator } from "@tonx86/simcore";
 import { parseAssembly } from "./parser";
+import { detectLCDDimensions, validateCPUSpeed } from "./debugLogic";
 
 // File-based logger for debugging - will be set after launch
 let LOG_FILE = "";
@@ -51,119 +52,6 @@ export class TonX86DebugSession extends DebugSession {
     console.error("[TonX86] Debug adapter constructor called");
   }
 
-  /**
-   * Detect required LCD dimensions by scanning EQU constants and instructions.
-   * Strategy:
-   *   1. Check EQU constants for LCD_BASE (0xF000) and GRID_SIZE to determine dimensions
-   *   2. Fall back to scanning instructions for hardcoded LCD addresses
-   *   3. Default to 8x8 if no LCD access detected
-   */
-  private detectLCDDimensions(
-    instructions: Instruction[],
-    constants: Map<string, number>,
-  ): [number, number] {
-    // Strategy 1: Use EQU constants for reliable detection
-    let hasLCDBase = false;
-    let gridSize = 0;
-
-    for (const [name, value] of constants) {
-      const upperName = name.toUpperCase();
-      // Detect LCD base address constant (e.g., LCD_BASE EQU 0xF000)
-      if (value >= 0xf000 && value <= 0xffff) {
-        hasLCDBase = true;
-      }
-      // Detect grid size constant (e.g., GRID_SIZE EQU 64)
-      if (
-        upperName.includes("GRID") ||
-        upperName.includes("LCD_W") ||
-        upperName.includes("LCD_H") ||
-        upperName.includes("SCREEN") ||
-        upperName.includes("DISPLAY_SIZE")
-      ) {
-        gridSize = Math.max(gridSize, value);
-      }
-    }
-
-    if (hasLCDBase && gridSize > 0) {
-      // Use the grid size from constants
-      return [gridSize, gridSize];
-    }
-
-    // Strategy 2: Scan instructions for LCD I/O addresses
-    let maxAddress = 0;
-    let foundLCDAccess = false;
-
-    for (const instr of instructions) {
-      for (const operand of instr.operands) {
-        if (typeof operand === "string") {
-          const opUpper = operand.toUpperCase();
-
-          // Check for direct memory access [0xFxxx]
-          if (opUpper.startsWith("[") && opUpper.includes("0XF")) {
-            const addressStr = opUpper.slice(1, -1).replace(/[[\]]/g, "");
-            if (addressStr.startsWith("0XF")) {
-              const address = parseInt(addressStr, 16);
-              if (address >= 0xf000 && address <= 0xffff) {
-                maxAddress = Math.max(maxAddress, address);
-                foundLCDAccess = true;
-              }
-            }
-          }
-
-          // Check for LCD base as immediate operand (after EQU substitution: 61440 = 0xF000)
-          const numMatch = operand.match(/\b(\d+)\b/);
-          if (numMatch) {
-            const num = parseInt(numMatch[1], 10);
-            if (num >= 0xf000 && num <= 0xffff) {
-              foundLCDAccess = true;
-            }
-          }
-
-          // Check for hex LCD references
-          if (opUpper.includes("0XF")) {
-            const match = opUpper.match(/0X(F[0-9A-F]{3})/);
-            if (match) {
-              const address = parseInt(match[0], 16);
-              if (address >= 0xf000 && address <= 0xffff) {
-                maxAddress = Math.max(maxAddress, address);
-                foundLCDAccess = true;
-              }
-            }
-          }
-        }
-      }
-    }
-
-    if (foundLCDAccess) {
-      const offset = maxAddress - 0xf000;
-      if (offset >= 4096) {
-        return [64, 64];
-      } else if (offset >= 256) {
-        return [64, 64]; // Computed addressing likely needs larger display
-      } else if (offset >= 64) {
-        return [16, 16];
-      }
-      // Default to 16x16 when LCD is used
-      return [16, 16];
-    }
-
-    // No LCD access detected, use 8x8
-    return [8, 8];
-  }
-
-  /**
-   * Get the next instruction line number
-   */
-  private getNextInstructionLine(): number {
-    const instructions = this.simulator.getInstructions();
-    const eip = this.simulator.getEIP();
-    if (eip + 1 < instructions.length) {
-      return instructions[eip + 1].line;
-    }
-    // If no more instructions, stay at current line
-    return this.currentLine;
-  }
-
   protected initializeRequest(
     response: DebugProtocol.InitializeResponse,
   ): void {
@@ -190,7 +78,7 @@ export class TonX86DebugSession extends DebugSession {
     // Extract program path from args
     const launchArgs = args as TonX86LaunchRequestArguments;
     this.programPath = launchArgs.program || "";
-    this.cpuSpeed = launchArgs.cpuSpeed || 100;
+    this.cpuSpeed = validateCPUSpeed(launchArgs.cpuSpeed);
     this.stopOnEntry =
       launchArgs.stopOnEntry !== undefined ? launchArgs.stopOnEntry : true;
     const enableLogging = launchArgs.enableLogging || false;
@@ -244,7 +132,7 @@ export class TonX86DebugSession extends DebugSession {
         });
 
         // Detect required LCD dimensions from code and EQU constants
-        const [lcdWidth, lcdHeight] = this.detectLCDDimensions(
+        const [lcdWidth, lcdHeight] = detectLCDDimensions(
           instructions,
           this.constants,
         );
@@ -939,7 +827,10 @@ export class TonX86DebugSession extends DebugSession {
   }
 }
 
-// Start the debug session
-console.error("[TonX86] Debug adapter starting...");
-DebugSession.run(TonX86DebugSession);
-console.error("[TonX86] Debug adapter started");
+// Start the debug session only if run directly (not imported in tests)
+/* istanbul ignore next */
+if (require.main === module || process.env.NODE_ENV !== "test") {
+  console.error("[TonX86] Debug adapter starting...");
+  DebugSession.run(TonX86DebugSession);
+  console.error("[TonX86] Debug adapter started");
+}

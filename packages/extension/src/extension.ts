@@ -186,8 +186,8 @@ class MemoryProvider implements vscode.TreeDataProvider<MemoryRange> {
   private memory: MemoryRange[] = [];
 
   constructor(
-    private startAddr = 0,
-    private length = 16,
+    private startAddr: number,
+    private length: number,
   ) {
     this.initializeMemory();
   }
@@ -225,7 +225,11 @@ class MemoryProvider implements vscode.TreeDataProvider<MemoryRange> {
 /**
  * Webview Provider for LCD Display
  */
-class LCDViewProvider implements vscode.WebviewViewProvider {
+/**
+ * LCD View Provider class
+ * Exported for testing purposes
+ */
+export class LCDViewProvider implements vscode.WebviewViewProvider {
   public static readonly viewType = "tonx86.lcd";
   public static readonly panelViewType = "tonx86.lcd.panel";
   private lcdConfig: LCDConfig;
@@ -776,20 +780,12 @@ export function activate(context: vscode.ExtensionContext): void {
         keyCode,
         pressed,
       })
-      .then(
-        () => {
-          // Success
-          console.log(
-            `Keyboard event sent: keyCode=${keyCode}, pressed=${pressed}`,
-          );
-        },
-        (err: unknown) => {
-          console.error(
-            `Failed to send keyboard event (keyCode=${keyCode}):`,
-            err,
-          );
-        },
-      );
+      .then(undefined, (err: unknown) => {
+        console.error(
+          `Failed to send keyboard event (keyCode=${keyCode}):`,
+          err,
+        );
+      });
   });
 
   context.subscriptions.push(

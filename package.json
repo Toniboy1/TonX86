@@ -4,7 +4,7 @@
   "description": "Educational x86-like assembly environment for VS Code",
   "private": true,
   "author": {
-    "name": "Anthony (Toniboy1)",
+    "name": "Anthony Fasano (Toniboy1)",
     "url": "https://github.com/Toniboy1"
   },
   "license": "MIT",
@@ -28,6 +28,7 @@
     "watch": "npm --workspaces run watch",
     "dev": "npm run watch",
     "test": "npm --workspaces run test",
+    "test:coverage": "npm --workspaces run test:coverage --if-present",
     "test:examples": "npm run build -w packages/simcore && node scripts/test-examples.js",
     "lint": "npm --workspaces run lint",
     "check": "npm run lint && npm run build && npm test && npm run test:examples",
