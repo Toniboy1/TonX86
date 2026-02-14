@@ -1535,14 +1535,12 @@ export class Simulator {
         let value: number;
         if (src.type === "register" || src.type === "register8") {
           value = this.readRegisterValue(src as RegisterOperand);
-        } else if (src.type === "immediate") {
-          value = src.value;
         } else if (src.type === "memory") {
           const addr =
             (this.cpu.registers[src.base!] + (src.offset || 0)) & 0xffff;
           value = this.readMemory32(addr);
         } else {
-          break;
+          value = src.value;
         }
 
         this.pushStack(value);
