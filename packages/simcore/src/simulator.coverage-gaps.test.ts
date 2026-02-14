@@ -11,7 +11,12 @@ describe("Coverage gap tests - jumps and edge cases", () => {
     test("JE does NOT jump when ZF == 0", () => {
       const instructions = [
         { line: 1, mnemonic: "MOV", operands: ["EAX", "5"], raw: "MOV EAX, 5" },
-        { line: 2, mnemonic: "CMP", operands: ["EAX", "10"], raw: "CMP EAX, 10" },
+        {
+          line: 2,
+          mnemonic: "CMP",
+          operands: ["EAX", "10"],
+          raw: "CMP EAX, 10",
+        },
         { line: 3, mnemonic: "JE", operands: ["target"], raw: "JE target" },
         { line: 4, mnemonic: "MOV", operands: ["EBX", "1"], raw: "MOV EBX, 1" },
         { line: 5, mnemonic: "MOV", operands: ["EBX", "2"], raw: "MOV EBX, 2" },
@@ -32,7 +37,12 @@ describe("Coverage gap tests - jumps and edge cases", () => {
 
     test("JNE does NOT jump when ZF == 1", () => {
       const instructions = [
-        { line: 1, mnemonic: "XOR", operands: ["EAX", "EAX"], raw: "XOR EAX, EAX" },
+        {
+          line: 1,
+          mnemonic: "XOR",
+          operands: ["EAX", "EAX"],
+          raw: "XOR EAX, EAX",
+        },
         { line: 2, mnemonic: "JNE", operands: ["target"], raw: "JNE target" },
         { line: 3, mnemonic: "MOV", operands: ["EBX", "7"], raw: "MOV EBX, 7" },
         { line: 4, mnemonic: "MOV", operands: ["EBX", "9"], raw: "MOV EBX, 9" },
@@ -139,7 +149,12 @@ describe("Coverage gap tests - jumps and edge cases", () => {
     test("JS does NOT jump when SF == 0", () => {
       const instructions = [
         { line: 1, mnemonic: "MOV", operands: ["EAX", "1"], raw: "MOV EAX, 1" },
-        { line: 2, mnemonic: "TEST", operands: ["EAX", "EAX"], raw: "TEST EAX, EAX" },
+        {
+          line: 2,
+          mnemonic: "TEST",
+          operands: ["EAX", "EAX"],
+          raw: "TEST EAX, EAX",
+        },
         { line: 3, mnemonic: "JS", operands: ["target"], raw: "JS target" },
         { line: 4, mnemonic: "MOV", operands: ["EBX", "1"], raw: "MOV EBX, 1" },
         { line: 5, mnemonic: "MOV", operands: ["EBX", "2"], raw: "MOV EBX, 2" },
@@ -159,8 +174,18 @@ describe("Coverage gap tests - jumps and edge cases", () => {
 
     test("JNS does NOT jump when SF == 1", () => {
       const instructions = [
-        { line: 1, mnemonic: "MOV", operands: ["EAX", "0xFFFFFFFF"], raw: "MOV EAX, -1" },
-        { line: 2, mnemonic: "TEST", operands: ["EAX", "EAX"], raw: "TEST EAX, EAX" },
+        {
+          line: 1,
+          mnemonic: "MOV",
+          operands: ["EAX", "0xFFFFFFFF"],
+          raw: "MOV EAX, -1",
+        },
+        {
+          line: 2,
+          mnemonic: "TEST",
+          operands: ["EAX", "EAX"],
+          raw: "TEST EAX, EAX",
+        },
         { line: 3, mnemonic: "JNS", operands: ["target"], raw: "JNS target" },
         { line: 4, mnemonic: "MOV", operands: ["EBX", "1"], raw: "MOV EBX, 1" },
         { line: 5, mnemonic: "MOV", operands: ["EBX", "2"], raw: "MOV EBX, 2" },
@@ -309,11 +334,16 @@ describe("Coverage gap tests - jumps and edge cases", () => {
   describe("Control flow error paths", () => {
     test("CALL throws when target label is missing", () => {
       const instructions = [
-        { line: 1, mnemonic: "CALL", operands: ["missing"], raw: "CALL missing" },
+        {
+          line: 1,
+          mnemonic: "CALL",
+          operands: ["missing"],
+          raw: "CALL missing",
+        },
       ];
       sim.loadInstructions(instructions, new Map());
 
-      expect(() => sim.step()).toThrow("CALL target \"missing\" not found");
+      expect(() => sim.step()).toThrow('CALL target "missing" not found');
     });
 
     test("Jump throws when target label is missing", () => {
@@ -322,7 +352,7 @@ describe("Coverage gap tests - jumps and edge cases", () => {
       ];
       sim.loadInstructions(instructions, new Map());
 
-      expect(() => sim.step()).toThrow("Jump target \"missing\" not found");
+      expect(() => sim.step()).toThrow('Jump target "missing" not found');
     });
 
     test("RET with empty call stack increments EIP", () => {
@@ -441,18 +471,32 @@ describe("Coverage gap tests - jumps and edge cases", () => {
 
     test("read/write register8 handle missing byteOffset", () => {
       const helpers = sim as unknown as {
-        readRegisterValue: (op: { type: string; value: number; byteOffset?: number }) => number;
-        writeRegisterValue: (op: { type: string; value: number; byteOffset?: number }, value: number) => void;
+        readRegisterValue: (op: {
+          type: string;
+          value: number;
+          byteOffset?: number;
+        }) => number;
+        writeRegisterValue: (
+          op: { type: string; value: number; byteOffset?: number },
+          value: number,
+        ) => void;
       };
 
       sim.executeInstruction("MOV", ["EAX", "0x12345678"]);
       const low = helpers.readRegisterValue({ type: "register8", value: 0 });
-      const high = helpers.readRegisterValue({ type: "register8", value: 0, byteOffset: 8 });
+      const high = helpers.readRegisterValue({
+        type: "register8",
+        value: 0,
+        byteOffset: 8,
+      });
       expect(low).toBe(0x78);
       expect(high).toBe(0x56);
 
       helpers.writeRegisterValue({ type: "register8", value: 1 }, 0xaa);
-      helpers.writeRegisterValue({ type: "register8", value: 1, byteOffset: 8 }, 0xbb);
+      helpers.writeRegisterValue(
+        { type: "register8", value: 1, byteOffset: 8 },
+        0xbb,
+      );
       expect(sim.getRegisters().ECX & 0xff).toBe(0xaa);
       expect((sim.getRegisters().ECX >> 8) & 0xff).toBe(0xbb);
     });
@@ -470,8 +514,7 @@ describe("Coverage gap tests - jumps and edge cases", () => {
 
     test("RAND ignores invalid or missing operands", () => {
       expect(() => sim.executeInstruction("RAND", [])).not.toThrow();
-      expect(() => sim.executeInstruction("RAND", ["10"]))
-        .not.toThrow();
+      expect(() => sim.executeInstruction("RAND", ["10"])).not.toThrow();
     });
 
     test("RAND supports register max operand", () => {
@@ -483,13 +526,11 @@ describe("Coverage gap tests - jumps and edge cases", () => {
     });
 
     test("ROR with missing operands is a no-op", () => {
-      expect(() => sim.executeInstruction("ROR", ["EAX"]))
-        .not.toThrow();
+      expect(() => sim.executeInstruction("ROR", ["EAX"])).not.toThrow();
     });
 
     test("SAR handles register count and missing operands", () => {
-      expect(() => sim.executeInstruction("SAR", ["EAX"]))
-        .not.toThrow();
+      expect(() => sim.executeInstruction("SAR", ["EAX"])).not.toThrow();
 
       sim.executeInstruction("MOV", ["EAX", "0x80000000"]);
       sim.executeInstruction("MOV", ["ECX", "1"]);
@@ -498,63 +539,49 @@ describe("Coverage gap tests - jumps and edge cases", () => {
     });
 
     test("ROL with missing operands is a no-op", () => {
-      expect(() => sim.executeInstruction("ROL", ["EAX"]))
-        .not.toThrow();
+      expect(() => sim.executeInstruction("ROL", ["EAX"])).not.toThrow();
     });
 
     test("NEG/TEST/SHL/SHR operand guards", () => {
       expect(() => sim.executeInstruction("NEG", [])).not.toThrow();
-      expect(() => sim.executeInstruction("TEST", ["EAX"]))
-        .not.toThrow();
-      expect(() => sim.executeInstruction("SHL", ["EAX"]))
-        .not.toThrow();
-      expect(() => sim.executeInstruction("SHR", ["EAX"]))
-        .not.toThrow();
+      expect(() => sim.executeInstruction("TEST", ["EAX"])).not.toThrow();
+      expect(() => sim.executeInstruction("SHL", ["EAX"])).not.toThrow();
+      expect(() => sim.executeInstruction("SHR", ["EAX"])).not.toThrow();
     });
 
     test("AND/OR/XOR/NOT operand guards", () => {
-      expect(() => sim.executeInstruction("AND", ["EAX"]))
-        .not.toThrow();
-      expect(() => sim.executeInstruction("OR", ["EAX"]))
-        .not.toThrow();
-      expect(() => sim.executeInstruction("XOR", ["EAX"]))
-        .not.toThrow();
+      expect(() => sim.executeInstruction("AND", ["EAX"])).not.toThrow();
+      expect(() => sim.executeInstruction("OR", ["EAX"])).not.toThrow();
+      expect(() => sim.executeInstruction("XOR", ["EAX"])).not.toThrow();
       expect(() => sim.executeInstruction("NOT", [])).not.toThrow();
     });
 
     test("DIV/IDIV/MOD/CMP operand guards", () => {
       expect(() => sim.executeInstruction("DIV", [])).not.toThrow();
       expect(() => sim.executeInstruction("IDIV", [])).not.toThrow();
-      expect(() => sim.executeInstruction("MOD", ["5", "2"]))
-        .not.toThrow();
-      expect(() => sim.executeInstruction("CMP", ["EAX"]))
-        .not.toThrow();
+      expect(() => sim.executeInstruction("MOD", ["5", "2"])).not.toThrow();
+      expect(() => sim.executeInstruction("CMP", ["EAX"])).not.toThrow();
     });
 
     test("DEC/MUL/IMUL operand guards", () => {
       expect(() => sim.executeInstruction("DEC", [])).not.toThrow();
       expect(() => sim.executeInstruction("MUL", [])).not.toThrow();
-      expect(() => sim.executeInstruction("IMUL", ["5", "EAX"]))
-        .not.toThrow();
-      expect(() => sim.executeInstruction("IMUL", ["5", "EAX", "2"]))
-        .not.toThrow();
+      expect(() => sim.executeInstruction("IMUL", ["5", "EAX"])).not.toThrow();
+      expect(() =>
+        sim.executeInstruction("IMUL", ["5", "EAX", "2"]),
+      ).not.toThrow();
     });
 
     test("MOVZX/MOVSX/SUB/INC operand guards", () => {
-      expect(() => sim.executeInstruction("MOVZX", ["EAX"]))
-        .not.toThrow();
-      expect(() => sim.executeInstruction("MOVSX", ["EAX"]))
-        .not.toThrow();
-      expect(() => sim.executeInstruction("SUB", ["EAX"]))
-        .not.toThrow();
+      expect(() => sim.executeInstruction("MOVZX", ["EAX"])).not.toThrow();
+      expect(() => sim.executeInstruction("MOVSX", ["EAX"])).not.toThrow();
+      expect(() => sim.executeInstruction("SUB", ["EAX"])).not.toThrow();
       expect(() => sim.executeInstruction("INC", [])).not.toThrow();
     });
 
     test("XCHG and LEA operand guards", () => {
-      expect(() => sim.executeInstruction("XCHG", ["EAX"]))
-        .not.toThrow();
-      expect(() => sim.executeInstruction("LEA", ["EAX"]))
-        .not.toThrow();
+      expect(() => sim.executeInstruction("XCHG", ["EAX"])).not.toThrow();
+      expect(() => sim.executeInstruction("LEA", ["EAX"])).not.toThrow();
     });
 
     test("XCHG swaps register values", () => {
@@ -566,8 +593,7 @@ describe("Coverage gap tests - jumps and edge cases", () => {
     });
 
     test("XCHG ignores non-register operands", () => {
-      expect(() => sim.executeInstruction("XCHG", ["EAX", "5"]))
-        .not.toThrow();
+      expect(() => sim.executeInstruction("XCHG", ["EAX", "5"])).not.toThrow();
     });
 
     test("LEA handles absolute memory operand", () => {
