@@ -594,7 +594,7 @@ describe("TonX86 Extension", () => {
 
       // Check that HTML contains disabled keyboard indicators
       expect(mockWebviewView.webview.html).toContain("Keyboard: Disabled");
-      expect(mockWebviewView.webview.html).toContain('color: #999');
+      expect(mockWebviewView.webview.html).toContain("color: #999");
     });
   });
 
