@@ -43,15 +43,9 @@ Our security scanner runs automatically 2x per week and on security-relevant cha
 
 Test coverage is tracked for all contributions.
 
-**Current Standards:**
-- **Required Minimum:** 80% coverage
-- **Current Project Coverage:** 92% statements, 84% branches, 95% functions, 94% lines
-
-**Coverage Thresholds:**
-- Branches: 80%
-- Functions: 80%  
-- Lines: 80%
-- Statements: 80%
+**Coverage Requirements:**
+- **Minimum Required:** 80% for branches, functions, lines, and statements
+- **Current Coverage:** See the [Codecov badge](https://codecov.io/gh/Toniboy1/TonX86) in the main README
 
 **How To View Coverage:**
 1. Wait for CI to complete on your PR

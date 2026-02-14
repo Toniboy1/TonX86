@@ -3,6 +3,8 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Version](https://img.shields.io/visual-studio-marketplace/v/Toniboy1.tonx86)](https://marketplace.visualstudio.com/items?itemName=Toniboy1.tonx86)
 [![Installs](https://img.shields.io/visual-studio-marketplace/i/Toniboy1.tonx86)](https://marketplace.visualstudio.com/items?itemName=Toniboy1.tonx86)
+[![Build Status](https://github.com/Toniboy1/TonX86/workflows/CI/badge.svg)](https://github.com/Toniboy1/TonX86/actions)
+[![Coverage](https://codecov.io/gh/Toniboy1/TonX86/branch/main/graph/badge.svg)](https://codecov.io/gh/Toniboy1/TonX86)
 
 Educational x86-like assembly environment for VS Code with integrated debugging, memory visualization, LCD display, and keyboard input.
 
@@ -54,7 +56,7 @@ Extension (UI/LCD/Keyboard) ←→ Debug Adapter (DAP) ←→ Simulator Core
      - [14-keyboard.asm](examples/14-keyboard.asm) - Keyboard input handling
      - [20-flags.asm](examples/20-flags.asm) - Flag register operations
      - [21-snake.asm](examples/21-snake.asm) - Snake game on 64x64 LCD
-     - ...and more! See the `examples/` folder for all 27 examples
+     - ...and more! See the `examples/` folder for 30+ example programs
 
 3. **Start Debugging**:
    - Open any `.asm` file
@@ -485,14 +487,6 @@ Before submitting a contribution:
 - ✅ Pass ESLint checks
 - ✅ Include tests for new features
 - ✅ Update relevant documentation
-
-**Test Coverage Thresholds:**
-- Branches: 80%
-- Functions: 80%
-- Lines: 80%
-- Statements: 80%
-
-**Current Coverage:** 92% statements, 84% branches, 95% functions, 94% lines
 
 **Golden Test Suite:** Comprehensive instruction-level validation with 106 tests covering arithmetic, logical, shift/rotate, stack, control flow, and flag correctness. See [packages/simcore/GOLDEN_TESTS.md](packages/simcore/GOLDEN_TESTS.md) for details.
 

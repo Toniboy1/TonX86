@@ -42,4 +42,4 @@ Extension (UI/LCD/Keyboard) ←→ Debug Adapter (DAP) ←→ Simulator Core
 - **0x10102**: Key state (read-only, 1=pressed, 0=released)
 
 ## Examples
-24 example programs in `/examples/` including Snake game (21-snake.asm)
+30+ example programs in `/examples/` including Snake game (21-snake.asm)

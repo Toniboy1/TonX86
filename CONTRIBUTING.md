@@ -86,8 +86,7 @@ See [VERSION.md](VERSION.md) for complete guidelines.
 - Place tests in `*.test.ts` files alongside code
 - Run tests with `npm test`
 - Aim for 80%+ test coverage on critical paths
-
-**Current Coverage:** 92% statements, 84% branches, 95% functions, 94% lines
+- Current coverage is shown on the [Codecov badge](https://codecov.io/gh/Toniboy1/TonX86) in the README
 
 ### Documentation
 
