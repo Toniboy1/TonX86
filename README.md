@@ -75,6 +75,28 @@ npm test
 
 **F5 in VS Code** opens the extension in debug mode.
 
+### macOS Setup Notes
+
+On macOS, ensure that `NODE_ENV` is **not** set to `production` before installing,
+otherwise dev-dependencies (ESLint, Jest, TypeScript) will be skipped:
+
+```bash
+# Recommended: explicit install with dev dependencies
+npm install --include=dev
+npm run build
+npm run check          # lint → build → test → test:examples
+```
+
+If `npm run check` fails with `eslint: command not found`:
+```bash
+# Re-install to ensure all dev deps are hoisted
+rm -rf node_modules package-lock.json
+npm install
+npm run check
+```
+
+> **Tip:** Run `npm run check:deps` at any time to verify required tools are available.
+
 ## ⚙️ Configuration
 
 ### Settings
@@ -496,18 +518,21 @@ main:
 ### Quick Build & Test
 
 ```bash
-npm install          # Install dependencies
+npm install          # Install dependencies (use --include=dev on macOS if needed)
 npm run build        # Build all packages
-npm test             # Run all tests
+npm test             # Run all tests (911 tests across 4 packages)
+npm run check:deps   # Verify required dev tools are available
 npm run test:coverage  # Test with coverage report
+npm run check        # Full pipeline: lint → build → test → test:examples
 ```
 
 ### Requirements for Contributions
 
-- ✅ All tests pass (`npm test`)
-- ✅ Code coverage ≥80% (`npm test:coverage`)
+- ✅ All tests pass (`npm test` — 911 tests)
+- ✅ Code coverage ≥80% (`npm run test:coverage`)
 - ✅ No lint errors (`npm run lint`)
 - ✅ Build succeeds (`npm run build`)
+- ✅ All 37 examples pass (`npm run test:examples`)
 - ✅ Documentation updated
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines and the full development workflow.

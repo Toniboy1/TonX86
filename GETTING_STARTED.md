@@ -25,6 +25,29 @@ npm run package  # Creates .vsix file
 
 Then install the generated `.vsix` file in VS Code via Extensions → Install from VSIX.
 
+### macOS-Specific Setup
+
+On macOS, `npm install` must include dev-dependencies. If you encounter
+`eslint: command not found` or similar errors:
+
+```bash
+# Ensure NODE_ENV is not "production"
+unset NODE_ENV
+
+# Clean install with all dev dependencies
+rm -rf node_modules package-lock.json
+npm install --include=dev
+npm run build
+
+# Verify everything works
+npm run check:deps   # Quick tool check
+npm run check        # Full check (lint → build → test → examples)
+```
+
+> **Why?** npm workspaces hoist shared dependencies to the root
+> `node_modules/.bin/`. If dev-dependencies are omitted, tools like
+> ESLint, Jest, and TypeScript won't be available on PATH.
+
 ## 🚀 Your First Program
 
 ### 1. Create a file
@@ -179,6 +202,22 @@ MY_LABEL:
 **A:** Simplified x86 behavior perfect for learning. Switch to `strict-x86` mode for realistic x86 rules.
 
 ## 🐛 Troubleshooting
+
+### Debugger exits immediately (no instructions executed)
+This usually means build artifacts are missing:
+```bash
+npm run build        # Build all packages (required before debugging)
+```
+Then press **F5** again. If you're developing from source, make sure
+`npm install && npm run build` completed without errors.
+
+### `eslint: command not found` (macOS)
+Dev-dependencies were not installed. Fix:
+```bash
+unset NODE_ENV
+npm install --include=dev
+npm run check:deps   # Verify tools are available
+```
 
 ### "Syntax error" when debugging
 - Check for typos in instruction names

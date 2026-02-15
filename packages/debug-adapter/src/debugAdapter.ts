@@ -26,7 +26,7 @@ function logToFile(message: string): void {
   if (!LOG_FILE) return;
   try {
     fs.appendFileSync(LOG_FILE, `${new Date().toISOString()} ${message}\n`);
-  } catch (e) {
+  } catch (_e) {
     // Ignore file write errors
   }
 }

@@ -5,10 +5,14 @@ Thank you for your interest in contributing to TonX86! This guide will help you 
 ## Getting Started
 
 1. **Fork the repository** and clone your fork
-2. **Install dependencies**: `npm install`
-3. **Build the project**: `npm run build`
-4. **Run tests**: `npm test`
-5. **Start development**: Press F5 in VS Code to launch Extension Development Host
+2. **Install dependencies**: `npm install` (on macOS: `npm install --include=dev`)
+3. **Verify tools**: `npm run check:deps`
+4. **Build the project**: `npm run build`
+5. **Run tests**: `npm test`
+6. **Start development**: Press F5 in VS Code to launch Extension Development Host
+
+> **macOS users:** If you see `eslint: command not found`, run
+> `unset NODE_ENV && npm install --include=dev`. See [GETTING_STARTED.md](GETTING_STARTED.md#macos-specific-setup) for details.
 
 ## Important Requirements
 
@@ -135,12 +139,14 @@ Update relevant documentation:
 
 All contributions must:
 - ✅ Pass TypeScript compilation
-- ✅ Pass all tests (417/417 currently)
+- ✅ Pass all tests (911 tests across 4 packages)
+- ✅ All 37 examples pass (`npm run test:examples`)
 - ✅ Maintain 80%+ code coverage
 - ✅ Pass ESLint checks
 - ✅ Include tests for new features
 - ✅ Update relevant documentation
 - ✅ Use signed commits
+- ✅ Work on both macOS and Windows
 
 ## Getting Help
 

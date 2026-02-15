@@ -1355,7 +1355,7 @@ describe("TonX86 Extension - Deactivate without client", () => {
   it("should return undefined when deactivate is called with no client", async () => {
     // Use dynamic import to ensure we get module in its initial state
     jest.isolateModules(() => {
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      // eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-require-imports
       const { deactivate } = require("./extension");
       const consoleSpy = jest.spyOn(console, "log").mockImplementation();
 

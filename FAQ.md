@@ -14,6 +14,21 @@
 ### Q: How do I uninstall?
 **A:** In VS Code Extensions, search for "TonX86", click the gear icon, and select "Uninstall".
 
+### Q: `eslint: command not found` on macOS
+**A:** Dev-dependencies were not installed. Fix:
+```bash
+unset NODE_ENV
+npm install --include=dev
+npm run check:deps
+```
+
+### Q: Debugger exits immediately without executing anything
+**A:** Build artifacts are missing. Run `npm run build` then press F5 again.
+If installing from the Marketplace, reinstall the extension. If developing from source, ensure `npm install && npm run build` completed successfully.
+
+### Q: Does TonX86 work on macOS and Windows?
+**A:** Yes! TonX86 is tested on both macOS and Windows. See [GETTING_STARTED.md](GETTING_STARTED.md) for platform-specific setup instructions.
+
 ## Programming
 
 ### Q: What's the difference between `JMP` and `CALL`?

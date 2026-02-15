@@ -180,8 +180,9 @@ The DAP implementation in TonX86 is **feature-complete** for debugging flat asse
 ## Test Results
 
 ```
-Debug Adapter: 25 tests ✅
+Debug Adapter: 158 tests ✅ (parser, logic, unit, integration)
 Build: ✅ SUCCESS
+Platform: macOS ✅ | Windows ✅
 ```
 
 ## Future Enhancements

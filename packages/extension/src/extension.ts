@@ -842,7 +842,7 @@ export function activate(context: vscode.ExtensionContext): void {
       if (response && response.pixels) {
         lcdProvider.updatePixels(response.pixels);
       }
-    } catch (error) {
+    } catch (_error) {
       // Silently fail - session might not be ready yet
     }
   }
@@ -858,7 +858,7 @@ export function activate(context: vscode.ExtensionContext): void {
         memoryProviderA.updateMemory(new Uint8Array(response.memoryA));
         memoryProviderB.updateMemory(new Uint8Array(response.memoryB));
       }
-    } catch (error) {
+    } catch (_error) {
       // Silently fail - session might not be ready yet
     }
   }
