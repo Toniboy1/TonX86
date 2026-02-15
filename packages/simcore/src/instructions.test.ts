@@ -1401,3 +1401,858 @@ describe("executeInstruction - Compatibility Mode", () => {
     });
   });
 });
+
+// ===========================================================================
+// New instructions (Issue #87)
+// ===========================================================================
+
+describe("executeInstruction - RCL/RCR (Rotate through Carry)", () => {
+  let sim: Simulator;
+
+  beforeEach(() => {
+    sim = new Simulator();
+  });
+
+  test("RCL rotates left through carry by 1", () => {
+    sim.executeInstruction("MOV", ["EAX", "0x80000001"]);
+    // Set carry flag via SUB that causes borrow
+    sim.executeInstruction("MOV", ["EBX", "0"]);
+    sim.executeInstruction("SUB", ["EBX", "1"]); // CF=1
+    sim.executeInstruction("RCL", ["EAX", "1"]);
+    // bit31 goes to CF, old CF (1) goes to bit0
+    // 0x80000001 << 1 with CF in = 1 => bits shift left, CF(1)->bit0, bit31(1)->CF
+    expect(sim.getRegisters().EAX).toBe(0x00000003);
+    expect(sim.isCarryFlagSet()).toBe(true);
+  });
+
+  test("RCL with count 0 does nothing", () => {
+    sim.executeInstruction("MOV", ["EAX", "0x12345678"]);
+    sim.executeInstruction("RCL", ["EAX", "0"]);
+    expect(sim.getRegisters().EAX).toBe(0x12345678);
+  });
+
+  test("RCL with register count", () => {
+    sim.executeInstruction("MOV", ["EAX", "1"]);
+    // Clear carry
+    sim.executeInstruction("ADD", ["EAX", "0"]); // CF=0
+    sim.executeInstruction("MOV", ["EAX", "1"]);
+    sim.executeInstruction("MOV", ["ECX", "1"]);
+    sim.executeInstruction("RCL", ["EAX", "ECX"]);
+    // value=1, CF=0, rotate left 1: bit31(0)->CF, old CF(0)->bit0, val<<1 = 2
+    expect(sim.getRegisters().EAX).toBe(2);
+    expect(sim.isCarryFlagSet()).toBe(false);
+  });
+
+  test("RCL non-register destination is ignored", () => {
+    expect(() => sim.executeInstruction("RCL", ["42", "1"])).not.toThrow();
+  });
+
+  test("RCL wrong operand count is ignored", () => {
+    expect(() => sim.executeInstruction("RCL", ["EAX"])).not.toThrow();
+  });
+
+  test("RCL multi-bit rotation clears OF", () => {
+    sim.executeInstruction("MOV", ["EAX", "1"]);
+    sim.executeInstruction("ADD", ["EAX", "0"]); // clear CF
+    sim.executeInstruction("MOV", ["EAX", "1"]);
+    sim.executeInstruction("RCL", ["EAX", "3"]);
+    expect(sim.isOverflowFlagSet()).toBe(false);
+  });
+
+  test("RCL single-bit sets OF when MSB differs from CF", () => {
+    // Set up so MSB of result != CF => OF set
+    sim.executeInstruction("MOV", ["EAX", "0x40000000"]);
+    sim.executeInstruction("ADD", ["EAX", "0"]); // clear CF
+    sim.executeInstruction("MOV", ["EAX", "0x40000000"]);
+    sim.executeInstruction("RCL", ["EAX", "1"]);
+    // Result: 0x80000000, CF=0, MSB=1 != CF=0 => OF=1
+    expect(sim.getRegisters().EAX).toBe(0x80000000);
+    expect(sim.isOverflowFlagSet()).toBe(true);
+  });
+
+  test("RCL in educational mode sets ZF/SF", () => {
+    sim.executeInstruction("MOV", ["EAX", "0"]);
+    sim.executeInstruction("ADD", ["EAX", "0"]); // CF=0
+    sim.executeInstruction("MOV", ["EAX", "0"]);
+    sim.executeInstruction("RCL", ["EAX", "1"]);
+    expect(sim.isZeroFlagSet()).toBe(true);
+  });
+
+  test("RCR rotates right through carry by 1", () => {
+    sim.executeInstruction("MOV", ["EAX", "0x00000002"]);
+    // Set carry
+    sim.executeInstruction("MOV", ["EBX", "0"]);
+    sim.executeInstruction("SUB", ["EBX", "1"]); // CF=1
+    sim.executeInstruction("RCR", ["EAX", "1"]);
+    // value=2, CF=1: bit0(0)->CF, CF(1)->bit31
+    // 2 >> 1 = 1, | (1<<31) = 0x80000001
+    expect(sim.getRegisters().EAX).toBe(0x80000001);
+    expect(sim.isCarryFlagSet()).toBe(false);
+  });
+
+  test("RCR with count 0 does nothing", () => {
+    sim.executeInstruction("MOV", ["EAX", "0xABCDEF01"]);
+    sim.executeInstruction("RCR", ["EAX", "0"]);
+    expect(sim.getRegisters().EAX).toBe(0xabcdef01);
+  });
+
+  test("RCR with register count", () => {
+    sim.executeInstruction("MOV", ["EAX", "4"]);
+    sim.executeInstruction("ADD", ["EAX", "0"]); // clear CF
+    sim.executeInstruction("MOV", ["EAX", "4"]);
+    sim.executeInstruction("MOV", ["ECX", "1"]);
+    sim.executeInstruction("RCR", ["EAX", "ECX"]);
+    // value=4, CF=0: bit0(0)->CF, CF(0)->bit31, result = 4>>1 = 2
+    expect(sim.getRegisters().EAX).toBe(2);
+  });
+
+  test("RCR non-register destination is ignored", () => {
+    expect(() => sim.executeInstruction("RCR", ["42", "1"])).not.toThrow();
+  });
+
+  test("RCR wrong operand count is ignored", () => {
+    expect(() => sim.executeInstruction("RCR", ["EAX"])).not.toThrow();
+  });
+
+  test("RCR multi-bit rotation clears OF", () => {
+    sim.executeInstruction("MOV", ["EAX", "4"]);
+    sim.executeInstruction("ADD", ["EAX", "0"]);
+    sim.executeInstruction("MOV", ["EAX", "4"]);
+    sim.executeInstruction("RCR", ["EAX", "3"]);
+    expect(sim.isOverflowFlagSet()).toBe(false);
+  });
+
+  test("RCR single-bit sets OF based on top two bits", () => {
+    // Set up CF=1, value=0: after RCR 1, result = 0x80000000
+    // MSB=1, MSB-1=0, differ => OF=1
+    sim.executeInstruction("MOV", ["EBX", "0"]);
+    sim.executeInstruction("SUB", ["EBX", "1"]); // CF=1
+    sim.executeInstruction("MOV", ["EAX", "0"]);
+    sim.executeInstruction("RCR", ["EAX", "1"]);
+    expect(sim.getRegisters().EAX).toBe(0x80000000);
+    expect(sim.isOverflowFlagSet()).toBe(true);
+  });
+
+  test("RCR in educational mode sets ZF/SF", () => {
+    sim.executeInstruction("MOV", ["EAX", "0"]);
+    sim.executeInstruction("ADD", ["EAX", "0"]); // CF=0
+    sim.executeInstruction("MOV", ["EAX", "0"]);
+    sim.executeInstruction("RCR", ["EAX", "1"]);
+    expect(sim.isZeroFlagSet()).toBe(true);
+  });
+});
+
+describe("executeInstruction - LAHF/SAHF (Load/Store flags)", () => {
+  let sim: Simulator;
+
+  beforeEach(() => {
+    sim = new Simulator();
+  });
+
+  test("LAHF loads flags into AH", () => {
+    // Set ZF and SF
+    sim.executeInstruction("MOV", ["EAX", "0x80000000"]);
+    sim.executeInstruction("ADD", ["EAX", "0x80000000"]); // result=0, ZF=1, CF=1
+    sim.executeInstruction("MOV", ["EAX", "0"]); // clear EAX but flags remain
+    sim.executeInstruction("LAHF", []);
+    const ah = (sim.getRegisters().EAX >> 8) & 0xff;
+    // CF(1) + bit1(1) + ZF(1) = 0x01 | 0x02 | 0x40 = 0x43
+    expect(ah & 0x01).toBe(0x01); // CF
+    expect(ah & 0x02).toBe(0x02); // bit1 always set
+    expect(ah & 0x40).toBe(0x40); // ZF
+  });
+
+  test("LAHF preserves other EAX bits", () => {
+    sim.executeInstruction("MOV", ["EAX", "0xDEAD00FF"]);
+    sim.executeInstruction("CMP", ["EAX", "EAX"]); // ZF=1, CF=0, SF=0
+    sim.executeInstruction("MOV", ["EAX", "0xDEAD00FF"]);
+    sim.executeInstruction("LAHF", []);
+    const eax = sim.getRegisters().EAX;
+    // AL should still be 0xFF
+    expect(eax & 0xff).toBe(0xff);
+    // Upper 16 bits should still be 0xDEAD
+    expect((eax >>> 16) & 0xffff).toBe(0xdead);
+  });
+
+  test("LAHF captures SF when sign flag is set", () => {
+    sim.executeInstruction("MOV", ["EAX", "1"]);
+    sim.executeInstruction("CMP", ["EAX", "2"]); // 1-2 = negative => SF=1
+    sim.executeInstruction("MOV", ["EAX", "0"]);
+    sim.executeInstruction("LAHF", []);
+    const ah = (sim.getRegisters().EAX >> 8) & 0xff;
+    expect(ah & 0x80).toBe(0x80); // SF set
+  });
+
+  test("SAHF stores AH into flags", () => {
+    sim.executeInstruction("MOV", ["EAX", "0x0000C100"]); // AH = 0xC1 => SF|ZF|CF
+    sim.executeInstruction("SAHF", []);
+    expect(sim.isCarryFlagSet()).toBe(true);
+    expect(sim.isZeroFlagSet()).toBe(true);
+    expect(sim.isSignFlagSet()).toBe(true);
+  });
+
+  test("SAHF clears flags when AH is 0", () => {
+    // First set some flags
+    sim.executeInstruction("MOV", ["EBX", "0"]);
+    sim.executeInstruction("SUB", ["EBX", "1"]); // set CF
+    // Then clear via SAHF
+    sim.executeInstruction("MOV", ["EAX", "0x00000000"]); // AH=0
+    sim.executeInstruction("SAHF", []);
+    expect(sim.isCarryFlagSet()).toBe(false);
+    expect(sim.isZeroFlagSet()).toBe(false);
+    expect(sim.isSignFlagSet()).toBe(false);
+  });
+});
+
+describe("executeInstruction - CMOVxx (Conditional Move)", () => {
+  let sim: Simulator;
+
+  beforeEach(() => {
+    sim = new Simulator();
+  });
+
+  test("CMOVE moves when ZF is set", () => {
+    sim.executeInstruction("MOV", ["EAX", "0"]);
+    sim.executeInstruction("CMP", ["EAX", "0"]); // ZF=1
+    sim.executeInstruction("MOV", ["EBX", "42"]);
+    sim.executeInstruction("CMOVE", ["EAX", "EBX"]);
+    expect(sim.getRegisters().EAX).toBe(42);
+  });
+
+  test("CMOVE does not move when ZF is clear", () => {
+    sim.executeInstruction("MOV", ["EAX", "1"]);
+    sim.executeInstruction("CMP", ["EAX", "0"]); // ZF=0
+    sim.executeInstruction("MOV", ["EBX", "42"]);
+    sim.executeInstruction("CMOVE", ["EAX", "EBX"]);
+    expect(sim.getRegisters().EAX).toBe(1);
+  });
+
+  test("CMOVZ is alias for CMOVE", () => {
+    sim.executeInstruction("MOV", ["EAX", "0"]);
+    sim.executeInstruction("CMP", ["EAX", "0"]); // ZF=1
+    sim.executeInstruction("MOV", ["EBX", "99"]);
+    sim.executeInstruction("CMOVZ", ["EAX", "EBX"]);
+    expect(sim.getRegisters().EAX).toBe(99);
+  });
+
+  test("CMOVNE moves when ZF is clear", () => {
+    sim.executeInstruction("MOV", ["EAX", "5"]);
+    sim.executeInstruction("CMP", ["EAX", "3"]); // ZF=0
+    sim.executeInstruction("MOV", ["EBX", "42"]);
+    sim.executeInstruction("CMOVNE", ["EAX", "EBX"]);
+    expect(sim.getRegisters().EAX).toBe(42);
+  });
+
+  test("CMOVNE does not move when ZF is set", () => {
+    sim.executeInstruction("MOV", ["EAX", "5"]);
+    sim.executeInstruction("CMP", ["EAX", "5"]); // ZF=1
+    sim.executeInstruction("MOV", ["EBX", "42"]);
+    sim.executeInstruction("CMOVNE", ["EAX", "EBX"]);
+    expect(sim.getRegisters().EAX).toBe(5);
+  });
+
+  test("CMOVNZ is alias for CMOVNE", () => {
+    sim.executeInstruction("MOV", ["EAX", "5"]);
+    sim.executeInstruction("CMP", ["EAX", "3"]); // ZF=0
+    sim.executeInstruction("MOV", ["EBX", "77"]);
+    sim.executeInstruction("CMOVNZ", ["EAX", "EBX"]);
+    expect(sim.getRegisters().EAX).toBe(77);
+  });
+
+  test("CMOVL moves when SF != OF", () => {
+    sim.executeInstruction("MOV", ["EAX", "1"]);
+    sim.executeInstruction("CMP", ["EAX", "2"]); // 1-2 < 0 => SF=1, OF=0
+    sim.executeInstruction("MOV", ["EBX", "42"]);
+    sim.executeInstruction("CMOVL", ["EAX", "EBX"]);
+    expect(sim.getRegisters().EAX).toBe(42);
+  });
+
+  test("CMOVL does not move when SF == OF", () => {
+    sim.executeInstruction("MOV", ["EAX", "5"]);
+    sim.executeInstruction("CMP", ["EAX", "3"]); // 5-3 > 0 => SF=0, OF=0
+    sim.executeInstruction("MOV", ["EBX", "42"]);
+    sim.executeInstruction("CMOVL", ["EAX", "EBX"]);
+    expect(sim.getRegisters().EAX).toBe(5);
+  });
+
+  test("CMOVLE moves when SF != OF or ZF set", () => {
+    sim.executeInstruction("MOV", ["EAX", "5"]);
+    sim.executeInstruction("CMP", ["EAX", "5"]); // ZF=1
+    sim.executeInstruction("MOV", ["EBX", "42"]);
+    sim.executeInstruction("CMOVLE", ["EAX", "EBX"]);
+    expect(sim.getRegisters().EAX).toBe(42);
+  });
+
+  test("CMOVG moves when SF == OF and ZF clear", () => {
+    sim.executeInstruction("MOV", ["EAX", "5"]);
+    sim.executeInstruction("CMP", ["EAX", "3"]); // 5>3 => SF=0, OF=0, ZF=0
+    sim.executeInstruction("MOV", ["EBX", "42"]);
+    sim.executeInstruction("CMOVG", ["EAX", "EBX"]);
+    expect(sim.getRegisters().EAX).toBe(42);
+  });
+
+  test("CMOVG does not move when ZF is set", () => {
+    sim.executeInstruction("MOV", ["EAX", "5"]);
+    sim.executeInstruction("CMP", ["EAX", "5"]); // ZF=1
+    sim.executeInstruction("MOV", ["EBX", "42"]);
+    sim.executeInstruction("CMOVG", ["EAX", "EBX"]);
+    expect(sim.getRegisters().EAX).toBe(5);
+  });
+
+  test("CMOVGE moves when SF == OF", () => {
+    sim.executeInstruction("MOV", ["EAX", "5"]);
+    sim.executeInstruction("CMP", ["EAX", "5"]); // SF=0, OF=0
+    sim.executeInstruction("MOV", ["EBX", "42"]);
+    sim.executeInstruction("CMOVGE", ["EAX", "EBX"]);
+    expect(sim.getRegisters().EAX).toBe(42);
+  });
+
+  test("CMOVA moves when CF=0 and ZF=0 (unsigned above)", () => {
+    sim.executeInstruction("MOV", ["EAX", "5"]);
+    sim.executeInstruction("CMP", ["EAX", "3"]); // CF=0, ZF=0
+    sim.executeInstruction("MOV", ["EBX", "42"]);
+    sim.executeInstruction("CMOVA", ["EAX", "EBX"]);
+    expect(sim.getRegisters().EAX).toBe(42);
+  });
+
+  test("CMOVA does not move when CF set", () => {
+    sim.executeInstruction("MOV", ["EAX", "1"]);
+    sim.executeInstruction("CMP", ["EAX", "5"]); // CF=1
+    sim.executeInstruction("MOV", ["EBX", "42"]);
+    sim.executeInstruction("CMOVA", ["EAX", "EBX"]);
+    expect(sim.getRegisters().EAX).toBe(1);
+  });
+
+  test("CMOVAE moves when CF=0", () => {
+    sim.executeInstruction("MOV", ["EAX", "5"]);
+    sim.executeInstruction("CMP", ["EAX", "5"]); // CF=0, ZF=1
+    sim.executeInstruction("MOV", ["EBX", "42"]);
+    sim.executeInstruction("CMOVAE", ["EAX", "EBX"]);
+    expect(sim.getRegisters().EAX).toBe(42);
+  });
+
+  test("CMOVB moves when CF=1", () => {
+    sim.executeInstruction("MOV", ["EAX", "1"]);
+    sim.executeInstruction("CMP", ["EAX", "5"]); // CF=1
+    sim.executeInstruction("MOV", ["EBX", "42"]);
+    sim.executeInstruction("CMOVB", ["EAX", "EBX"]);
+    expect(sim.getRegisters().EAX).toBe(42);
+  });
+
+  test("CMOVBE moves when CF=1 or ZF=1", () => {
+    sim.executeInstruction("MOV", ["EAX", "5"]);
+    sim.executeInstruction("CMP", ["EAX", "5"]); // ZF=1
+    sim.executeInstruction("MOV", ["EBX", "42"]);
+    sim.executeInstruction("CMOVBE", ["EAX", "EBX"]);
+    expect(sim.getRegisters().EAX).toBe(42);
+  });
+
+  test("CMOVS moves when SF=1", () => {
+    sim.executeInstruction("MOV", ["EAX", "1"]);
+    sim.executeInstruction("CMP", ["EAX", "2"]); // result negative => SF=1
+    sim.executeInstruction("MOV", ["EBX", "42"]);
+    sim.executeInstruction("CMOVS", ["EAX", "EBX"]);
+    expect(sim.getRegisters().EAX).toBe(42);
+  });
+
+  test("CMOVS does not move when SF=0", () => {
+    sim.executeInstruction("MOV", ["EAX", "5"]);
+    sim.executeInstruction("CMP", ["EAX", "3"]); // SF=0
+    sim.executeInstruction("MOV", ["EBX", "42"]);
+    sim.executeInstruction("CMOVS", ["EAX", "EBX"]);
+    expect(sim.getRegisters().EAX).toBe(5);
+  });
+
+  test("CMOVNS moves when SF=0", () => {
+    sim.executeInstruction("MOV", ["EAX", "5"]);
+    sim.executeInstruction("CMP", ["EAX", "3"]); // SF=0
+    sim.executeInstruction("MOV", ["EBX", "42"]);
+    sim.executeInstruction("CMOVNS", ["EAX", "EBX"]);
+    expect(sim.getRegisters().EAX).toBe(42);
+  });
+
+  test("CMOVNS does not move when SF=1", () => {
+    sim.executeInstruction("MOV", ["EAX", "1"]);
+    sim.executeInstruction("CMP", ["EAX", "2"]); // SF=1
+    sim.executeInstruction("MOV", ["EBX", "42"]);
+    sim.executeInstruction("CMOVNS", ["EAX", "EBX"]);
+    expect(sim.getRegisters().EAX).toBe(1);
+  });
+
+  test("CMOVxx with wrong operand count is ignored", () => {
+    expect(() => sim.executeInstruction("CMOVE", ["EAX"])).not.toThrow();
+  });
+
+  test("CMOVxx with non-register dest is ignored", () => {
+    sim.executeInstruction("MOV", ["EAX", "0"]);
+    sim.executeInstruction("CMP", ["EAX", "0"]); // ZF=1
+    expect(() => sim.executeInstruction("CMOVE", ["42", "EAX"])).not.toThrow();
+  });
+
+  test("CMOVxx resolves immediate source", () => {
+    sim.executeInstruction("MOV", ["EAX", "0"]);
+    sim.executeInstruction("CMP", ["EAX", "0"]); // ZF=1
+    sim.executeInstruction("CMOVE", ["EAX", "99"]);
+    expect(sim.getRegisters().EAX).toBe(99);
+  });
+});
+
+describe("executeInstruction - XADD (Exchange and Add)", () => {
+  let sim: Simulator;
+
+  beforeEach(() => {
+    sim = new Simulator();
+  });
+
+  test("XADD exchanges and adds", () => {
+    sim.executeInstruction("MOV", ["EAX", "10"]);
+    sim.executeInstruction("MOV", ["EBX", "20"]);
+    sim.executeInstruction("XADD", ["EAX", "EBX"]);
+    expect(sim.getRegisters().EAX).toBe(30); // 10+20
+    expect(sim.getRegisters().EBX).toBe(10); // old EAX
+  });
+
+  test("XADD sets flags correctly", () => {
+    sim.executeInstruction("MOV", ["EAX", "0"]);
+    sim.executeInstruction("MOV", ["EBX", "0"]);
+    sim.executeInstruction("XADD", ["EAX", "EBX"]);
+    expect(sim.getRegisters().EAX).toBe(0);
+    expect(sim.isZeroFlagSet()).toBe(true);
+  });
+
+  test("XADD with wrong operand count is ignored", () => {
+    expect(() => sim.executeInstruction("XADD", ["EAX"])).not.toThrow();
+  });
+
+  test("XADD with non-register operands is ignored", () => {
+    expect(() => sim.executeInstruction("XADD", ["42", "EAX"])).not.toThrow();
+  });
+});
+
+describe("executeInstruction - BSF/BSR (Bit Scan)", () => {
+  let sim: Simulator;
+
+  beforeEach(() => {
+    sim = new Simulator();
+  });
+
+  test("BSF finds least significant set bit", () => {
+    sim.executeInstruction("MOV", ["EBX", "0x80"]); // bit 7
+    sim.executeInstruction("BSF", ["EAX", "EBX"]);
+    expect(sim.getRegisters().EAX).toBe(7);
+    expect(sim.isZeroFlagSet()).toBe(false);
+  });
+
+  test("BSF with source 0 sets ZF", () => {
+    sim.executeInstruction("MOV", ["EBX", "0"]);
+    sim.executeInstruction("BSF", ["EAX", "EBX"]);
+    expect(sim.isZeroFlagSet()).toBe(true);
+  });
+
+  test("BSF finds bit 0 for odd numbers", () => {
+    sim.executeInstruction("MOV", ["EBX", "0xFF"]);
+    sim.executeInstruction("BSF", ["EAX", "EBX"]);
+    expect(sim.getRegisters().EAX).toBe(0);
+  });
+
+  test("BSF with immediate source", () => {
+    sim.executeInstruction("BSF", ["EAX", "16"]); // bit 4
+    expect(sim.getRegisters().EAX).toBe(4);
+  });
+
+  test("BSF with wrong operand count is ignored", () => {
+    expect(() => sim.executeInstruction("BSF", ["EAX"])).not.toThrow();
+  });
+
+  test("BSF with non-register dest is ignored", () => {
+    expect(() => sim.executeInstruction("BSF", ["42", "EBX"])).not.toThrow();
+  });
+
+  test("BSR finds most significant set bit", () => {
+    sim.executeInstruction("MOV", ["EBX", "0xFF"]);
+    sim.executeInstruction("BSR", ["EAX", "EBX"]);
+    expect(sim.getRegisters().EAX).toBe(7);
+    expect(sim.isZeroFlagSet()).toBe(false);
+  });
+
+  test("BSR with source 0 sets ZF", () => {
+    sim.executeInstruction("MOV", ["EBX", "0"]);
+    sim.executeInstruction("BSR", ["EAX", "EBX"]);
+    expect(sim.isZeroFlagSet()).toBe(true);
+  });
+
+  test("BSR finds bit 31 for large values", () => {
+    sim.executeInstruction("MOV", ["EBX", "0x80000000"]);
+    sim.executeInstruction("BSR", ["EAX", "EBX"]);
+    expect(sim.getRegisters().EAX).toBe(31);
+  });
+
+  test("BSR with immediate source", () => {
+    sim.executeInstruction("BSR", ["EAX", "1"]); // bit 0
+    expect(sim.getRegisters().EAX).toBe(0);
+  });
+
+  test("BSR with wrong operand count is ignored", () => {
+    expect(() => sim.executeInstruction("BSR", ["EAX"])).not.toThrow();
+  });
+
+  test("BSR with non-register dest is ignored", () => {
+    expect(() => sim.executeInstruction("BSR", ["42", "EBX"])).not.toThrow();
+  });
+});
+
+describe("executeInstruction - BSWAP (Byte Swap)", () => {
+  let sim: Simulator;
+
+  beforeEach(() => {
+    sim = new Simulator();
+  });
+
+  test("BSWAP reverses byte order", () => {
+    sim.executeInstruction("MOV", ["EAX", "0x12345678"]);
+    sim.executeInstruction("BSWAP", ["EAX"]);
+    expect(sim.getRegisters().EAX).toBe(0x78563412);
+  });
+
+  test("BSWAP on zero stays zero", () => {
+    sim.executeInstruction("MOV", ["EAX", "0"]);
+    sim.executeInstruction("BSWAP", ["EAX"]);
+    expect(sim.getRegisters().EAX).toBe(0);
+  });
+
+  test("BSWAP on 0xFFFFFFFF stays same", () => {
+    sim.executeInstruction("MOV", ["EAX", "0xFFFFFFFF"]);
+    sim.executeInstruction("BSWAP", ["EAX"]);
+    expect(sim.getRegisters().EAX).toBe(0xffffffff);
+  });
+
+  test("BSWAP double swap returns original", () => {
+    sim.executeInstruction("MOV", ["EAX", "0xAABBCCDD"]);
+    sim.executeInstruction("BSWAP", ["EAX"]);
+    sim.executeInstruction("BSWAP", ["EAX"]);
+    expect(sim.getRegisters().EAX).toBe(0xaabbccdd);
+  });
+
+  test("BSWAP with wrong operand count is ignored", () => {
+    expect(() => sim.executeInstruction("BSWAP", [])).not.toThrow();
+  });
+
+  test("BSWAP with non-register is ignored", () => {
+    expect(() => sim.executeInstruction("BSWAP", ["42"])).not.toThrow();
+  });
+});
+
+describe("executeInstruction - String Operations (LODS/STOS/MOVS/SCAS/CMPS)", () => {
+  let sim: Simulator;
+
+  beforeEach(() => {
+    sim = new Simulator();
+  });
+
+  test("LODSB loads byte from [ESI] into AL and increments ESI", () => {
+    // Write a value at address 100
+    sim.executeInstruction("MOV", ["[100]", "0x42"]);
+    sim.executeInstruction("MOV", ["ESI", "100"]);
+    sim.executeInstruction("MOV", ["EAX", "0xFF00"]);
+    sim.executeInstruction("LODSB", []);
+    expect(sim.getRegisters().EAX & 0xff).toBe(0x42);
+    expect(sim.getRegisters().ESI).toBe(101);
+    // Upper bytes preserved
+    expect(sim.getRegisters().EAX & 0xff00).toBe(0xff00);
+  });
+
+  test("LODS is alias for LODSB", () => {
+    sim.executeInstruction("MOV", ["[200]", "0x55"]);
+    sim.executeInstruction("MOV", ["ESI", "200"]);
+    sim.executeInstruction("LODS", []);
+    expect(sim.getRegisters().EAX & 0xff).toBe(0x55);
+    expect(sim.getRegisters().ESI).toBe(201);
+  });
+
+  test("STOSB stores AL to [EDI] and increments EDI", () => {
+    sim.executeInstruction("MOV", ["EAX", "0x42"]);
+    sim.executeInstruction("MOV", ["EDI", "300"]);
+    sim.executeInstruction("STOSB", []);
+    sim.executeInstruction("MOV", ["EBX", "[300]"]);
+    expect(sim.getRegisters().EBX).toBe(0x42);
+    expect(sim.getRegisters().EDI).toBe(301);
+  });
+
+  test("STOS is alias for STOSB", () => {
+    sim.executeInstruction("MOV", ["EAX", "0x77"]);
+    sim.executeInstruction("MOV", ["EDI", "400"]);
+    sim.executeInstruction("STOS", []);
+    sim.executeInstruction("MOV", ["EBX", "[400]"]);
+    expect(sim.getRegisters().EBX).toBe(0x77);
+    expect(sim.getRegisters().EDI).toBe(401);
+  });
+
+  test("MOVSB copies byte from [ESI] to [EDI] and increments both", () => {
+    sim.executeInstruction("MOV", ["[500]", "0xAB"]);
+    sim.executeInstruction("MOV", ["ESI", "500"]);
+    sim.executeInstruction("MOV", ["EDI", "600"]);
+    sim.executeInstruction("MOVSB", []);
+    sim.executeInstruction("MOV", ["EAX", "[600]"]);
+    expect(sim.getRegisters().EAX).toBe(0xab);
+    expect(sim.getRegisters().ESI).toBe(501);
+    expect(sim.getRegisters().EDI).toBe(601);
+  });
+
+  test("MOVS is alias for MOVSB", () => {
+    sim.executeInstruction("MOV", ["[700]", "0xCD"]);
+    sim.executeInstruction("MOV", ["ESI", "700"]);
+    sim.executeInstruction("MOV", ["EDI", "800"]);
+    sim.executeInstruction("MOVS", []);
+    sim.executeInstruction("MOV", ["EAX", "[800]"]);
+    expect(sim.getRegisters().EAX).toBe(0xcd);
+  });
+
+  test("SCASB compares AL with [EDI] and sets flags", () => {
+    sim.executeInstruction("MOV", ["[900]", "0x42"]);
+    sim.executeInstruction("MOV", ["EAX", "0x42"]);
+    sim.executeInstruction("MOV", ["EDI", "900"]);
+    sim.executeInstruction("SCASB", []);
+    expect(sim.isZeroFlagSet()).toBe(true); // equal
+    expect(sim.getRegisters().EDI).toBe(901);
+  });
+
+  test("SCAS is alias for SCASB", () => {
+    sim.executeInstruction("MOV", ["[1000]", "0x10"]);
+    sim.executeInstruction("MOV", ["EAX", "0x20"]);
+    sim.executeInstruction("MOV", ["EDI", "1000"]);
+    sim.executeInstruction("SCAS", []);
+    expect(sim.isZeroFlagSet()).toBe(false); // not equal
+  });
+
+  test("CMPSB compares [ESI] with [EDI] and sets flags", () => {
+    sim.executeInstruction("MOV", ["[1100]", "0x42"]);
+    sim.executeInstruction("MOV", ["[1200]", "0x42"]);
+    sim.executeInstruction("MOV", ["ESI", "1100"]);
+    sim.executeInstruction("MOV", ["EDI", "1200"]);
+    sim.executeInstruction("CMPSB", []);
+    expect(sim.isZeroFlagSet()).toBe(true); // equal
+    expect(sim.getRegisters().ESI).toBe(1101);
+    expect(sim.getRegisters().EDI).toBe(1201);
+  });
+
+  test("CMPS is alias for CMPSB", () => {
+    sim.executeInstruction("MOV", ["[1300]", "0x10"]);
+    sim.executeInstruction("MOV", ["[1400]", "0x20"]);
+    sim.executeInstruction("MOV", ["ESI", "1300"]);
+    sim.executeInstruction("MOV", ["EDI", "1400"]);
+    sim.executeInstruction("CMPS", []);
+    expect(sim.isZeroFlagSet()).toBe(false); // not equal
+  });
+
+  test("CMPSB sets carry flag when source < dest", () => {
+    sim.executeInstruction("MOV", ["[1500]", "0x10"]);
+    sim.executeInstruction("MOV", ["[1600]", "0x20"]);
+    sim.executeInstruction("MOV", ["ESI", "1500"]);
+    sim.executeInstruction("MOV", ["EDI", "1600"]);
+    sim.executeInstruction("CMPSB", []);
+    expect(sim.isCarryFlagSet()).toBe(true); // 0x10 < 0x20
+  });
+});
+
+describe("executeInstruction - INT3 (Breakpoint)", () => {
+  let sim: Simulator;
+
+  beforeEach(() => {
+    sim = new Simulator();
+  });
+
+  test("INT3 halts the processor", () => {
+    sim.executeInstruction("INT3", []);
+    const state = sim.getState();
+    expect(state.halted).toBe(true);
+    expect(state.running).toBe(false);
+  });
+});
+
+describe("executeInstruction - LOOP/LOOPE/LOOPNE (via step)", () => {
+  let sim: Simulator;
+
+  beforeEach(() => {
+    sim = new Simulator();
+  });
+
+  test("LOOP decrements ECX and branches when ECX != 0", () => {
+    const instructions = [
+      { line: 1, mnemonic: "MOV", operands: ["ECX", "3"], raw: "MOV ECX, 3" },
+      { line: 2, mnemonic: "INC", operands: ["EAX"], raw: "INC EAX" },
+      { line: 3, mnemonic: "LOOP", operands: ["body"], raw: "LOOP body" },
+      { line: 4, mnemonic: "HLT", operands: [], raw: "HLT" },
+    ];
+    const labels = new Map([["body", 1]]);
+    sim.loadInstructions(instructions, labels);
+    // Run until halted
+    for (let i = 0; i < 20 && !sim.getState().halted; i++) {
+      sim.step();
+    }
+    expect(sim.getRegisters().EAX).toBe(3); // 3 iterations
+    expect(sim.getRegisters().ECX).toBe(0);
+  });
+
+  test("LOOP with ECX=1 falls through after decrement", () => {
+    const instructions = [
+      { line: 1, mnemonic: "MOV", operands: ["ECX", "1"], raw: "MOV ECX, 1" },
+      { line: 2, mnemonic: "LOOP", operands: ["body"], raw: "LOOP body" },
+      { line: 3, mnemonic: "HLT", operands: [], raw: "HLT" },
+    ];
+    const labels = new Map([["body", 1]]);
+    sim.loadInstructions(instructions, labels);
+    sim.step(); // MOV ECX, 1
+    sim.step(); // LOOP: ECX becomes 0, falls through
+    expect(sim.getRegisters().ECX).toBe(0);
+    expect(sim.getEIP()).toBe(2); // at HLT
+  });
+
+  test("LOOPE branches when ECX != 0 AND ZF set", () => {
+    const instructions = [
+      { line: 1, mnemonic: "MOV", operands: ["ECX", "3"], raw: "MOV ECX, 3" },
+      {
+        line: 2,
+        mnemonic: "CMP",
+        operands: ["EAX", "EAX"],
+        raw: "CMP EAX, EAX",
+      },
+      { line: 3, mnemonic: "LOOPE", operands: ["body"], raw: "LOOPE body" },
+      { line: 4, mnemonic: "HLT", operands: [], raw: "HLT" },
+    ];
+    const labels = new Map([["body", 1]]);
+    sim.loadInstructions(instructions, labels);
+    for (let i = 0; i < 20 && !sim.getState().halted; i++) {
+      sim.step();
+    }
+    expect(sim.getRegisters().ECX).toBe(0);
+  });
+
+  test("LOOPZ is alias for LOOPE", () => {
+    const instructions = [
+      { line: 1, mnemonic: "MOV", operands: ["ECX", "2"], raw: "MOV ECX, 2" },
+      {
+        line: 2,
+        mnemonic: "CMP",
+        operands: ["EAX", "EAX"],
+        raw: "CMP EAX, EAX",
+      },
+      { line: 3, mnemonic: "LOOPZ", operands: ["body"], raw: "LOOPZ body" },
+      { line: 4, mnemonic: "HLT", operands: [], raw: "HLT" },
+    ];
+    const labels = new Map([["body", 1]]);
+    sim.loadInstructions(instructions, labels);
+    for (let i = 0; i < 20 && !sim.getState().halted; i++) {
+      sim.step();
+    }
+    expect(sim.getRegisters().ECX).toBe(0);
+  });
+
+  test("LOOPNE branches when ECX != 0 AND ZF clear", () => {
+    const instructions = [
+      { line: 1, mnemonic: "MOV", operands: ["ECX", "3"], raw: "MOV ECX, 3" },
+      {
+        line: 2,
+        mnemonic: "CMP",
+        operands: ["EAX", "EBX"],
+        raw: "CMP EAX, EBX",
+      },
+      { line: 3, mnemonic: "LOOPNE", operands: ["body"], raw: "LOOPNE body" },
+      { line: 4, mnemonic: "HLT", operands: [], raw: "HLT" },
+    ];
+    const labels = new Map([["body", 1]]);
+    sim.loadInstructions(instructions, labels);
+    sim.executeInstruction("MOV", ["EAX", "1"]); // set EAX != 0 so CMP != 0
+    for (let i = 0; i < 20 && !sim.getState().halted; i++) {
+      sim.step();
+    }
+    expect(sim.getRegisters().ECX).toBe(0);
+  });
+
+  test("LOOPNZ is alias for LOOPNE", () => {
+    const instructions = [
+      { line: 1, mnemonic: "MOV", operands: ["ECX", "2"], raw: "MOV ECX, 2" },
+      {
+        line: 2,
+        mnemonic: "CMP",
+        operands: ["EAX", "EBX"],
+        raw: "CMP EAX, EBX",
+      },
+      { line: 3, mnemonic: "LOOPNZ", operands: ["body"], raw: "LOOPNZ body" },
+      { line: 4, mnemonic: "HLT", operands: [], raw: "HLT" },
+    ];
+    const labels = new Map([["body", 1]]);
+    sim.loadInstructions(instructions, labels);
+    sim.executeInstruction("MOV", ["EAX", "5"]);
+    for (let i = 0; i < 20 && !sim.getState().halted; i++) {
+      sim.step();
+    }
+    expect(sim.getRegisters().ECX).toBe(0);
+  });
+
+  test("LOOPE falls through when ZF is clear", () => {
+    const instructions = [
+      { line: 1, mnemonic: "MOV", operands: ["ECX", "3"], raw: "MOV ECX, 3" },
+      { line: 2, mnemonic: "MOV", operands: ["EAX", "1"], raw: "MOV EAX, 1" },
+      { line: 3, mnemonic: "CMP", operands: ["EAX", "0"], raw: "CMP EAX, 0" },
+      { line: 4, mnemonic: "LOOPE", operands: ["body"], raw: "LOOPE body" },
+      { line: 5, mnemonic: "HLT", operands: [], raw: "HLT" },
+    ];
+    const labels = new Map([["body", 1]]);
+    sim.loadInstructions(instructions, labels);
+    // Step through: MOV ECX,3; MOV EAX,1; CMP EAX,0 (ZF=0); LOOPE falls through
+    sim.step(); // MOV ECX,3
+    sim.step(); // MOV EAX,1
+    sim.step(); // CMP EAX,0 => ZF=0
+    sim.step(); // LOOPE: ECX=2, but ZF=0 so falls through
+    expect(sim.getEIP()).toBe(4); // at HLT
+    expect(sim.getRegisters().ECX).toBe(2);
+  });
+
+  test("LOOPNE falls through when ZF is set", () => {
+    const instructions = [
+      { line: 1, mnemonic: "MOV", operands: ["ECX", "3"], raw: "MOV ECX, 3" },
+      {
+        line: 2,
+        mnemonic: "CMP",
+        operands: ["EAX", "EAX"],
+        raw: "CMP EAX, EAX",
+      },
+      { line: 3, mnemonic: "LOOPNE", operands: ["body"], raw: "LOOPNE body" },
+      { line: 4, mnemonic: "HLT", operands: [], raw: "HLT" },
+    ];
+    const labels = new Map([["body", 1]]);
+    sim.loadInstructions(instructions, labels);
+    sim.step(); // MOV ECX,3
+    sim.step(); // CMP EAX,EAX => ZF=1
+    sim.step(); // LOOPNE: ECX=2, but ZF=1 so falls through
+    expect(sim.getEIP()).toBe(3); // at HLT
+    expect(sim.getRegisters().ECX).toBe(2);
+  });
+
+  test("LOOP with unknown label throws error", () => {
+    const instructions = [
+      { line: 1, mnemonic: "MOV", operands: ["ECX", "1"], raw: "MOV ECX, 1" },
+      { line: 2, mnemonic: "LOOP", operands: ["unknown"], raw: "LOOP unknown" },
+    ];
+    const labels = new Map<string, number>();
+    sim.loadInstructions(instructions, labels);
+    sim.step(); // MOV
+    expect(() => sim.step()).toThrow(
+      'LOOP target "unknown" not found in labels',
+    );
+  });
+
+  test("LOOP/LOOPE/LOOPNE are no-ops in executeInstruction (only decrement ECX)", () => {
+    sim.executeInstruction("MOV", ["ECX", "5"]);
+    sim.executeInstruction("LOOP", ["label"]);
+    expect(sim.getRegisters().ECX).toBe(4);
+    sim.executeInstruction("LOOPE", ["label"]);
+    expect(sim.getRegisters().ECX).toBe(3);
+    sim.executeInstruction("LOOPNE", ["label"]);
+    expect(sim.getRegisters().ECX).toBe(2);
+    sim.executeInstruction("LOOPZ", ["label"]);
+    expect(sim.getRegisters().ECX).toBe(1);
+    sim.executeInstruction("LOOPNZ", ["label"]);
+    expect(sim.getRegisters().ECX).toBe(0);
+  });
+});

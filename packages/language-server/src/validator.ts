@@ -64,6 +64,25 @@ export const REQUIRES_TWO_OPERANDS = [
   "SAR",
   "ROL",
   "ROR",
+  "RCL",
+  "RCR",
+  "CMOVE",
+  "CMOVZ",
+  "CMOVNE",
+  "CMOVNZ",
+  "CMOVL",
+  "CMOVLE",
+  "CMOVG",
+  "CMOVGE",
+  "CMOVA",
+  "CMOVAE",
+  "CMOVB",
+  "CMOVBE",
+  "CMOVS",
+  "CMOVNS",
+  "XADD",
+  "BSF",
+  "BSR",
 ];
 
 /**
@@ -96,12 +115,36 @@ export const REQUIRES_ONE_OPERAND = [
   "JBE",
   "CALL",
   "INT",
+  "LOOP",
+  "LOOPE",
+  "LOOPZ",
+  "LOOPNE",
+  "LOOPNZ",
+  "BSWAP",
 ];
 
 /**
  * Instructions requiring zero operands
  */
-export const REQUIRES_ZERO_OPERANDS = ["RET", "HLT", "IRET", "NOP"];
+export const REQUIRES_ZERO_OPERANDS = [
+  "RET",
+  "HLT",
+  "IRET",
+  "NOP",
+  "LAHF",
+  "SAHF",
+  "LODSB",
+  "LODS",
+  "STOSB",
+  "STOS",
+  "MOVSB",
+  "MOVS",
+  "SCASB",
+  "SCAS",
+  "CMPSB",
+  "CMPS",
+  "INT3",
+];
 
 /**
  * Assembler directives (non-instructions)
@@ -128,6 +171,11 @@ export const LABEL_INSTRUCTIONS = [
   "JB",
   "JBE",
   "CALL",
+  "LOOP",
+  "LOOPE",
+  "LOOPZ",
+  "LOOPNE",
+  "LOOPNZ",
 ];
 
 /**
@@ -641,6 +689,27 @@ export function validateCallingConventions(
     "NEG",
     "NOT",
     "RAND",
+    "RCL",
+    "RCR",
+    "XADD",
+    "BSF",
+    "BSR",
+    "BSWAP",
+    "CMOVE",
+    "CMOVZ",
+    "CMOVNE",
+    "CMOVNZ",
+    "CMOVL",
+    "CMOVLE",
+    "CMOVG",
+    "CMOVGE",
+    "CMOVA",
+    "CMOVAE",
+    "CMOVB",
+    "CMOVBE",
+    "CMOVS",
+    "CMOVNS",
+    "SAHF",
   ];
 
   // Collect EQU names

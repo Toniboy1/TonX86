@@ -512,6 +512,364 @@
         "RAND EAX, 64       ; EAX = random(0..63)",
         "RAND EBX, ECX      ; EBX = random(0..ECX-1)"
       ]
+    },
+    {
+      "mnemonic": "LOOP",
+      "opcode": "0xE2",
+      "operands": ["label"],
+      "description": "Decrement ECX, jump to label if ECX != 0",
+      "cycles": 1,
+      "flags": [],
+      "examples": ["LOOP my_loop       ; Decrement ECX, jump if ECX != 0"]
+    },
+    {
+      "mnemonic": "LOOPE",
+      "opcode": "0xE1",
+      "operands": ["label"],
+      "description": "Decrement ECX, jump if ECX != 0 AND ZF set (alias: LOOPZ)",
+      "cycles": 1,
+      "flags": [],
+      "examples": ["LOOPE my_loop      ; Loop while equal and ECX != 0"]
+    },
+    {
+      "mnemonic": "LOOPZ",
+      "opcode": "0xE1",
+      "operands": ["label"],
+      "description": "Decrement ECX, jump if ECX != 0 AND ZF set (alias for LOOPE)",
+      "cycles": 1,
+      "flags": [],
+      "examples": ["LOOPZ my_loop      ; Loop while zero and ECX != 0"]
+    },
+    {
+      "mnemonic": "LOOPNE",
+      "opcode": "0xE0",
+      "operands": ["label"],
+      "description": "Decrement ECX, jump if ECX != 0 AND ZF clear (alias: LOOPNZ)",
+      "cycles": 1,
+      "flags": [],
+      "examples": ["LOOPNE my_loop     ; Loop while not equal and ECX != 0"]
+    },
+    {
+      "mnemonic": "LOOPNZ",
+      "opcode": "0xE0",
+      "operands": ["label"],
+      "description": "Decrement ECX, jump if ECX != 0 AND ZF clear (alias for LOOPNE)",
+      "cycles": 1,
+      "flags": [],
+      "examples": ["LOOPNZ my_loop     ; Loop while not zero and ECX != 0"]
+    },
+    {
+      "mnemonic": "RCL",
+      "opcode": "0xD1",
+      "operands": ["reg", "imm/reg"],
+      "description": "Rotate left through carry flag",
+      "cycles": 1,
+      "flags": ["C", "O"],
+      "examples": [
+        "RCL EAX, 1         ; Rotate EAX left through CF by 1",
+        "RCL EBX, CL        ; Rotate EBX left through CF by CL"
+      ]
+    },
+    {
+      "mnemonic": "RCR",
+      "opcode": "0xD1",
+      "operands": ["reg", "imm/reg"],
+      "description": "Rotate right through carry flag",
+      "cycles": 1,
+      "flags": ["C", "O"],
+      "examples": [
+        "RCR EAX, 1         ; Rotate EAX right through CF by 1",
+        "RCR EBX, CL        ; Rotate EBX right through CF by CL"
+      ]
+    },
+    {
+      "mnemonic": "LAHF",
+      "opcode": "0x9F",
+      "operands": [],
+      "description": "Load flags (SF, ZF, CF) into AH register",
+      "cycles": 1,
+      "flags": [],
+      "examples": ["LAHF                ; AH = flags (SF:ZF:0:AF:0:PF:1:CF)"]
+    },
+    {
+      "mnemonic": "SAHF",
+      "opcode": "0x9E",
+      "operands": [],
+      "description": "Store AH register into flags (SF, ZF, CF)",
+      "cycles": 1,
+      "flags": ["Z", "C", "S"],
+      "examples": ["SAHF                ; flags = AH"]
+    },
+    {
+      "mnemonic": "CMOVE",
+      "opcode": "0x0F44",
+      "operands": ["reg", "reg/imm"],
+      "description": "Conditional move if equal (ZF=1). Alias: CMOVZ",
+      "cycles": 1,
+      "flags": [],
+      "examples": ["CMOVE EAX, EBX     ; Move EBX to EAX if ZF=1"]
+    },
+    {
+      "mnemonic": "CMOVZ",
+      "opcode": "0x0F44",
+      "operands": ["reg", "reg/imm"],
+      "description": "Conditional move if zero (ZF=1). Alias for CMOVE",
+      "cycles": 1,
+      "flags": [],
+      "examples": ["CMOVZ EAX, EBX     ; Move EBX to EAX if ZF=1"]
+    },
+    {
+      "mnemonic": "CMOVNE",
+      "opcode": "0x0F45",
+      "operands": ["reg", "reg/imm"],
+      "description": "Conditional move if not equal (ZF=0). Alias: CMOVNZ",
+      "cycles": 1,
+      "flags": [],
+      "examples": ["CMOVNE EAX, EBX    ; Move EBX to EAX if ZF=0"]
+    },
+    {
+      "mnemonic": "CMOVNZ",
+      "opcode": "0x0F45",
+      "operands": ["reg", "reg/imm"],
+      "description": "Conditional move if not zero (ZF=0). Alias for CMOVNE",
+      "cycles": 1,
+      "flags": [],
+      "examples": ["CMOVNZ EAX, EBX    ; Move EBX to EAX if ZF=0"]
+    },
+    {
+      "mnemonic": "CMOVL",
+      "opcode": "0x0F4C",
+      "operands": ["reg", "reg/imm"],
+      "description": "Conditional move if less (signed: SF!=OF)",
+      "cycles": 1,
+      "flags": [],
+      "examples": ["CMOVL EAX, EBX     ; Move if signed less"]
+    },
+    {
+      "mnemonic": "CMOVLE",
+      "opcode": "0x0F4E",
+      "operands": ["reg", "reg/imm"],
+      "description": "Conditional move if less or equal (SF!=OF or ZF=1)",
+      "cycles": 1,
+      "flags": [],
+      "examples": ["CMOVLE EAX, EBX    ; Move if signed less or equal"]
+    },
+    {
+      "mnemonic": "CMOVG",
+      "opcode": "0x0F4F",
+      "operands": ["reg", "reg/imm"],
+      "description": "Conditional move if greater (signed: SF==OF and ZF=0)",
+      "cycles": 1,
+      "flags": [],
+      "examples": ["CMOVG EAX, EBX     ; Move if signed greater"]
+    },
+    {
+      "mnemonic": "CMOVGE",
+      "opcode": "0x0F4D",
+      "operands": ["reg", "reg/imm"],
+      "description": "Conditional move if greater or equal (SF==OF)",
+      "cycles": 1,
+      "flags": [],
+      "examples": ["CMOVGE EAX, EBX    ; Move if signed greater or equal"]
+    },
+    {
+      "mnemonic": "CMOVA",
+      "opcode": "0x0F47",
+      "operands": ["reg", "reg/imm"],
+      "description": "Conditional move if above (unsigned: CF=0 and ZF=0)",
+      "cycles": 1,
+      "flags": [],
+      "examples": ["CMOVA EAX, EBX     ; Move if unsigned above"]
+    },
+    {
+      "mnemonic": "CMOVAE",
+      "opcode": "0x0F43",
+      "operands": ["reg", "reg/imm"],
+      "description": "Conditional move if above or equal (CF=0)",
+      "cycles": 1,
+      "flags": [],
+      "examples": ["CMOVAE EAX, EBX    ; Move if unsigned above or equal"]
+    },
+    {
+      "mnemonic": "CMOVB",
+      "opcode": "0x0F42",
+      "operands": ["reg", "reg/imm"],
+      "description": "Conditional move if below (CF=1)",
+      "cycles": 1,
+      "flags": [],
+      "examples": ["CMOVB EAX, EBX     ; Move if unsigned below"]
+    },
+    {
+      "mnemonic": "CMOVBE",
+      "opcode": "0x0F46",
+      "operands": ["reg", "reg/imm"],
+      "description": "Conditional move if below or equal (CF=1 or ZF=1)",
+      "cycles": 1,
+      "flags": [],
+      "examples": ["CMOVBE EAX, EBX    ; Move if unsigned below or equal"]
+    },
+    {
+      "mnemonic": "CMOVS",
+      "opcode": "0x0F48",
+      "operands": ["reg", "reg/imm"],
+      "description": "Conditional move if sign (SF=1)",
+      "cycles": 1,
+      "flags": [],
+      "examples": ["CMOVS EAX, EBX     ; Move if sign flag set"]
+    },
+    {
+      "mnemonic": "CMOVNS",
+      "opcode": "0x0F49",
+      "operands": ["reg", "reg/imm"],
+      "description": "Conditional move if not sign (SF=0)",
+      "cycles": 1,
+      "flags": [],
+      "examples": ["CMOVNS EAX, EBX    ; Move if sign flag clear"]
+    },
+    {
+      "mnemonic": "XADD",
+      "opcode": "0x0FC1",
+      "operands": ["reg", "reg"],
+      "description": "Exchange and add: adds source to destination, loads old destination into source",
+      "cycles": 1,
+      "flags": ["Z", "C", "O", "S"],
+      "examples": ["XADD EAX, EBX      ; Temp=EAX; EAX=EAX+EBX; EBX=Temp"]
+    },
+    {
+      "mnemonic": "BSF",
+      "opcode": "0x0FBC",
+      "operands": ["reg", "reg/imm"],
+      "description": "Bit scan forward - find index of least significant set bit",
+      "cycles": 1,
+      "flags": ["Z"],
+      "examples": ["BSF EAX, EBX       ; EAX = index of first set bit in EBX"]
+    },
+    {
+      "mnemonic": "BSR",
+      "opcode": "0x0FBD",
+      "operands": ["reg", "reg/imm"],
+      "description": "Bit scan reverse - find index of most significant set bit",
+      "cycles": 1,
+      "flags": ["Z"],
+      "examples": ["BSR EAX, EBX       ; EAX = index of last set bit in EBX"]
+    },
+    {
+      "mnemonic": "BSWAP",
+      "opcode": "0x0FC8",
+      "operands": ["reg"],
+      "description": "Byte swap - reverse byte order (endianness conversion)",
+      "cycles": 1,
+      "flags": [],
+      "examples": [
+        "BSWAP EAX           ; Reverse byte order: 0x12345678 -> 0x78563412"
+      ]
+    },
+    {
+      "mnemonic": "LODSB",
+      "opcode": "0xAC",
+      "operands": [],
+      "description": "Load string byte: load byte from [ESI] into AL, increment ESI",
+      "cycles": 1,
+      "flags": [],
+      "examples": ["LODSB               ; AL = [ESI]; ESI++"]
+    },
+    {
+      "mnemonic": "LODS",
+      "opcode": "0xAC",
+      "operands": [],
+      "description": "Load string byte (alias for LODSB): load byte from [ESI] into AL, increment ESI",
+      "cycles": 1,
+      "flags": [],
+      "examples": ["LODS                ; AL = [ESI]; ESI++"]
+    },
+    {
+      "mnemonic": "STOSB",
+      "opcode": "0xAA",
+      "operands": [],
+      "description": "Store string byte: store AL to [EDI], increment EDI",
+      "cycles": 1,
+      "flags": [],
+      "examples": ["STOSB               ; [EDI] = AL; EDI++"]
+    },
+    {
+      "mnemonic": "STOS",
+      "opcode": "0xAA",
+      "operands": [],
+      "description": "Store string byte (alias for STOSB): store AL to [EDI], increment EDI",
+      "cycles": 1,
+      "flags": [],
+      "examples": ["STOS                ; [EDI] = AL; EDI++"]
+    },
+    {
+      "mnemonic": "MOVSB",
+      "opcode": "0xA4",
+      "operands": [],
+      "description": "Move string byte: copy byte from [ESI] to [EDI], increment both",
+      "cycles": 1,
+      "flags": [],
+      "examples": ["MOVSB               ; [EDI] = [ESI]; ESI++; EDI++"]
+    },
+    {
+      "mnemonic": "MOVS",
+      "opcode": "0xA4",
+      "operands": [],
+      "description": "Move string byte (alias for MOVSB): copy byte from [ESI] to [EDI], increment both",
+      "cycles": 1,
+      "flags": [],
+      "examples": ["MOVS                ; [EDI] = [ESI]; ESI++; EDI++"]
+    },
+    {
+      "mnemonic": "SCASB",
+      "opcode": "0xAE",
+      "operands": [],
+      "description": "Scan string byte: compare AL with byte at [EDI], set flags, increment EDI",
+      "cycles": 1,
+      "flags": ["Z", "C", "O", "S"],
+      "examples": [
+        "SCASB               ; Compare AL with [EDI]; set flags; EDI++"
+      ]
+    },
+    {
+      "mnemonic": "SCAS",
+      "opcode": "0xAE",
+      "operands": [],
+      "description": "Scan string byte (alias for SCASB): compare AL with byte at [EDI], set flags, increment EDI",
+      "cycles": 1,
+      "flags": ["Z", "C", "O", "S"],
+      "examples": [
+        "SCAS                ; Compare AL with [EDI]; set flags; EDI++"
+      ]
+    },
+    {
+      "mnemonic": "CMPSB",
+      "opcode": "0xA6",
+      "operands": [],
+      "description": "Compare string bytes: compare [ESI] with [EDI], set flags, increment both",
+      "cycles": 1,
+      "flags": ["Z", "C", "O", "S"],
+      "examples": [
+        "CMPSB               ; Compare [ESI] with [EDI]; set flags; ESI++; EDI++"
+      ]
+    },
+    {
+      "mnemonic": "CMPS",
+      "opcode": "0xA6",
+      "operands": [],
+      "description": "Compare string bytes (alias for CMPSB): compare [ESI] with [EDI], set flags, increment both",
+      "cycles": 1,
+      "flags": ["Z", "C", "O", "S"],
+      "examples": [
+        "CMPS                ; Compare [ESI] with [EDI]; set flags; ESI++; EDI++"
+      ]
+    },
+    {
+      "mnemonic": "INT3",
+      "opcode": "0xCC",
+      "operands": [],
+      "description": "Breakpoint interrupt - triggers a debugger breakpoint and halts execution",
+      "cycles": 1,
+      "flags": [],
+      "examples": ["INT3                ; Trigger breakpoint"]
     }
   ]
 }

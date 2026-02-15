@@ -162,30 +162,56 @@ Students should start in **educational mode** to learn core concepts, then switc
 | `INC` | reg | ZOS | Increment (CF not modified) |
 | `DEC` | reg | ZOS | Decrement (CF not modified) |
 | `NEG` | reg | ZCOS | Two's complement negation |
-| `MUL` | reg/imm | CO | Unsigned multiply (ZS undefined) |
-| `IMUL` | reg/imm | CO | Signed multiply (ZS undefined) |
-| `DIV` | reg/imm | (undef) | Unsigned divide (all flags undefined) |
-| `IDIV` | reg/imm | (undef) | Signed divide (all flags undefined) |
+| `MUL` | reg/imm | ZS | Unsigned multiply |
+| `IMUL` | reg/imm | ZS | Signed multiply |
+| `DIV` | reg/imm | ZS | Unsigned divide |
+| `IDIV` | reg/imm | ZS | Signed divide |
+| `MOD` | reg, reg/imm | ZS | Unsigned modulo |
 | `CMP` | reg, reg/imm | ZCOS | Compare (SUB without storing) |
 | `AND` | reg, reg/imm | ZS | Bitwise AND (CF/OF cleared) |
 | `OR` | reg, reg/imm | ZS | Bitwise OR (CF/OF cleared) |
 | `XOR` | reg, reg/imm | ZS | Bitwise XOR (CF/OF cleared) |
 | `NOT` | reg | - | Bitwise NOT (one's complement) |
-| `TEST` | reg, reg/imm | ZS | Logical AND (flags only, CF/OF cleared) |
-| `SHL` | reg, imm/reg | ZSCO | Shift left |
-| `SHR` | reg, imm/reg | ZSCO | Shift right (logical) |
-| `SAR` | reg, imm/reg | ZSCO | Shift arithmetic right |
-| `ROL` | reg, imm/reg | CO | Rotate left |
-| `ROR` | reg, imm/reg | CO | Rotate right |
+| `TEST` | reg, reg/imm | ZS | Logical AND (flags only) |
+| `SHL` | reg, imm/reg | ZS | Shift left |
+| `SHR` | reg, imm/reg | ZS | Shift right (logical) |
+| `SAR` | reg, imm/reg | ZS | Shift arithmetic right |
+| `ROL` | reg, imm/reg | ZS | Rotate left |
+| `ROR` | reg, imm/reg | ZS | Rotate right |
+| `RCL` | reg, imm/reg | CO | Rotate left through carry |
+| `RCR` | reg, imm/reg | CO | Rotate right through carry |
+| `NOP` | - | - | No operation |
 | `JMP` | label | - | Unconditional jump |
 | `JE/JZ` | label | - | Jump if zero |
 | `JNE/JNZ` | label | - | Jump if not zero |
+| `JG/JGE` | label | - | Jump if greater / greater or equal |
+| `JL/JLE` | label | - | Jump if less / less or equal |
+| `JS/JNS` | label | - | Jump if sign / not sign |
+| `JA/JAE` | label | - | Jump if above / above or equal |
+| `JB/JBE` | label | - | Jump if below / below or equal |
+| `LOOP` | label | - | Decrement ECX, jump if ECX ≠ 0 |
+| `LOOPE/LOOPZ` | label | - | Loop while equal (ECX ≠ 0 and ZF=1) |
+| `LOOPNE/LOOPNZ` | label | - | Loop while not equal (ECX ≠ 0 and ZF=0) |
+| `CMOVxx` | reg, reg/imm | - | Conditional move (E/NE/L/LE/G/GE/A/AE/B/BE/S/NS) |
 | `CALL` | label | - | Push return address, jump to label |
 | `RET` | - | - | Pop return address, jump to it |
 | `PUSH` | reg/imm/mem | - | Push register/immediate/memory onto stack |
 | `POP` | reg | - | Pop from stack into register |
+| `LAHF` | - | - | Load flags (SF, ZF, CF) into AH |
+| `SAHF` | - | ZCS | Store AH into flags |
+| `XADD` | reg, reg | ZCOS | Exchange and add |
+| `BSF` | reg, reg/imm | Z | Bit scan forward |
+| `BSR` | reg, reg/imm | Z | Bit scan reverse |
+| `BSWAP` | reg | - | Byte swap (endianness conversion) |
+| `LODSB/LODS` | - | - | Load byte from [ESI] into AL, ESI++ |
+| `STOSB/STOS` | - | - | Store AL to [EDI], EDI++ |
+| `MOVSB/MOVS` | - | - | Copy byte from [ESI] to [EDI], both++ |
+| `SCASB/SCAS` | - | ZCOS | Compare AL with [EDI], EDI++ |
+| `CMPSB/CMPS` | - | ZCOS | Compare [ESI] with [EDI], both++ |
 | `INT` | imm8 | - | Software interrupt (syscall) |
+| `INT3` | - | - | Breakpoint interrupt |
 | `IRET` | - | All | Return from interrupt |
+| `RAND` | reg, reg/imm | ZS | Random number generation |
 | `HLT` | - | - | Halt execution |
 
 ### Stack Operations

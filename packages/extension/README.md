@@ -95,12 +95,24 @@ Press `F5` or click **Run → Start Debugging**. VS Code will create a launch co
 | `MOV dest, src` | Move data | `MOV EAX, 10` |
 | `ADD dest, src` | Add | `ADD EAX, EBX` |
 | `SUB dest, src` | Subtract | `SUB EAX, 5` |
-| `AND dest, src` | Bitwise AND | `AND EAX, 0xFF` |
-| `OR dest, src` | Bitwise OR | `OR EAX, EBX` |
+| `AND/OR/XOR dest, src` | Bitwise operations | `AND EAX, 0xFF` |
 | `CMP op1, op2` | Compare | `CMP EAX, 0` |
+| `SHL/SHR/SAR dest, n` | Shift operations | `SHL EAX, 2` |
+| `ROL/ROR/RCL/RCR` | Rotate operations | `ROL EAX, 1` |
 | `JMP label` | Unconditional jump | `JMP loop_start` |
-| `JE/JZ label` | Jump if equal/zero | `JE end` |
-| `JNE/JNZ label` | Jump if not equal/zero | `JNE loop` |
+| `JE/JNE/JG/JL/...` | Conditional jumps | `JE end` |
+| `LOOP/LOOPE/LOOPNE` | Loop with ECX counter | `LOOP my_loop` |
+| `CMOVxx dest, src` | Conditional move | `CMOVE EAX, EBX` |
+| `CALL/RET` | Subroutine call/return | `CALL my_func` |
+| `PUSH/POP` | Stack operations | `PUSH EAX` |
+| `LAHF/SAHF` | Load/store flags via AH | `LAHF` |
+| `XADD dest, src` | Exchange and add | `XADD EAX, EBX` |
+| `BSF/BSR dest, src` | Bit scan forward/reverse | `BSF EAX, EBX` |
+| `BSWAP reg` | Byte swap | `BSWAP EAX` |
+| `LODSB/STOSB/MOVSB` | String operations | `MOVSB` |
+| `SCASB/CMPSB` | String scan/compare | `SCASB` |
+| `INT imm8` | Software interrupt | `INT 0x10` |
+| `INT3` | Breakpoint | `INT3` |
 | `HLT` | Halt execution | `HLT` |
 
 ### Assembler Directives

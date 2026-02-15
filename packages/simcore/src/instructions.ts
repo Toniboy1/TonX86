@@ -5,6 +5,11 @@ import {
   computeShiftFlags,
   computeRotateFlags,
   computeMultiplyFlags,
+  computeZeroAndSignFlags,
+  isZeroFlagSet,
+  isSignFlagSet,
+  isCarryFlagSet,
+  isOverflowFlagSet,
 } from "./flags";
 
 /**
@@ -123,6 +128,14 @@ export function executeInstruction(
       executeRor(ctx, operands);
       break;
 
+    case "RCL":
+      executeRcl(ctx, operands);
+      break;
+
+    case "RCR":
+      executeRcr(ctx, operands);
+      break;
+
     case "NOP":
       break;
 
@@ -145,6 +158,93 @@ export function executeInstruction(
       // control flow is handled by step()
       break;
 
+    case "LOOP":
+    case "LOOPE":
+    case "LOOPZ":
+    case "LOOPNE":
+    case "LOOPNZ":
+      // LOOP instructions: decrement ECX here; branch decision is in step()
+      executeLoop(ctx, mnemonic);
+      break;
+
+    case "CMOVE":
+    case "CMOVZ":
+      executeCmov(ctx, operands, () => isZeroFlagSet(ctx.cpu.flags));
+      break;
+
+    case "CMOVNE":
+    case "CMOVNZ":
+      executeCmov(ctx, operands, () => !isZeroFlagSet(ctx.cpu.flags));
+      break;
+
+    case "CMOVL":
+      executeCmov(
+        ctx,
+        operands,
+        () => isSignFlagSet(ctx.cpu.flags) !== isOverflowFlagSet(ctx.cpu.flags),
+      );
+      break;
+
+    case "CMOVLE":
+      executeCmov(
+        ctx,
+        operands,
+        () =>
+          isSignFlagSet(ctx.cpu.flags) !== isOverflowFlagSet(ctx.cpu.flags) ||
+          isZeroFlagSet(ctx.cpu.flags),
+      );
+      break;
+
+    case "CMOVG":
+      executeCmov(
+        ctx,
+        operands,
+        () =>
+          isSignFlagSet(ctx.cpu.flags) === isOverflowFlagSet(ctx.cpu.flags) &&
+          !isZeroFlagSet(ctx.cpu.flags),
+      );
+      break;
+
+    case "CMOVGE":
+      executeCmov(
+        ctx,
+        operands,
+        () => isSignFlagSet(ctx.cpu.flags) === isOverflowFlagSet(ctx.cpu.flags),
+      );
+      break;
+
+    case "CMOVA":
+      executeCmov(
+        ctx,
+        operands,
+        () => !isCarryFlagSet(ctx.cpu.flags) && !isZeroFlagSet(ctx.cpu.flags),
+      );
+      break;
+
+    case "CMOVAE":
+      executeCmov(ctx, operands, () => !isCarryFlagSet(ctx.cpu.flags));
+      break;
+
+    case "CMOVB":
+      executeCmov(ctx, operands, () => isCarryFlagSet(ctx.cpu.flags));
+      break;
+
+    case "CMOVBE":
+      executeCmov(
+        ctx,
+        operands,
+        () => isCarryFlagSet(ctx.cpu.flags) || isZeroFlagSet(ctx.cpu.flags),
+      );
+      break;
+
+    case "CMOVS":
+      executeCmov(ctx, operands, () => isSignFlagSet(ctx.cpu.flags));
+      break;
+
+    case "CMOVNS":
+      executeCmov(ctx, operands, () => !isSignFlagSet(ctx.cpu.flags));
+      break;
+
     case "PUSH":
       executePush(ctx, operands);
       break;
@@ -158,8 +258,61 @@ export function executeInstruction(
       // CALL/RET control flow is handled by step()
       break;
 
+    case "LAHF":
+      executeLahf(ctx);
+      break;
+
+    case "SAHF":
+      executeSahf(ctx);
+      break;
+
+    case "XADD":
+      executeXadd(ctx, operands);
+      break;
+
+    case "BSF":
+      executeBsf(ctx, operands);
+      break;
+
+    case "BSR":
+      executeBsr(ctx, operands);
+      break;
+
+    case "BSWAP":
+      executeBswap(ctx, operands);
+      break;
+
+    case "LODSB":
+    case "LODS":
+      executeLods(ctx);
+      break;
+
+    case "STOSB":
+    case "STOS":
+      executeStos(ctx);
+      break;
+
+    case "MOVSB":
+    case "MOVS":
+      executeMovs(ctx);
+      break;
+
+    case "SCASB":
+    case "SCAS":
+      executeScas(ctx);
+      break;
+
+    case "CMPSB":
+    case "CMPS":
+      executeCmps(ctx);
+      break;
+
     case "INT":
       executeInt(ctx, operands);
+      break;
+
+    case "INT3":
+      executeInt3(ctx);
       break;
 
     case "IRET":
@@ -856,4 +1009,346 @@ function executeRand(ctx: ExecutionContext, operands: string[]): void {
   const randomValue = Math.floor(Math.random() * maxValue) >>> 0;
   ctx.cpu.registers[dest.value] = randomValue;
   ctx.cpu.flags = computeLogicalFlags(ctx.cpu.flags, randomValue);
+}
+
+// ---------------------------------------------------------------------------
+// RCL / RCR - Rotate through carry
+// ---------------------------------------------------------------------------
+
+function executeRcl(ctx: ExecutionContext, operands: string[]): void {
+  if (operands.length !== 2) return;
+  const dest = ctx.parseOperand(operands[0]);
+  const src = ctx.parseOperand(operands[1]);
+
+  if (dest.type === "register") {
+    const rawCount =
+      (src.type === "register" ? ctx.cpu.registers[src.value] : src.value) &
+      0x1f;
+    if (rawCount === 0) return;
+
+    let value = ctx.cpu.registers[dest.value] >>> 0;
+    let cf = ctx.cpu.flags & 0x01 ? 1 : 0;
+
+    for (let i = 0; i < rawCount; i++) {
+      const msb = (value >>> 31) & 1;
+      value = ((value << 1) | cf) >>> 0;
+      cf = msb;
+    }
+
+    ctx.cpu.registers[dest.value] = value;
+
+    // Update CF
+    if (cf) {
+      ctx.cpu.flags |= 0x01;
+    } else {
+      ctx.cpu.flags &= ~0x01;
+    }
+
+    // OF: only defined for single-bit rotates
+    if (rawCount === 1) {
+      const msb = (value >>> 31) & 1;
+      if (msb !== cf) {
+        ctx.cpu.flags |= 0x800;
+      } else {
+        ctx.cpu.flags &= ~0x800;
+      }
+    } else {
+      ctx.cpu.flags &= ~0x800;
+    }
+
+    if (ctx.compatibilityMode === "educational") {
+      ctx.cpu.flags = computeZeroAndSignFlags(ctx.cpu.flags, value);
+    }
+  }
+}
+
+function executeRcr(ctx: ExecutionContext, operands: string[]): void {
+  if (operands.length !== 2) return;
+  const dest = ctx.parseOperand(operands[0]);
+  const src = ctx.parseOperand(operands[1]);
+
+  if (dest.type === "register") {
+    const rawCount =
+      (src.type === "register" ? ctx.cpu.registers[src.value] : src.value) &
+      0x1f;
+    if (rawCount === 0) return;
+
+    let value = ctx.cpu.registers[dest.value] >>> 0;
+    let cf = ctx.cpu.flags & 0x01 ? 1 : 0;
+
+    for (let i = 0; i < rawCount; i++) {
+      const lsb = value & 1;
+      value = ((value >>> 1) | (cf << 31)) >>> 0;
+      cf = lsb;
+    }
+
+    ctx.cpu.registers[dest.value] = value;
+
+    // Update CF
+    if (cf) {
+      ctx.cpu.flags |= 0x01;
+    } else {
+      ctx.cpu.flags &= ~0x01;
+    }
+
+    // OF: only defined for single-bit rotates
+    if (rawCount === 1) {
+      const msb = (value >>> 31) & 1;
+      const msb1 = (value >>> 30) & 1;
+      if (msb !== msb1) {
+        ctx.cpu.flags |= 0x800;
+      } else {
+        ctx.cpu.flags &= ~0x800;
+      }
+    } else {
+      ctx.cpu.flags &= ~0x800;
+    }
+
+    if (ctx.compatibilityMode === "educational") {
+      ctx.cpu.flags = computeZeroAndSignFlags(ctx.cpu.flags, value);
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// LOOP / LOOPE / LOOPNE - Loop instructions (ECX decrement done here)
+// ---------------------------------------------------------------------------
+
+function executeLoop(ctx: ExecutionContext, _mnemonic: string): void {
+  // Decrement ECX
+  ctx.cpu.registers[1] = (ctx.cpu.registers[1] - 1) & 0xffffffff;
+  // Branch decision is handled in Simulator.step()
+}
+
+// ---------------------------------------------------------------------------
+// CMOVxx - Conditional moves
+// ---------------------------------------------------------------------------
+
+function executeCmov(
+  ctx: ExecutionContext,
+  operands: string[],
+  condition: () => boolean,
+): void {
+  if (operands.length !== 2) return;
+  const dest = ctx.parseOperand(operands[0]);
+  const src = ctx.parseOperand(operands[1]);
+
+  if (dest.type !== "register") return;
+
+  if (condition()) {
+    const srcValue = ctx.resolveSourceValue(src);
+    ctx.cpu.registers[dest.value] = srcValue;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// LAHF / SAHF - Load/Store AH from/to flags
+// ---------------------------------------------------------------------------
+
+function executeLahf(ctx: ExecutionContext): void {
+  // LAHF: Load flags (SF:ZF:0:AF:0:PF:1:CF) into AH
+  // We store SF, ZF, CF; AF and PF are not implemented (set 0)
+  const flags = ctx.cpu.flags;
+  let ah = 0x02; // Bit 1 is always 1 in x86 EFLAGS
+  if (flags & 0x01) ah |= 0x01; // CF -> bit 0
+  if (flags & 0x40) ah |= 0x40; // ZF -> bit 6
+  if (flags & 0x80) ah |= 0x80; // SF -> bit 7
+  // Store into AH (bits 8-15 of EAX)
+  const eax = ctx.cpu.registers[0];
+  ctx.cpu.registers[0] = (eax & 0xffff00ff) | (ah << 8);
+}
+
+function executeSahf(ctx: ExecutionContext): void {
+  // SAHF: Store AH into flags (SF:ZF:0:AF:0:PF:1:CF)
+  const ah = (ctx.cpu.registers[0] >> 8) & 0xff;
+  let flags = ctx.cpu.flags;
+  // CF from bit 0
+  if (ah & 0x01) {
+    flags |= 0x01;
+  } else {
+    flags &= ~0x01;
+  }
+  // ZF from bit 6
+  if (ah & 0x40) {
+    flags |= 0x40;
+  } else {
+    flags &= ~0x40;
+  }
+  // SF from bit 7
+  if (ah & 0x80) {
+    flags |= 0x80;
+  } else {
+    flags &= ~0x80;
+  }
+  ctx.cpu.flags = flags;
+}
+
+// ---------------------------------------------------------------------------
+// XADD - Exchange and Add
+// ---------------------------------------------------------------------------
+
+function executeXadd(ctx: ExecutionContext, operands: string[]): void {
+  if (operands.length !== 2) return;
+  const dest = ctx.parseOperand(operands[0]);
+  const src = ctx.parseOperand(operands[1]);
+
+  if (dest.type === "register" && src.type === "register") {
+    const destVal = ctx.cpu.registers[dest.value];
+    const srcVal = ctx.cpu.registers[src.value];
+    const result = (destVal + srcVal) & 0xffffffff;
+    ctx.cpu.registers[src.value] = destVal; // old dest -> source
+    ctx.cpu.registers[dest.value] = result; // sum -> dest
+    ctx.cpu.flags = computeArithFlags(
+      ctx.cpu.flags,
+      result,
+      destVal,
+      srcVal,
+      false,
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// BSF / BSR - Bit Scan Forward / Reverse
+// ---------------------------------------------------------------------------
+
+function executeBsf(ctx: ExecutionContext, operands: string[]): void {
+  if (operands.length !== 2) return;
+  const dest = ctx.parseOperand(operands[0]);
+  const src = ctx.parseOperand(operands[1]);
+
+  if (dest.type !== "register") return;
+
+  const srcValue = ctx.resolveSourceValue(src) >>> 0;
+
+  if (srcValue === 0) {
+    // ZF is set when source is 0, dest is undefined
+    ctx.cpu.flags |= 0x40; // Set ZF
+  } else {
+    ctx.cpu.flags &= ~0x40; // Clear ZF
+    // Find least significant set bit
+    for (let i = 0; i < 32; i++) {
+      if ((srcValue >>> i) & 1) {
+        ctx.cpu.registers[dest.value] = i;
+        break;
+      }
+    }
+  }
+}
+
+function executeBsr(ctx: ExecutionContext, operands: string[]): void {
+  if (operands.length !== 2) return;
+  const dest = ctx.parseOperand(operands[0]);
+  const src = ctx.parseOperand(operands[1]);
+
+  if (dest.type !== "register") return;
+
+  const srcValue = ctx.resolveSourceValue(src) >>> 0;
+
+  if (srcValue === 0) {
+    // ZF is set when source is 0, dest is undefined
+    ctx.cpu.flags |= 0x40; // Set ZF
+  } else {
+    ctx.cpu.flags &= ~0x40; // Clear ZF
+    // Find most significant set bit
+    for (let i = 31; i >= 0; i--) {
+      if ((srcValue >>> i) & 1) {
+        ctx.cpu.registers[dest.value] = i;
+        break;
+      }
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// BSWAP - Byte Swap (endianness conversion)
+// ---------------------------------------------------------------------------
+
+function executeBswap(ctx: ExecutionContext, operands: string[]): void {
+  if (operands.length !== 1) return;
+  const dest = ctx.parseOperand(operands[0]);
+
+  if (dest.type === "register") {
+    const value = ctx.cpu.registers[dest.value] >>> 0;
+    const byte0 = value & 0xff;
+    const byte1 = (value >> 8) & 0xff;
+    const byte2 = (value >> 16) & 0xff;
+    const byte3 = (value >> 24) & 0xff;
+    ctx.cpu.registers[dest.value] =
+      ((byte0 << 24) | (byte1 << 16) | (byte2 << 8) | byte3) >>> 0;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// String Operations - LODS, STOS, MOVS, SCAS, CMPS
+// ---------------------------------------------------------------------------
+
+function executeLods(ctx: ExecutionContext): void {
+  // LODSB: Load byte from [ESI] into AL, increment ESI
+  const addr = ctx.cpu.registers[6] & 0xffff; // ESI
+  const value = ctx.readMemory32(addr) & 0xff;
+  // Store into AL (low byte of EAX)
+  ctx.cpu.registers[0] = (ctx.cpu.registers[0] & 0xffffff00) | value;
+  // Increment ESI
+  ctx.cpu.registers[6] = (ctx.cpu.registers[6] + 1) & 0xffffffff;
+}
+
+function executeStos(ctx: ExecutionContext): void {
+  // STOSB: Store AL to [EDI], increment EDI
+  const addr = ctx.cpu.registers[7] & 0xffff; // EDI
+  const al = ctx.cpu.registers[0] & 0xff;
+  ctx.writeMemory32(addr, al);
+  // Increment EDI
+  ctx.cpu.registers[7] = (ctx.cpu.registers[7] + 1) & 0xffffffff;
+}
+
+function executeMovs(ctx: ExecutionContext): void {
+  // MOVSB: Move byte from [ESI] to [EDI], increment both
+  const srcAddr = ctx.cpu.registers[6] & 0xffff; // ESI
+  const dstAddr = ctx.cpu.registers[7] & 0xffff; // EDI
+  const value = ctx.readMemory32(srcAddr) & 0xff;
+  ctx.writeMemory32(dstAddr, value);
+  // Increment ESI and EDI
+  ctx.cpu.registers[6] = (ctx.cpu.registers[6] + 1) & 0xffffffff;
+  ctx.cpu.registers[7] = (ctx.cpu.registers[7] + 1) & 0xffffffff;
+}
+
+function executeScas(ctx: ExecutionContext): void {
+  // SCASB: Compare AL with byte at [EDI], set flags, increment EDI
+  const addr = ctx.cpu.registers[7] & 0xffff; // EDI
+  const al = ctx.cpu.registers[0] & 0xff;
+  const memValue = ctx.readMemory32(addr) & 0xff;
+  const result = (al - memValue) & 0xffffffff;
+  ctx.cpu.flags = computeArithFlags(ctx.cpu.flags, result, al, memValue, true);
+  // Increment EDI
+  ctx.cpu.registers[7] = (ctx.cpu.registers[7] + 1) & 0xffffffff;
+}
+
+function executeCmps(ctx: ExecutionContext): void {
+  // CMPSB: Compare byte at [ESI] with byte at [EDI], set flags, increment both
+  const srcAddr = ctx.cpu.registers[6] & 0xffff; // ESI
+  const dstAddr = ctx.cpu.registers[7] & 0xffff; // EDI
+  const srcValue = ctx.readMemory32(srcAddr) & 0xff;
+  const dstValue = ctx.readMemory32(dstAddr) & 0xff;
+  const result = (srcValue - dstValue) & 0xffffffff;
+  ctx.cpu.flags = computeArithFlags(
+    ctx.cpu.flags,
+    result,
+    srcValue,
+    dstValue,
+    true,
+  );
+  // Increment ESI and EDI
+  ctx.cpu.registers[6] = (ctx.cpu.registers[6] + 1) & 0xffffffff;
+  ctx.cpu.registers[7] = (ctx.cpu.registers[7] + 1) & 0xffffffff;
+}
+
+// ---------------------------------------------------------------------------
+// INT3 - Breakpoint interrupt
+// ---------------------------------------------------------------------------
+
+function executeInt3(ctx: ExecutionContext): void {
+  // INT3 triggers a breakpoint - halt the processor
+  ctx.cpu.halted = true;
+  ctx.cpu.running = false;
 }
