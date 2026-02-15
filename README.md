@@ -545,5 +545,5 @@ The TonX86 instruction set and behavior have been verified against:
   (originally created by Adam Ferrari, updated by Alan Batson, Mike Lack, and Anita Jones)
   https://www.cs.virginia.edu/~evans/cs216/guides/x86.html
   Licensed under [Creative Commons BY-NC-SA 3.0 US](https://creativecommons.org/licenses/by-nc-sa/3.0/us/)
-- **x86 Assembly** — Notes from Shichao's Notes
+- **x86 Assembly** — Shichao's Notes
   https://notes.shichao.io/asm/#x86-assembly
