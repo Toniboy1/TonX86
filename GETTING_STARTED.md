@@ -150,7 +150,7 @@ See [packages/docs/ISA.md](packages/docs/ISA.md) for complete instruction set.
 | `ADD`, `SUB` | Arithmetic | `ADD EAX, EBX` |
 | `CMP` | Compare | `CMP EAX, 0` |
 | `JE`, `JNE` | Conditional jump | `JE label` |
-| `JUMP` | Unconditional jump | `JMP label` |
+| `JMP` | Unconditional jump | `JMP label` |
 | `CALL`, `RET` | Function calls | `CALL func` |
 | `PUSH`, `POP` | Stack operations | `PUSH EAX` |
 | `AND`, `OR`, `XOR` | Bitwise ops | `AND EAX, 0xFF` |

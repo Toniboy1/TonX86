@@ -159,8 +159,8 @@ Students should start in **educational mode** to learn core concepts, then switc
 | `MOVSX` | reg, reg/imm | - | Move with sign extend |
 | `ADD` | reg, reg/imm/mem | ZCOS | Add |
 | `SUB` | reg, reg/imm/mem | ZCOS | Subtract |
-| `INC` | reg | ZCOS | Increment |
-| `DEC` | reg | ZCOS | Decrement |
+| `INC` | reg | ZOS | Increment (CF not modified) |
+| `DEC` | reg | ZOS | Decrement (CF not modified) |
 | `NEG` | reg | ZCOS | Two's complement negation |
 | `MUL` | reg/imm | ZS | Unsigned multiply |
 | `IMUL` | reg/imm | ZS | Signed multiply |
@@ -168,9 +168,9 @@ Students should start in **educational mode** to learn core concepts, then switc
 | `IDIV` | reg/imm | ZS | Signed divide |
 | `MOD` | reg, reg/imm | ZS | Unsigned modulo |
 | `CMP` | reg, reg/imm | ZCOS | Compare (SUB without storing) |
-| `AND` | reg, reg/imm | ZS | Bitwise AND |
-| `OR` | reg, reg/imm | ZS | Bitwise OR |
-| `XOR` | reg, reg/imm | ZS | Bitwise XOR |
+| `AND` | reg, reg/imm | ZS | Bitwise AND (CF/OF cleared) |
+| `OR` | reg, reg/imm | ZS | Bitwise OR (CF/OF cleared) |
+| `XOR` | reg, reg/imm | ZS | Bitwise XOR (CF/OF cleared) |
 | `NOT` | reg | - | Bitwise NOT (one's complement) |
 | `TEST` | reg, reg/imm | ZS | Logical AND (flags only) |
 | `SHL` | reg, imm/reg | ZS | Shift left |
