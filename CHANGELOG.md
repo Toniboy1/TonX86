@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.4.5](https://github.com/Toniboy1/TonX86/compare/v0.4.4...v0.4.5) (2026-02-15)
+
+
+### Documentation
+
+* add x86 assembly reference source and addressing modes documentation ([c4f3d26](https://github.com/Toniboy1/TonX86/commit/c4f3d267a50c9a1ed2cd34820834a7a44a88c9bd)), closes [/notes.shichao.io/asm/#x86](https://github.com/Toniboy1/TonX86/issues/x86)
+
 ### [0.4.4](https://github.com/Toniboy1/TonX86/compare/v0.4.3...v0.4.4) (2026-02-15)
 
 ### [0.4.3](https://github.com/Toniboy1/TonX86/compare/v0.4.2...v0.4.3) (2026-02-14)
