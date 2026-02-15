@@ -241,8 +241,9 @@ MOV ECX, [EBP+ESI+8]   ; Load from address (EBP + ESI + 8)
 
 **TEST op1, op2** - Logical AND (affects flags only, doesn't store result)
 - Cycles: 1
-- Flags: Z, S
+- Flags: Z, S (CF and OF are always cleared)
 - Example: `TEST EAX, 0xFF`
+- Note: Performs bitwise AND of the two operands but does not store the result. Used to test if specific bits are set.
 
 ### Shifts and Rotates
 
