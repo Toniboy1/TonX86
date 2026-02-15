@@ -1,6 +1,6 @@
 # TonX86 Instruction Set Architecture
 
-> **Verification source:** This ISA is based on the [x86 Assembly Guide](https://www.cs.virginia.edu/~evans/cs216/guides/x86.html) from the University of Virginia CS216 course by David Evans (originally by Adam Ferrari, updated by Alan Batson, Mike Lack, and Anita Jones). Used under [CC BY-NC-SA 3.0 US](https://creativecommons.org/licenses/by-nc-sa/3.0/us/).
+> **Verification source:** This ISA is based on the [x86 Assembly Guide](https://www.cs.virginia.edu/~evans/cs216/guides/x86.html) from the University of Virginia CS216 course by David Evans (originally by Adam Ferrari, updated by Alan Batson, Mike Lack, and Anita Jones). Additional x86 architecture and instruction reference verified against [Shichao's Notes on x86 Assembly](https://notes.shichao.io/asm/#x86-assembly).
 
 ## Registers
 
@@ -34,6 +34,76 @@ Register names are **not case-sensitive** (e.g., `EAX` and `eax` refer to the sa
 - **C** (Carry, bit 0) - Set on unsigned overflow/borrow
 - **O** (Overflow, bit 11) - Set on signed overflow
 - **S** (Sign, bit 7) - Set when result is negative (bit 31 of result is 1)
+
+## Addressing Modes
+
+Addressing modes specify how instruction operands are accessed. The x86 architecture supports multiple addressing modes for flexible memory and register access.
+
+### Register Addressing
+
+Operand is a CPU register.
+
+```asm
+MOV EAX, EBX       ; Move contents of EBX into EAX
+ADD ECX, EDX       ; Add EDX to ECX
+```
+
+### Immediate Addressing
+
+Operand is an immediate value (constant) specified directly in the instruction.
+
+```asm
+MOV EAX, 42        ; Move constant 42 into EAX
+MOV EBX, 0x1000    ; Move constant 0x1000 into EBX
+ADD ECX, 5         ; Add constant 5 to ECX
+```
+
+### Direct Memory Addressing
+
+Operand is at a memory address specified directly in the instruction.
+
+```asm
+MOV EAX, [0x2000]  ; Load 32-bit value from address 0x2000
+MOV [0x2000], ECX  ; Store ECX to address 0x2000
+```
+
+### Register Indirect Addressing
+
+Address is contained in a register (denoted by square brackets).
+
+```asm
+MOV EAX, [EBX]     ; Load from address in EBX
+MOV [EDI], ECX     ; Store ECX to address in EDI
+```
+
+Valid base registers for indirect addressing: **EBX, EBP, ESI, EDI**
+
+### Displacement Addressing
+
+Address is calculated as register + displacement (offset).
+
+```asm
+MOV EAX, [EBX+4]   ; Load from address (EBX + 4)
+MOV ECX, [EBP+8]   ; Load from address (EBP + 8)
+```
+
+### Base-Index Addressing
+
+Address is calculated as base register + index register.
+
+```asm
+MOV EAX, [EBX+EDI]  ; Load from address (EBX + EDI)
+MOV ECX, [EBP+ESI]  ; Load from address (EBP + ESI)
+```
+
+### Base-Index with Displacement
+
+Address is calculated as base register + index register + displacement.
+
+```asm
+MOV EAX, [EBX+EDI+4]   ; Load from address (EBX + EDI + 4)
+MOV ECX, [EBP+ESI+8]   ; Load from address (EBP + ESI + 8)
+```
 
 ## Instructions
 
@@ -171,8 +241,9 @@ Register names are **not case-sensitive** (e.g., `EAX` and `eax` refer to the sa
 
 **TEST op1, op2** - Logical AND (affects flags only, doesn't store result)
 - Cycles: 1
-- Flags: Z, S
+- Flags: Z, S (CF and OF are always cleared)
 - Example: `TEST EAX, 0xFF`
+- Note: Performs bitwise AND of the two operands but does not store the result. Used to test if specific bits are set.
 
 ### Shifts and Rotates
 
@@ -459,3 +530,22 @@ TonX86 supports standard x86 calling conventions. See [CALLING_CONVENTIONS.md](C
 - **fastcall** - Fast call (first 2 params in registers)
 
 Example programs demonstrating each convention are available in the `examples/` folder.
+
+## Verification Sources
+
+This ISA documentation is verified against the following authoritative x86 assembly references:
+
+- **x86 Assembly Guide** — University of Virginia CS216  
+  By David Evans (originally by Adam Ferrari, updated by Alan Batson, Mike Lack, and Anita Jones)  
+  https://www.cs.virginia.edu/~evans/cs216/guides/x86.html  
+  Licensed under [Creative Commons BY-NC-SA 3.0 US](https://creativecommons.org/licenses/by-nc-sa/3.0/us/)
+
+- **x86 Assembly Notes** — Shichao's Notes  
+  Comprehensive reference on x86 architecture, instruction formats, addressing modes, and memory organization  
+  https://notes.shichao.io/asm/#x86-assembly
+
+- **Wikibooks: x86 Assembly**  
+  Community-maintained x86 assembly language reference  
+  https://en.wikibooks.org/wiki/X86_Assembly
+
+These sources ensure TonX86's instruction implementations and x86 semantics are compliant with actual x86 architecture specifications.
