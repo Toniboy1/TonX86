@@ -610,6 +610,15 @@
       "examples": ["CMOVE EAX, EBX     ; Move EBX to EAX if ZF=1"]
     },
     {
+      "mnemonic": "CMOVZ",
+      "opcode": "0x0F44",
+      "operands": ["reg", "reg/imm"],
+      "description": "Conditional move if zero (ZF=1). Alias for CMOVE",
+      "cycles": 1,
+      "flags": [],
+      "examples": ["CMOVZ EAX, EBX     ; Move EBX to EAX if ZF=1"]
+    },
+    {
       "mnemonic": "CMOVNE",
       "opcode": "0x0F45",
       "operands": ["reg", "reg/imm"],
@@ -617,6 +626,15 @@
       "cycles": 1,
       "flags": [],
       "examples": ["CMOVNE EAX, EBX    ; Move EBX to EAX if ZF=0"]
+    },
+    {
+      "mnemonic": "CMOVNZ",
+      "opcode": "0x0F45",
+      "operands": ["reg", "reg/imm"],
+      "description": "Conditional move if not zero (ZF=0). Alias for CMOVNE",
+      "cycles": 1,
+      "flags": [],
+      "examples": ["CMOVNZ EAX, EBX    ; Move EBX to EAX if ZF=0"]
     },
     {
       "mnemonic": "CMOVL",
@@ -756,6 +774,15 @@
       "examples": ["LODSB               ; AL = [ESI]; ESI++"]
     },
     {
+      "mnemonic": "LODS",
+      "opcode": "0xAC",
+      "operands": [],
+      "description": "Load string byte (alias for LODSB): load byte from [ESI] into AL, increment ESI",
+      "cycles": 1,
+      "flags": [],
+      "examples": ["LODS                ; AL = [ESI]; ESI++"]
+    },
+    {
       "mnemonic": "STOSB",
       "opcode": "0xAA",
       "operands": [],
@@ -765,6 +792,15 @@
       "examples": ["STOSB               ; [EDI] = AL; EDI++"]
     },
     {
+      "mnemonic": "STOS",
+      "opcode": "0xAA",
+      "operands": [],
+      "description": "Store string byte (alias for STOSB): store AL to [EDI], increment EDI",
+      "cycles": 1,
+      "flags": [],
+      "examples": ["STOS                ; [EDI] = AL; EDI++"]
+    },
+    {
       "mnemonic": "MOVSB",
       "opcode": "0xA4",
       "operands": [],
@@ -772,6 +808,15 @@
       "cycles": 1,
       "flags": [],
       "examples": ["MOVSB               ; [EDI] = [ESI]; ESI++; EDI++"]
+    },
+    {
+      "mnemonic": "MOVS",
+      "opcode": "0xA4",
+      "operands": [],
+      "description": "Move string byte (alias for MOVSB): copy byte from [ESI] to [EDI], increment both",
+      "cycles": 1,
+      "flags": [],
+      "examples": ["MOVS                ; [EDI] = [ESI]; ESI++; EDI++"]
     },
     {
       "mnemonic": "SCASB",
@@ -785,6 +830,17 @@
       ]
     },
     {
+      "mnemonic": "SCAS",
+      "opcode": "0xAE",
+      "operands": [],
+      "description": "Scan string byte (alias for SCASB): compare AL with byte at [EDI], set flags, increment EDI",
+      "cycles": 1,
+      "flags": ["Z", "C", "O", "S"],
+      "examples": [
+        "SCAS                ; Compare AL with [EDI]; set flags; EDI++"
+      ]
+    },
+    {
       "mnemonic": "CMPSB",
       "opcode": "0xA6",
       "operands": [],
@@ -793,6 +849,17 @@
       "flags": ["Z", "C", "O", "S"],
       "examples": [
         "CMPSB               ; Compare [ESI] with [EDI]; set flags; ESI++; EDI++"
+      ]
+    },
+    {
+      "mnemonic": "CMPS",
+      "opcode": "0xA6",
+      "operands": [],
+      "description": "Compare string bytes (alias for CMPSB): compare [ESI] with [EDI], set flags, increment both",
+      "cycles": 1,
+      "flags": ["Z", "C", "O", "S"],
+      "examples": [
+        "CMPS                ; Compare [ESI] with [EDI]; set flags; ESI++; EDI++"
       ]
     },
     {
