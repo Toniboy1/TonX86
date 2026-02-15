@@ -25,10 +25,7 @@ export type {
   CompatibilityMode,
   ExecutionContext,
 } from "./types";
-export {
-  REGISTER_MAP,
-  REGISTER8_MAP,
-} from "./types";
+export { REGISTER_MAP, REGISTER8_MAP } from "./types";
 
 // Internal imports
 import { CPUState } from "./cpu";
@@ -524,6 +521,11 @@ export class Simulator {
         "JBE",
         "CALL",
         "RET",
+        "LOOP",
+        "LOOPE",
+        "LOOPZ",
+        "LOOPNE",
+        "LOOPNZ",
       ].includes(mnemonic)
     ) {
       if (mnemonic === "CALL") {
@@ -545,6 +547,37 @@ export class Simulator {
           this.eip = returnAddress;
         } else {
           this.eip++;
+        }
+      } else if (
+        mnemonic === "LOOP" ||
+        mnemonic === "LOOPE" ||
+        mnemonic === "LOOPZ" ||
+        mnemonic === "LOOPNE" ||
+        mnemonic === "LOOPNZ"
+      ) {
+        // ECX was already decremented in executeInstruction
+        const targetLabel = instr.operands[0];
+        const targetIndex = this.labels.get(targetLabel);
+
+        if (targetIndex !== undefined) {
+          const ecx = this.cpu.registers[1];
+          let shouldBranch = false;
+          if (mnemonic === "LOOP") {
+            shouldBranch = ecx !== 0;
+          } else if (mnemonic === "LOOPE" || mnemonic === "LOOPZ") {
+            shouldBranch = ecx !== 0 && isZeroFlagSet(this.cpu.flags);
+          } else {
+            // LOOPNE / LOOPNZ
+            shouldBranch = ecx !== 0 && !isZeroFlagSet(this.cpu.flags);
+          }
+
+          if (shouldBranch) {
+            this.eip = targetIndex;
+          } else {
+            this.eip++;
+          }
+        } else {
+          throw new Error(`LOOP target "${targetLabel}" not found in labels`);
         }
       } else {
         const targetLabel = instr.operands[0];

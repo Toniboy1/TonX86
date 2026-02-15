@@ -362,6 +362,149 @@ Register names are **not case-sensitive** (e.g., `EAX` and `eax` refer to the sa
 - Operation: Returns from interrupt handler
 - Example: `IRET`
 
+### Rotate Through Carry
+
+**RCL reg, imm/reg** - Rotate left through carry
+- Cycles: 1
+- Flags: C, O
+- Operation: Rotates bits left through carry flag. The carry flag is shifted into the LSB and the MSB is shifted into the carry flag.
+- Example: `RCL EAX, 1`
+
+**RCR reg, imm/reg** - Rotate right through carry
+- Cycles: 1
+- Flags: C, O
+- Operation: Rotates bits right through carry flag. The carry flag is shifted into the MSB and the LSB is shifted into the carry flag.
+- Example: `RCR EAX, 1`
+
+### Loop Instructions
+
+**LOOP label** - Loop with counter
+- Cycles: 1
+- Flags: None
+- Operation: Decrements ECX, jumps to label if ECX != 0
+- Example: `LOOP my_loop`
+
+**LOOPE label** - Loop while equal (alias: LOOPZ)
+- Cycles: 1
+- Flags: None
+- Operation: Decrements ECX, jumps if ECX != 0 AND ZF=1
+- Example: `LOOPE my_loop`
+
+**LOOPNE label** - Loop while not equal (alias: LOOPNZ)
+- Cycles: 1
+- Flags: None
+- Operation: Decrements ECX, jumps if ECX != 0 AND ZF=0
+- Example: `LOOPNE my_loop`
+
+### Conditional Move
+
+Moves the source to the destination only if the specified condition is true. Does not modify flags.
+
+| Mnemonic | Condition | Description |
+|----------|-----------|-------------|
+| CMOVE / CMOVZ | ZF=1 | Move if equal / zero |
+| CMOVNE / CMOVNZ | ZF=0 | Move if not equal / not zero |
+| CMOVL | SF≠OF | Move if less (signed) |
+| CMOVLE | SF≠OF or ZF=1 | Move if less or equal (signed) |
+| CMOVG | SF=OF and ZF=0 | Move if greater (signed) |
+| CMOVGE | SF=OF | Move if greater or equal (signed) |
+| CMOVA | CF=0 and ZF=0 | Move if above (unsigned) |
+| CMOVAE | CF=0 | Move if above or equal (unsigned) |
+| CMOVB | CF=1 | Move if below (unsigned) |
+| CMOVBE | CF=1 or ZF=1 | Move if below or equal (unsigned) |
+| CMOVS | SF=1 | Move if sign |
+| CMOVNS | SF=0 | Move if not sign |
+
+- Cycles: 1
+- Flags: None
+- Example: `CMOVE EAX, EBX   ; Move EBX to EAX if ZF=1`
+
+### Flag Manipulation
+
+**LAHF** - Load flags into AH
+- Cycles: 1
+- Flags: None
+- Operation: Loads SF, ZF, and CF from the flags register into AH (bits 7, 6, and 0 respectively)
+- Example: `LAHF`
+
+**SAHF** - Store AH into flags
+- Cycles: 1
+- Flags: S, Z, C
+- Operation: Stores AH bit 7 → SF, bit 6 → ZF, bit 0 → CF
+- Example: `SAHF`
+
+### Exchange and Add
+
+**XADD reg, reg** - Exchange and add
+- Cycles: 1
+- Flags: Z, C, O, S
+- Operation: Temp = dest; dest = dest + src; src = Temp
+- Example: `XADD EAX, EBX`
+
+### Bit Scan
+
+**BSF reg, reg/imm** - Bit scan forward
+- Cycles: 1
+- Flags: Z
+- Operation: Scans source from bit 0 (LSB) to MSB for the first set bit. Stores the index in destination. Sets ZF if source is zero.
+- Example: `BSF EAX, EBX`
+
+**BSR reg, reg/imm** - Bit scan reverse
+- Cycles: 1
+- Flags: Z
+- Operation: Scans source from MSB to bit 0 (LSB) for the first set bit. Stores the index in destination. Sets ZF if source is zero.
+- Example: `BSR EAX, EBX`
+
+### Byte Swap
+
+**BSWAP reg** - Byte swap
+- Cycles: 1
+- Flags: None
+- Operation: Reverses the byte order of a 32-bit register (endianness conversion). Byte 0 ↔ Byte 3, Byte 1 ↔ Byte 2.
+- Example: `BSWAP EAX  ; 0x12345678 → 0x78563412`
+
+### String Operations
+
+String operations use ESI (source index), EDI (destination index), and AL/EAX for data. They automatically increment ESI/EDI after each operation.
+
+**LODSB / LODS** - Load string byte
+- Cycles: 1
+- Flags: None
+- Operation: AL = [ESI]; ESI++
+- Example: `LODSB`
+
+**STOSB / STOS** - Store string byte
+- Cycles: 1
+- Flags: None
+- Operation: [EDI] = AL; EDI++
+- Example: `STOSB`
+
+**MOVSB / MOVS** - Move string byte
+- Cycles: 1
+- Flags: None
+- Operation: [EDI] = [ESI]; ESI++; EDI++
+- Example: `MOVSB`
+
+**SCASB / SCAS** - Scan string byte
+- Cycles: 1
+- Flags: Z, C, O, S
+- Operation: Compare AL with [EDI]; set flags; EDI++
+- Example: `SCASB`
+
+**CMPSB / CMPS** - Compare string bytes
+- Cycles: 1
+- Flags: Z, C, O, S
+- Operation: Compare [ESI] with [EDI]; set flags; ESI++; EDI++
+- Example: `CMPSB`
+
+### Debugging
+
+**INT3** - Breakpoint interrupt
+- Cycles: 1
+- Flags: None
+- Operation: Triggers a debugger breakpoint and halts execution
+- Example: `INT3`
+
 ## Memory-Mapped I/O
 
 ### LCD Display (0xF000-0xF0FF)

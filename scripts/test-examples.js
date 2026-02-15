@@ -20,13 +20,22 @@ const VALID_MNEMONICS = new Set([
   'MOV', 'XCHG', 'LEA', 'MOVZX', 'MOVSX',
   'ADD', 'SUB', 'INC', 'DEC', 'MUL', 'IMUL', 'DIV', 'IDIV', 'MOD',
   'CMP', 'AND', 'OR', 'XOR', 'NOT', 'NEG', 'TEST',
-  'SHL', 'SHR', 'SAR', 'ROL', 'ROR',
+  'SHL', 'SHR', 'SAR', 'ROL', 'ROR', 'RCL', 'RCR',
   'NOP',
   'JMP', 'JE', 'JZ', 'JNE', 'JNZ',
   'JG', 'JGE', 'JL', 'JLE', 'JS', 'JNS',
   'JA', 'JAE', 'JB', 'JBE',
   'PUSH', 'POP', 'CALL', 'RET',
   'INT', 'IRET', 'RAND', 'HLT',
+  'LOOP', 'LOOPE', 'LOOPZ', 'LOOPNE', 'LOOPNZ',
+  'CMOVE', 'CMOVZ', 'CMOVNE', 'CMOVNZ',
+  'CMOVL', 'CMOVLE', 'CMOVG', 'CMOVGE',
+  'CMOVA', 'CMOVAE', 'CMOVB', 'CMOVBE',
+  'CMOVS', 'CMOVNS',
+  'LAHF', 'SAHF', 'XADD', 'BSF', 'BSR', 'BSWAP',
+  'LODSB', 'LODS', 'STOSB', 'STOS',
+  'MOVSB', 'MOVS', 'SCASB', 'SCAS',
+  'CMPSB', 'CMPS', 'INT3',
 ]);
 
 // Instructions that take a label operand (jump/call targets)
@@ -35,6 +44,7 @@ const LABEL_INSTRUCTIONS = new Set([
   'JG', 'JGE', 'JL', 'JLE', 'JS', 'JNS',
   'JA', 'JAE', 'JB', 'JBE',
   'CALL',
+  'LOOP', 'LOOPE', 'LOOPZ', 'LOOPNE', 'LOOPNZ',
 ]);
 
 /**
