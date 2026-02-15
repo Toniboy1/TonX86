@@ -1,14 +1,22 @@
 # TonX86
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Version](https://img.shields.io/visual-studio-marketplace/v/Toniboy1.tonx86)](https://marketplace.visualstudio.com/items?itemName=Toniboy1.tonx86)
-[![Installs](https://img.shields.io/visual-studio-marketplace/i/Toniboy1.tonx86)](https://marketplace.visualstudio.com/items?itemName=Toniboy1.tonx86)
+[![VS Code Marketplace](https://img.shields.io/visual-studio-marketplace/v/Toniboy1.tonx86?label=VS%20Code%20Marketplace&color=blue)](https://marketplace.visualstudio.com/items?itemName=Toniboy1.tonx86)
+[![Installs](https://img.shields.io/visual-studio-marketplace/i/Toniboy1.tonx86?label=Downloads&color=brightgreen)](https://marketplace.visualstudio.com/items?itemName=Toniboy1.tonx86)
+[![Rating](https://img.shields.io/visual-studio-marketplace/r/Toniboy1.tonx86?label=Rating)](https://marketplace.visualstudio.com/items?itemName=Toniboy1.tonx86)
 [![Build Status](https://github.com/Toniboy1/TonX86/workflows/CI/badge.svg)](https://github.com/Toniboy1/TonX86/actions)
 [![Coverage](https://codecov.io/gh/Toniboy1/TonX86/branch/main/graph/badge.svg)](https://codecov.io/gh/Toniboy1/TonX86)
 
-Educational x86-like assembly environment for VS Code with integrated debugging, memory visualization, LCD display, and keyboard input.
+## ⚡ Learn x86 Assembly with an Interactive Debugger
 
-## Features
+**TonX86** is an educational x86-like assembly environment for VS Code featuring an integrated debugger, CPU simulator, memory visualization, LCD display, and keyboard input.
+
+> **Perfect for:** Computer Science students, assembly language learners, and anyone wanting to understand low-level programming concepts interactively.
+
+🚀 **[Get Started Now](#quick-start)** • 📚 **[Full Documentation](#documentation)** • 💬 **[Examples](examples/)** • 🔧 **[Contributing](#contributing)**
+
+## ⭐ Features
+
 
 - **Assembly Debugging** - Full DAP support with breakpoints, stepping, pause/continue
 - **CPU Simulator** - 8 general-purpose 32-bit registers with flags (Z, C, O, S)
@@ -20,7 +28,24 @@ Educational x86-like assembly environment for VS Code with integrated debugging,
 - **Output Panel** - Mirrors Debug Console output to VS Code Output (TonX86)
 - **Language Server** - Syntax highlighting, diagnostics, code completion
 
-## Architecture
+## 🚀 Quick Start
+
+### Install (1 minute)
+1. Open VS Code Extensions (Ctrl+Shift+X / Cmd+Shift+X)
+2. Search "TonX86"
+3. Click **Install**
+
+### Run Your First Program (2 minutes)
+```bash
+# Create a simple file: hello.asm
+MOV EAX, 42
+ADD EAX, 8
+```
+Open and press **F5** to debug! Watch registers and memory update in real-time.
+
+👉 **[See Examples](examples/)** • 📖 **[Tutorials](#documentation)** • 🎯 **[Interactive Snake Game](examples/21-snake.asm)**
+
+## 🏗️ Architecture
 
 ```
 Extension (UI/LCD/Keyboard) ←→ Debug Adapter (DAP) ←→ Simulator Core
@@ -35,62 +60,22 @@ Extension (UI/LCD/Keyboard) ←→ Debug Adapter (DAP) ←→ Simulator Core
 - `simcore/` - CPU emulation, memory, I/O
 - `docs/` - ISA reference
 
-## Getting Started
+## 👨‍💻 Contributing & Developer Setup
 
-### For Users (Extension)
+We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
-1. **Install from VS Code Marketplace** (when published):
-   - Open VS Code
-   - Go to Extensions (Ctrl+Shift+X)
-   - Search for "TonX86"
-   - Click Install
+### Quick Development Setup
+```bash
+git clone https://github.com/Toniboy1/TonX86.git
+cd TonX86
+npm install
+npm run build
+npm test
+```
 
-2. **Try the Examples**:
-   - Create a new `.asm` file or explore the `examples/` folder
-   - Examples include:
-     - [01-basic-instructions.asm](examples/01-basic-instructions.asm) - MOV, ADD, SUB operations
-     - [02-jumps.asm](examples/02-jumps.asm) - Conditional and unconditional jumps
-     - [03-call-ret.asm](examples/03-call-ret.asm) - Function calls and returns
-     - [04-stack.asm](examples/04-stack.asm) - Stack operations (PUSH/POP)
-     - [08-lcd.asm](examples/08-lcd.asm) - LCD display programming
-     - [14-keyboard.asm](examples/14-keyboard.asm) - Keyboard input handling
-     - [20-flags.asm](examples/20-flags.asm) - Flag register operations
-     - [21-snake.asm](examples/21-snake.asm) - Snake game on 64x64 LCD
-     - ...and more! See the `examples/` folder for 30+ example programs
+**F5 in VS Code** opens the extension in debug mode.
 
-3. **Start Debugging**:
-   - Open any `.asm` file
-   - Press F5 or click "Run and Debug" in the sidebar
-   - Set breakpoints, step through code, and watch registers/memory update in real-time
-
-### For Contributors (From GitHub)
-
-1. **Clone the Repository**:
-   ```bash
-   git clone https://github.com/Toniboy1/TonX86.git
-   cd TonX86
-   ```
-
-2. **Install Dependencies**:
-   ```bash
-   npm install
-   ```
-
-3. **Build the Project**:
-   ```bash
-   npm run build
-   ```
-
-4. **Launch Extension Development Host**:
-   - Press F5 in VS Code to open a new window with the extension loaded
-   - Open any file from the `examples/` folder to start experimenting
-
-5. **Run Tests**:
-   ```bash
-   npm test
-   ```
-
-## Configuration
+## ⚙️ Configuration
 
 ### Settings
 
@@ -468,47 +453,56 @@ main:
     HLT                    ; Halt execution
 ```
 
-## Development
+## 🔗 Resources
 
-### Build & Test
+- **[Quick Start](GETTING_STARTED.md)** - Get up and running in 5 minutes
+- **[Learning Paths](LEARNING_PATHS.md)** - Structured learning curricula (beginner → advanced)
+- **[Examples](examples/)** - 30+ programs demonstrating all features
+- **[Instruction Set Reference](packages/docs/ISA.md)**
+- **[FAQ](FAQ.md)** - Answers to common questions
+- **[Contributing Guide](CONTRIBUTING.md)**
+- **[Issue Tracker](https://github.com/Toniboy1/TonX86/issues)**
+- **[Discussions](https://github.com/Toniboy1/TonX86/discussions)** - Ask questions, share ideas
+
+
+## 🛠️ Development & Testing
+
+### Quick Build & Test
 
 ```bash
 npm install          # Install dependencies
-npm Quality Requirements
+npm run build        # Build all packages
+npm test             # Run all tests
+npm run test:coverage  # Test with coverage report
+```
 
-Before submitting a contribution:
+### Requirements for Contributions
+
 - ✅ All tests pass (`npm test`)
-- ✅ Code coverage ≥80% (`npm test -- --coverage`)
+- ✅ Code coverage ≥80% (`npm test:coverage`)
 - ✅ No lint errors (`npm run lint`)
 - ✅ Build succeeds (`npm run build`)
 - ✅ Documentation updated
 
-**For details on CI/CD, automated checks, coverage reports, and the release process, see [Contributing Workflow](.github/CONTRIBUTING_WORKFLOW.md).**
-- ✅ Pass ESLint checks
-- ✅ Include tests for new features
-- ✅ Update relevant documentation
+See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines and the full development workflow.
 
 **Golden Test Suite:** Comprehensive instruction-level validation with 106 tests covering arithmetic, logical, shift/rotate, stack, control flow, and flag correctness. See [packages/simcore/GOLDEN_TESTS.md](packages/simcore/GOLDEN_TESTS.md) for details.
 
-## Contributing
+## 🤝 Contributing
 
-We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for full guidelines.
 
 **Quick Links:**
 - [Report a Bug](https://github.com/Toniboy1/TonX86/issues/new?template=bug_report.yml)
 - [Request a Feature](https://github.com/Toniboy1/TonX86/issues/new?template=feature_request.yml)
 - [Security Policy](SECURITY.md)
+- [Branch Protection Rules](https://github.com/Toniboy1/TonX86/blob/main/.github/BRANCH_PROTECTION.md)
 
-**Important Requirements:**
-- All commits must be [GPG/SSH signed](https://github.com/Toniboy1/TonX86/blob/main/.github/COMMIT_SIGNING.md)
-- External contributors must submit pull requests (no direct pushes to `main`)
-- See [Branch Protection Rules](https://github.com/Toniboy1/TonX86/blob/main/.github/BRANCH_PROTECTION.md)
-
-## License
+## 📄 License
 
 MIT License - Free to use for educational and commercial purposes.
 
-**Attribution Required:** When using or distributing this software, you must:
+**Attribution Required:** When using or distributing this software, please:
 - Include the original copyright notice
 - Credit the author: **Anthony Fasano (Toniboy1)**
 - Link to: https://github.com/Toniboy1/TonX86
@@ -517,7 +511,7 @@ Example: `"Built with TonX86 by Anthony Fasano (Toniboy1)"`
 
 See [LICENSE](LICENSE) for full details.
 
-## Verification Sources
+## ✅ Verification Sources
 
 The TonX86 instruction set and behavior have been verified against:
 
@@ -525,10 +519,3 @@ The TonX86 instruction set and behavior have been verified against:
   (originally created by Adam Ferrari, updated by Alan Batson, Mike Lack, and Anita Jones)
   https://www.cs.virginia.edu/~evans/cs216/guides/x86.html
   Licensed under [Creative Commons BY-NC-SA 3.0 US](https://creativecommons.org/licenses/by-nc-sa/3.0/us/)
- and [Contributing Workflow](.github/CONTRIBUTING_WORKFLOW.md) for details on what happens after you submit a PR (CI/CD, automated checks, coverage requirements, and release process).
-
-**Quick Links:**
-- [Report a Bug](https://github.com/Toniboy1/TonX86/issues/new?template=bug_report.yml)
-- [Request a Feature](https://github.com/Toniboy1/TonX86/issues/new?template=feature_request.yml)
-- [Security Policy](SECURITY.md)
-- [Contributing Workflow](.github/CONTRIBUTING_WORKFLOW

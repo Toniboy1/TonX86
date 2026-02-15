@@ -2,6 +2,21 @@
   "name": "tonx86",
   "version": "0.4.3",
   "description": "Educational x86-like assembly environment for VS Code",
+  "keywords": [
+    "x86",
+    "assembly",
+    "assembler",
+    "debugger",
+    "simulator",
+    "cpu",
+    "emulator",
+    "teaching",
+    "education",
+    "learning",
+    "vscode-extension",
+    "debug adapter",
+    "language server"
+  ],
   "private": true,
   "author": {
     "name": "Anthony Fasano (Toniboy1)",

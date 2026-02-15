@@ -20,6 +20,25 @@
   "engines": {
     "vscode": "^1.84.0"
   },
+  "keywords": [
+    "x86",
+    "assembly",
+    "assembler",
+    "debugger",
+    "simulator",
+    "cpu",
+    "emulator",
+    "education",
+    "learning",
+    "programming",
+    "debug adapter",
+    "dap",
+    "lsp",
+    "language server",
+    "lcd display",
+    "memory visualization",
+    "tonx86"
+  ],
   "categories": [
     "Debuggers",
     "Programming Languages",
