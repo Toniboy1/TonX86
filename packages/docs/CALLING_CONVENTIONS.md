@@ -429,9 +429,17 @@ function:
 
 ## Verification Sources
 
-Calling convention behavior verified against:
+Calling convention behavior and x86 stack frame semantics verified against:
 
-- **x86 Assembly Guide** — University of Virginia CS216, by David Evans
-  (originally created by Adam Ferrari, updated by Alan Batson, Mike Lack, and Anita Jones)
-  https://www.cs.virginia.edu/~evans/cs216/guides/x86.html
+- **x86 Assembly Guide** — University of Virginia CS216  
+  By David Evans (originally created by Adam Ferrari, updated by Alan Batson, Mike Lack, and Anita Jones)  
+  https://www.cs.virginia.edu/~evans/cs216/guides/x86.html  
   Licensed under [Creative Commons BY-NC-SA 3.0 US](https://creativecommons.org/licenses/by-nc-sa/3.0/us/)
+
+- **x86 Assembly Notes** — Shichao's Notes  
+  Comprehensive reference on x86 architecture, stack operations, and memory layout  
+  https://notes.shichao.io/asm/#x86-assembly
+
+- **Wikibooks: x86 Assembly**  
+  Community-maintained reference on calling conventions and function prologue/epilogue patterns  
+  https://en.wikibooks.org/wiki/X86_Assembly
