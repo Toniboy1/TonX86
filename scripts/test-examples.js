@@ -9,7 +9,7 @@ const fs = require('fs');
 const path = require('path');
 
 // Import the simulator from compiled simcore package
-const { Simulator } = require('../packages/simcore/out/simulator.js');
+const { Simulator } = require('../packages/simcore/out/index.js');
 
 const EXAMPLES_DIR = path.join(__dirname, '..', 'examples');
 const MAX_STEPS = 100000; // Maximum instruction steps before timeout
