@@ -2,6 +2,19 @@
 
 Core CPU simulator for TonX86 assembly execution.
 
+## Source Architecture
+
+The simcore package is organized into domain-specific modules under `packages/simcore/src/`:
+
+- `index.ts` — Public API exports
+- `types.ts` — Shared types (Instruction, ParsedOperand, etc.)
+- `cpu/index.ts` — CPUState class (registers, flags, PC)
+- `devices/` — Memory (64KB dual-bank), LCD (64×64), Keyboard (event queue)
+- `flags/` — Flag computation: helpers, arithmetic, logical, shift, rotate, multiply
+- `instructions/` — Instruction execution split by domain: data-movement, arithmetic, logical, shift-rotate, stack, control-flow, string-ops, bit-ops, interrupts, misc
+- `simulator/index.ts` — Main Simulator class orchestrating all modules
+- Tests live alongside source files in each domain folder
+
 ## Assembler Directives Support (NEW in v0.5.1)
 
 TonX86 now supports assembler directives for separating code and data:
@@ -222,7 +235,7 @@ isCarryFlagSet(): boolean    // Carry flag (bit 0)
 - `reset()` - Clear all state (including EIP and call stack)
 
 ## Testing
-Comprehensive test suite in `simulator.test.ts`:
+Comprehensive test suite in `simulator/simulator.test.ts`:
 - All instruction execution (30+ instruction types)
 - Flag operations
 - LCD display writes (64x64 support)

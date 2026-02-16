@@ -1,5 +1,5 @@
 import { LCDDisplay } from "./lcd";
-import { Simulator } from "./simulator";
+import { Simulator } from "../simulator/index";
 
 describe("LCDDisplay class", () => {
   test("default constructor creates 8x8 display", () => {

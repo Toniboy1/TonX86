@@ -144,10 +144,44 @@ npm test -- --coverage
 
 ## Architecture
 
-- `simulator.ts` - Main simulator class with instruction execution
-- `simulator.test.ts` - Unit tests for core functionality
-- `golden.test.ts` - Golden test suite for instruction validation
-- `index.ts` - Public API exports
+The simcore package is organized into domain-specific modules:
+
+```
+src/
+├── index.ts              # Public API exports
+├── types.ts              # Shared types (Instruction, ParsedOperand, etc.)
+├── cpu/
+│   └── index.ts          # CPUState class (registers, flags, PC)
+├── devices/
+│   ├── index.ts          # Barrel re-export
+│   ├── memory.ts         # 64KB dual-bank memory
+│   ├── lcd.ts            # 64x64 LCD display
+│   └── keyboard.ts       # Keyboard event queue
+├── flags/
+│   ├── index.ts          # Barrel re-export
+│   ├── helpers.ts        # Flag read helpers
+│   ├── arithmetic.ts     # Arithmetic flag computation
+│   ├── logical.ts        # Logical flag computation
+│   ├── shift.ts          # Shift flag computation
+│   ├── rotate.ts         # Rotate flag computation
+│   └── multiply.ts       # Multiply flag computation
+├── instructions/
+│   ├── index.ts          # executeInstruction() dispatcher
+│   ├── data-movement.ts  # MOV, XCHG, LEA, MOVZX, MOVSX
+│   ├── arithmetic.ts     # ADD, SUB, INC, DEC, MUL, DIV, etc.
+│   ├── logical.ts        # AND, OR, XOR, NOT, TEST
+│   ├── shift-rotate.ts   # SHL, SHR, SAR, ROL, ROR, RCL, RCR
+│   ├── stack.ts          # PUSH, POP
+│   ├── control-flow.ts   # JMP, Jcc, CALL, RET, LOOP, CMOV
+│   ├── string-ops.ts     # LODS, STOS, MOVS, SCAS, CMPS
+│   ├── bit-ops.ts        # LAHF, SAHF, XADD, BSF, BSR, BSWAP
+│   ├── interrupts.ts     # INT, INT3, IRET
+│   └── misc.ts           # RAND
+└── simulator/
+    └── index.ts          # Main Simulator class
+```
+
+Tests live alongside source files in each domain folder.
 
 ## License
 

@@ -11,7 +11,7 @@
  * - Flag correctness (Z, C, O, S flags)
  */
 
-import { Simulator } from "./simulator";
+import { Simulator } from "./simulator/index";
 
 /**
  * Golden test case structure

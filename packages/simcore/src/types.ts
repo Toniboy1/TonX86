@@ -1,4 +1,4 @@
-import type { CPUState } from "./cpu";
+import type { CPUState } from "./cpu/index";
 
 /**
  * Instruction interface - represents a parsed assembly instruction
