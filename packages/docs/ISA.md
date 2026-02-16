@@ -430,7 +430,7 @@ MOV ECX, [EBP+ESI+8]   ; Load from address (EBP + ESI + 8)
 **IRET** - Return from interrupt
 - Cycles: 2
 - Flags: All restored from stack
-- Operation: Returns from interrupt handler
+- Operation: Pops return address from stack, pops and restores flags from stack, then jumps to the return address. Used to return from interrupt handlers.
 - Example: `IRET`
 
 ### Rotate Through Carry

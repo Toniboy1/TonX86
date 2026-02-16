@@ -521,6 +521,7 @@ export class Simulator {
         "JBE",
         "CALL",
         "RET",
+        "IRET",
         "LOOP",
         "LOOPE",
         "LOOPZ",
@@ -548,6 +549,14 @@ export class Simulator {
         } else {
           this.eip++;
         }
+      } else if (mnemonic === "IRET") {
+        // IRET: Pop return address and flags from stack
+        // Standard x86 interrupt pushes: FLAGS, then IP
+        // IRET pops: IP (first), then FLAGS (second)
+        const returnAddress = this.popStack();
+        const flags = this.popStack();
+        this.cpu.flags = flags;
+        this.eip = returnAddress;
       } else if (
         mnemonic === "LOOP" ||
         mnemonic === "LOOPE" ||

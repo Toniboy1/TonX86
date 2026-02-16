@@ -388,7 +388,11 @@ Notes:
   - `AH=0x02` - Write character (character in DL to console)
 - `INT 0x20` - Program terminate (halts execution)
 
-**IRET** - Return from interrupt (placeholder for future use)
+**IRET** - Return from interrupt
+- Pops the return address from the stack
+- Pops and restores CPU flags from the stack
+- Jumps to the return address
+- Used to return from interrupt handlers that saved state on the stack
 
 ## Memory-Mapped I/O
 
