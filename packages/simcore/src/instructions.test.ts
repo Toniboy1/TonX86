@@ -1130,11 +1130,53 @@ describe("executeInstruction - INT", () => {
       expect(sim.getConsoleOutput()).toBe("Hi");
     });
 
-    test("INT 0x21 function 0x09 (write string) is a no-op", () => {
+    test("INT 0x21 AH=0x09 writes $-terminated string", () => {
+      // Set up a $-terminated string in memory
+      sim.executeInstruction("MOV", ["EDX", "0x1000"]); // Address of string
+      sim.executeInstruction("MOV", ["EAX", "0x1000"]);
+      sim.executeInstruction("MOV", ["EBX", "0x48"]); // 'H'
+      sim.executeInstruction("MOV", ["[EAX]", "EBX"]);
+      sim.executeInstruction("MOV", ["EAX", "0x1001"]);
+      sim.executeInstruction("MOV", ["EBX", "0x65"]); // 'e'
+      sim.executeInstruction("MOV", ["[EAX]", "EBX"]);
+      sim.executeInstruction("MOV", ["EAX", "0x1002"]);
+      sim.executeInstruction("MOV", ["EBX", "0x6C"]); // 'l'
+      sim.executeInstruction("MOV", ["[EAX]", "EBX"]);
+      sim.executeInstruction("MOV", ["EAX", "0x1003"]);
+      sim.executeInstruction("MOV", ["EBX", "0x6C"]); // 'l'
+      sim.executeInstruction("MOV", ["[EAX]", "EBX"]);
+      sim.executeInstruction("MOV", ["EAX", "0x1004"]);
+      sim.executeInstruction("MOV", ["EBX", "0x6F"]); // 'o'
+      sim.executeInstruction("MOV", ["[EAX]", "EBX"]);
+      sim.executeInstruction("MOV", ["EAX", "0x1005"]);
+      sim.executeInstruction("MOV", ["EBX", "0x24"]); // '$' terminator
+      sim.executeInstruction("MOV", ["[EAX]", "EBX"]);
+
+      // Execute INT 0x21 with AH=0x09
       sim.executeInstruction("MOV", ["EAX", "0x0900"]);
-      expect(() => {
-        sim.executeInstruction("INT", ["0x21"]);
-      }).not.toThrow();
+      sim.executeInstruction("INT", ["0x21"]);
+      expect(sim.getConsoleOutput()).toBe("Hello");
+    });
+
+    test("INT 0x21 AH=0x09 handles empty string", () => {
+      // String with immediate $ terminator
+      sim.executeInstruction("MOV", ["EDX", "0x2000"]);
+      sim.executeInstruction("MOV", ["EAX", "0x2000"]);
+      sim.executeInstruction("MOV", ["EBX", "0x24"]); // '$' terminator
+      sim.executeInstruction("MOV", ["[EAX]", "EBX"]);
+
+      sim.executeInstruction("MOV", ["EAX", "0x0900"]);
+      sim.executeInstruction("INT", ["0x21"]);
+      expect(sim.getConsoleOutput()).toBe("");
+    });
+
+    test("INT 0x21 AH=0x09 handles max length safety", () => {
+      // No $ terminator - should stop at max length
+      sim.executeInstruction("MOV", ["EDX", "0x3000"]);
+      sim.executeInstruction("MOV", ["EAX", "0x0900"]);
+      sim.executeInstruction("INT", ["0x21"]);
+      // Should not throw or hang
+      expect(sim.getConsoleOutput().length).toBeLessThanOrEqual(4096);
     });
   });
 

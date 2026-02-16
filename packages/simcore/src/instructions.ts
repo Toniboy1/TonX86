@@ -1018,7 +1018,24 @@ function executeInt(ctx: ExecutionContext, operands: string[]): void {
             break;
           }
           case 0x09: {
-            // Write string to stdout - not fully implemented
+            // Write $-terminated string to stdout
+            // DS:EDX points to string ending with '$' (0x24)
+            const address = ctx.cpu.registers[2]; // EDX
+            let result = "";
+            let offset = 0;
+            const maxLength = 4096; // Safety limit to prevent infinite loops
+
+            while (offset < maxLength) {
+              const byte = ctx.readMemory32(address + offset) & 0xff;
+              if (byte === 0x24) {
+                // '$' terminator found
+                break;
+              }
+              result += String.fromCharCode(byte);
+              offset++;
+            }
+
+            ctx.appendConsoleOutput(result);
             break;
           }
         }

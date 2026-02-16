@@ -380,12 +380,14 @@ Software interrupts enable system calls and I/O operations similar to DOS/BIOS.
 Notes:
 - `AL`/`AH` are used for INT 0x10 (teletype output)
 - `DL`/`AH` are used for INT 0x21 (DOS-style output)
+- `EDX` is used for INT 0x21 AH=0x09 (string address)
 
 **Supported Interrupts:**
 - `INT 0x10` - Video services
   - `AH=0x0E` - Teletype output (write character in AL to console)
 - `INT 0x21` - DOS-style services
   - `AH=0x02` - Write character (character in DL to console)
+  - `AH=0x09` - Write string (address in EDX, $-terminated string)
 - `INT 0x20` - Program terminate (halts execution)
 
 **IRET** - Return from interrupt
@@ -501,6 +503,23 @@ main:
     
     MOV DL, 'i'            ; Character 'i'
     INT 0x21
+    
+    HLT                    ; Halt execution
+```
+
+### DOS-Style String Output
+
+```asm
+; Print string using DOS INT 0x21 AH=0x09
+.data
+ORG 0x1000
+    message: DB 'Hello, World!', '$'  ; $-terminated string
+
+.text
+main:
+    MOV AH, 0x09           ; Write string function
+    MOV EDX, message       ; Address of string
+    INT 0x21               ; DOS services interrupt
     
     HLT                    ; Halt execution
 ```
