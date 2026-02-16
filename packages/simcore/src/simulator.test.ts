@@ -868,14 +868,24 @@ describe("Simulator - IRET instruction", () => {
 
   test("IRET pops return address and jumps correctly", () => {
     const instructions = [
-      { line: 1, mnemonic: "MOV", operands: ["EAX", "100"], raw: "MOV EAX, 100" },  // index 0
-      { line: 2, mnemonic: "MOV", operands: ["EBX", "0"], raw: "MOV EBX, 0" },      // index 1 - Flags
-      { line: 3, mnemonic: "PUSH", operands: ["EBX"], raw: "PUSH EBX" },            // index 2 - Push flags
-      { line: 4, mnemonic: "MOV", operands: ["ECX", "6"], raw: "MOV ECX, 6" },      // index 3 - Return address (index 6)
-      { line: 5, mnemonic: "PUSH", operands: ["ECX"], raw: "PUSH ECX" },            // index 4 - Push return address
-      { line: 6, mnemonic: "IRET", operands: [], raw: "IRET" },                     // index 5 - Should jump to index 6
-      { line: 7, mnemonic: "MOV", operands: ["EAX", "200"], raw: "MOV EAX, 200" },  // index 6
-      { line: 8, mnemonic: "HLT", operands: [], raw: "HLT" },                       // index 7
+      {
+        line: 1,
+        mnemonic: "MOV",
+        operands: ["EAX", "100"],
+        raw: "MOV EAX, 100",
+      }, // index 0
+      { line: 2, mnemonic: "MOV", operands: ["EBX", "0"], raw: "MOV EBX, 0" }, // index 1 - Flags
+      { line: 3, mnemonic: "PUSH", operands: ["EBX"], raw: "PUSH EBX" }, // index 2 - Push flags
+      { line: 4, mnemonic: "MOV", operands: ["ECX", "6"], raw: "MOV ECX, 6" }, // index 3 - Return address (index 6)
+      { line: 5, mnemonic: "PUSH", operands: ["ECX"], raw: "PUSH ECX" }, // index 4 - Push return address
+      { line: 6, mnemonic: "IRET", operands: [], raw: "IRET" }, // index 5 - Should jump to index 6
+      {
+        line: 7,
+        mnemonic: "MOV",
+        operands: ["EAX", "200"],
+        raw: "MOV EAX, 200",
+      }, // index 6
+      { line: 8, mnemonic: "HLT", operands: [], raw: "HLT" }, // index 7
     ];
     const labels = new Map<string, number>();
     sim.loadInstructions(instructions, labels);
@@ -895,11 +905,16 @@ describe("Simulator - IRET instruction", () => {
   test("IRET restores flags from stack during execution", () => {
     const testFlags = 0b0000_1000_1100_0001; // OF=1, SF=1, ZF=1, CF=1
     const instructions = [
-      { line: 1, mnemonic: "MOV", operands: ["EDX", `${testFlags}`], raw: `MOV EDX, ${testFlags}` },
-      { line: 2, mnemonic: "PUSH", operands: ["EDX"], raw: "PUSH EDX" },     // Push flags first
-      { line: 3, mnemonic: "MOV", operands: ["EAX", "6"], raw: "MOV EAX, 6" },  // Return address
-      { line: 4, mnemonic: "PUSH", operands: ["EAX"], raw: "PUSH EAX" },     // Push return address
-      { line: 5, mnemonic: "IRET", operands: [], raw: "IRET" },              // Pop return address, pop flags
+      {
+        line: 1,
+        mnemonic: "MOV",
+        operands: ["EDX", `${testFlags}`],
+        raw: `MOV EDX, ${testFlags}`,
+      },
+      { line: 2, mnemonic: "PUSH", operands: ["EDX"], raw: "PUSH EDX" }, // Push flags first
+      { line: 3, mnemonic: "MOV", operands: ["EAX", "6"], raw: "MOV EAX, 6" }, // Return address
+      { line: 4, mnemonic: "PUSH", operands: ["EAX"], raw: "PUSH EAX" }, // Push return address
+      { line: 5, mnemonic: "IRET", operands: [], raw: "IRET" }, // Pop return address, pop flags
       { line: 6, mnemonic: "HLT", operands: [], raw: "HLT" },
     ];
     const labels = new Map<string, number>();
@@ -909,16 +924,16 @@ describe("Simulator - IRET instruction", () => {
     sim.step(); // PUSH EDX (flags on stack)
     sim.step(); // MOV EAX, 6
     sim.step(); // PUSH EAX (return address on stack)
-    
+
     sim.step(); // IRET
-    
+
     // After IRET, flags should be restored to testFlags
     const flagsAfterIret = sim.getState().flags;
     expect(flagsAfterIret).toBe(testFlags);
     expect(flagsAfterIret & 0x800).toBe(0x800); // OF
-    expect(flagsAfterIret & 0x80).toBe(0x80);   // SF
-    expect(flagsAfterIret & 0x40).toBe(0x40);   // ZF
-    expect(flagsAfterIret & 0x01).toBe(0x01);   // CF
+    expect(flagsAfterIret & 0x80).toBe(0x80); // SF
+    expect(flagsAfterIret & 0x40).toBe(0x40); // ZF
+    expect(flagsAfterIret & 0x01).toBe(0x01); // CF
     expect(sim.getEIP()).toBe(6); // Should jump to line 6
   });
 
@@ -927,19 +942,29 @@ describe("Simulator - IRET instruction", () => {
     // 1. Main code pushes flags and return address (simulating interrupt entry)
     // 2. Interrupt handler code runs
     // 3. IRET returns to main code with restored flags
-    
+
     const savedFlags = 0x41; // ZF=1, CF=1
-    const returnAddr = 8;    // Return to line 8
-    
+    const returnAddr = 8; // Return to line 8
+
     const instructions = [
       // Main code - simulate interrupt happening
-      { line: 1, mnemonic: "MOV", operands: ["EAX", `${savedFlags}`], raw: `MOV EAX, ${savedFlags}` },
-      { line: 2, mnemonic: "PUSH", operands: ["EAX"], raw: "PUSH EAX" },  // Push flags first
-      { line: 3, mnemonic: "MOV", operands: ["EBX", `${returnAddr}`], raw: `MOV EBX, ${returnAddr}` },
-      { line: 4, mnemonic: "PUSH", operands: ["EBX"], raw: "PUSH EBX" },  // Push return address
+      {
+        line: 1,
+        mnemonic: "MOV",
+        operands: ["EAX", `${savedFlags}`],
+        raw: `MOV EAX, ${savedFlags}`,
+      },
+      { line: 2, mnemonic: "PUSH", operands: ["EAX"], raw: "PUSH EAX" }, // Push flags first
+      {
+        line: 3,
+        mnemonic: "MOV",
+        operands: ["EBX", `${returnAddr}`],
+        raw: `MOV EBX, ${returnAddr}`,
+      },
+      { line: 4, mnemonic: "PUSH", operands: ["EBX"], raw: "PUSH EBX" }, // Push return address
       // Interrupt handler code
       { line: 5, mnemonic: "MOV", operands: ["ECX", "42"], raw: "MOV ECX, 42" }, // Handler does work
-      { line: 6, mnemonic: "IRET", operands: [], raw: "IRET" },           // Return from interrupt
+      { line: 6, mnemonic: "IRET", operands: [], raw: "IRET" }, // Return from interrupt
       // Back to main code
       { line: 7, mnemonic: "MOV", operands: ["EDX", "99"], raw: "MOV EDX, 99" },
       { line: 8, mnemonic: "HLT", operands: [], raw: "HLT" },
@@ -953,12 +978,12 @@ describe("Simulator - IRET instruction", () => {
     sim.step(); // PUSH EBX (return address)
     sim.step(); // MOV ECX, 42 (handler work)
     expect(sim.getRegisters().ECX).toBe(42);
-    
+
     sim.step(); // IRET - should restore flags and jump to line 8
-    
+
     expect(sim.getState().flags).toBe(savedFlags);
     expect(sim.getEIP()).toBe(returnAddr); // Should be at line 8
-    
+
     sim.step(); // HLT
     expect(sim.getState().halted).toBe(true);
   });
@@ -966,9 +991,9 @@ describe("Simulator - IRET instruction", () => {
   test("IRET with zero flags", () => {
     const instructions = [
       { line: 1, mnemonic: "MOV", operands: ["EAX", "0"], raw: "MOV EAX, 0" },
-      { line: 2, mnemonic: "PUSH", operands: ["EAX"], raw: "PUSH EAX" },     // Push flags=0
+      { line: 2, mnemonic: "PUSH", operands: ["EAX"], raw: "PUSH EAX" }, // Push flags=0
       { line: 3, mnemonic: "MOV", operands: ["EBX", "6"], raw: "MOV EBX, 6" },
-      { line: 4, mnemonic: "PUSH", operands: ["EBX"], raw: "PUSH EBX" },     // Push return address
+      { line: 4, mnemonic: "PUSH", operands: ["EBX"], raw: "PUSH EBX" }, // Push return address
       { line: 5, mnemonic: "IRET", operands: [], raw: "IRET" },
       { line: 6, mnemonic: "HLT", operands: [], raw: "HLT" },
     ];

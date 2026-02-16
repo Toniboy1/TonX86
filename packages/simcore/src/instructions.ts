@@ -1361,7 +1361,7 @@ function executeIret(ctx: ExecutionContext): void {
   // IRET is handled in two parts:
   // 1. step() pops the return address (IP) from stack
   // 2. This function is called BEFORE step() pops IP
-  // 
+  //
   // Note: This function is intentionally empty because the actual
   // popping and flag restoration happens in step() after control flow handling
   // to ensure proper order: pop IP, then pop FLAGS
