@@ -140,22 +140,57 @@ export function executeInstruction(
       break;
 
     case "JMP":
+      executeJmp(ctx, operands);
+      break;
+
     case "JE":
     case "JZ":
+      executeJe(ctx, operands);
+      break;
+
     case "JNE":
     case "JNZ":
+      executeJne(ctx, operands);
+      break;
+
     case "JG":
+      executeJg(ctx, operands);
+      break;
+
     case "JGE":
+      executeJge(ctx, operands);
+      break;
+
     case "JL":
+      executeJl(ctx, operands);
+      break;
+
     case "JLE":
+      executeJle(ctx, operands);
+      break;
+
     case "JS":
+      executeJs(ctx, operands);
+      break;
+
     case "JNS":
+      executeJns(ctx, operands);
+      break;
+
     case "JA":
+      executeJa(ctx, operands);
+      break;
+
     case "JAE":
+      executeJae(ctx, operands);
+      break;
+
     case "JB":
+      executeJb(ctx, operands);
+      break;
+
     case "JBE":
-      // Jump instructions are no-ops at the executeInstruction level;
-      // control flow is handled by step()
+      executeJbe(ctx, operands);
       break;
 
     case "LOOP":
@@ -254,8 +289,11 @@ export function executeInstruction(
       break;
 
     case "CALL":
+      executeCall(ctx, operands);
+      break;
+
     case "RET":
-      // CALL/RET control flow is handled by step()
+      executeRet(ctx);
       break;
 
     case "LAHF":
@@ -1121,6 +1159,209 @@ function executeLoop(ctx: ExecutionContext, _mnemonic: string): void {
 }
 
 // ---------------------------------------------------------------------------
+// Jump instructions - Conditional and unconditional branching
+// ---------------------------------------------------------------------------
+
+/**
+ * Helper function to perform an unconditional jump to a label
+ */
+function performJump(ctx: ExecutionContext, targetLabel: string): void {
+  const targetIndex = ctx.resolveLabel(targetLabel);
+  if (targetIndex !== undefined) {
+    ctx.setEIP(targetIndex);
+  } else {
+    throw new Error(`Jump target "${targetLabel}" not found in labels`);
+  }
+}
+
+/**
+ * Helper function to perform a conditional jump
+ * Validates label exists first, then checks condition
+ */
+function performConditionalJump(
+  ctx: ExecutionContext,
+  targetLabel: string,
+  condition: boolean,
+): void {
+  const targetIndex = ctx.resolveLabel(targetLabel);
+  if (targetIndex === undefined) {
+    throw new Error(`Jump target "${targetLabel}" not found in labels`);
+  }
+
+  if (condition) {
+    ctx.setEIP(targetIndex);
+  } else {
+    ctx.setEIP(ctx.getEIP() + 1);
+  }
+}
+
+/**
+ * JMP - Unconditional jump
+ */
+function executeJmp(ctx: ExecutionContext, operands: string[]): void {
+  if (operands.length !== 1) return;
+  performJump(ctx, operands[0]);
+}
+
+/**
+ * JE/JZ - Jump if equal / Jump if zero
+ */
+function executeJe(ctx: ExecutionContext, operands: string[]): void {
+  if (operands.length !== 1) return;
+  performConditionalJump(ctx, operands[0], isZeroFlagSet(ctx.cpu.flags));
+}
+
+/**
+ * JNE/JNZ - Jump if not equal / Jump if not zero
+ */
+function executeJne(ctx: ExecutionContext, operands: string[]): void {
+  if (operands.length !== 1) return;
+  performConditionalJump(ctx, operands[0], !isZeroFlagSet(ctx.cpu.flags));
+}
+
+/**
+ * JG - Jump if greater (signed)
+ */
+function executeJg(ctx: ExecutionContext, operands: string[]): void {
+  if (operands.length !== 1) return;
+  const flags = ctx.cpu.flags;
+  performConditionalJump(
+    ctx,
+    operands[0],
+    isSignFlagSet(flags) === isOverflowFlagSet(flags) && !isZeroFlagSet(flags),
+  );
+}
+
+/**
+ * JGE - Jump if greater or equal (signed)
+ */
+function executeJge(ctx: ExecutionContext, operands: string[]): void {
+  if (operands.length !== 1) return;
+  performConditionalJump(
+    ctx,
+    operands[0],
+    isSignFlagSet(ctx.cpu.flags) === isOverflowFlagSet(ctx.cpu.flags),
+  );
+}
+
+/**
+ * JL - Jump if less (signed)
+ */
+function executeJl(ctx: ExecutionContext, operands: string[]): void {
+  if (operands.length !== 1) return;
+  performConditionalJump(
+    ctx,
+    operands[0],
+    isSignFlagSet(ctx.cpu.flags) !== isOverflowFlagSet(ctx.cpu.flags),
+  );
+}
+
+/**
+ * JLE - Jump if less or equal (signed)
+ */
+function executeJle(ctx: ExecutionContext, operands: string[]): void {
+  if (operands.length !== 1) return;
+  const flags = ctx.cpu.flags;
+  performConditionalJump(
+    ctx,
+    operands[0],
+    isSignFlagSet(flags) !== isOverflowFlagSet(flags) || isZeroFlagSet(flags),
+  );
+}
+
+/**
+ * JS - Jump if sign (negative)
+ */
+function executeJs(ctx: ExecutionContext, operands: string[]): void {
+  if (operands.length !== 1) return;
+  performConditionalJump(ctx, operands[0], isSignFlagSet(ctx.cpu.flags));
+}
+
+/**
+ * JNS - Jump if not sign (non-negative)
+ */
+function executeJns(ctx: ExecutionContext, operands: string[]): void {
+  if (operands.length !== 1) return;
+  performConditionalJump(ctx, operands[0], !isSignFlagSet(ctx.cpu.flags));
+}
+
+/**
+ * JA - Jump if above (unsigned)
+ */
+function executeJa(ctx: ExecutionContext, operands: string[]): void {
+  if (operands.length !== 1) return;
+  performConditionalJump(
+    ctx,
+    operands[0],
+    !isCarryFlagSet(ctx.cpu.flags) && !isZeroFlagSet(ctx.cpu.flags),
+  );
+}
+
+/**
+ * JAE - Jump if above or equal (unsigned)
+ */
+function executeJae(ctx: ExecutionContext, operands: string[]): void {
+  if (operands.length !== 1) return;
+  performConditionalJump(ctx, operands[0], !isCarryFlagSet(ctx.cpu.flags));
+}
+
+/**
+ * JB - Jump if below (unsigned)
+ */
+function executeJb(ctx: ExecutionContext, operands: string[]): void {
+  if (operands.length !== 1) return;
+  performConditionalJump(ctx, operands[0], isCarryFlagSet(ctx.cpu.flags));
+}
+
+/**
+ * JBE - Jump if below or equal (unsigned)
+ */
+function executeJbe(ctx: ExecutionContext, operands: string[]): void {
+  if (operands.length !== 1) return;
+  performConditionalJump(
+    ctx,
+    operands[0],
+    isCarryFlagSet(ctx.cpu.flags) || isZeroFlagSet(ctx.cpu.flags),
+  );
+}
+
+// ---------------------------------------------------------------------------
+// CALL/RET - Function call control flow
+// ---------------------------------------------------------------------------
+
+/**
+ * CALL - Call a subroutine
+ */
+function executeCall(ctx: ExecutionContext, operands: string[]): void {
+  if (operands.length !== 1) return;
+  const targetLabel = operands[0];
+  const targetIndex = ctx.resolveLabel(targetLabel);
+
+  if (targetIndex !== undefined) {
+    const returnAddress = ctx.getEIP() + 1;
+    ctx.pushCallStack(returnAddress);
+    ctx.pushStack(returnAddress);
+    ctx.setEIP(targetIndex);
+  } else {
+    throw new Error(`CALL target "${targetLabel}" not found in labels`);
+  }
+}
+
+/**
+ * RET - Return from subroutine
+ */
+function executeRet(ctx: ExecutionContext): void {
+  const returnAddress = ctx.popCallStack();
+  if (returnAddress !== undefined) {
+    ctx.popStack();
+    ctx.setEIP(returnAddress);
+  } else {
+    // No return address on call stack, just advance EIP
+    ctx.setEIP(ctx.getEIP() + 1);
+  }
+}
+
+// ---------------------------------------------------------------------------
 // CMOVxx - Conditional moves
 // ---------------------------------------------------------------------------
 
@@ -1357,7 +1598,7 @@ function executeInt3(ctx: ExecutionContext): void {
 // IRET - Return from interrupt
 // ---------------------------------------------------------------------------
 
-function executeIret(ctx: ExecutionContext): void {
+function executeIret(_ctx: ExecutionContext): void {
   // IRET is handled in two parts:
   // 1. step() pops the return address (IP) from stack
   // 2. This function is called BEFORE step() pops IP

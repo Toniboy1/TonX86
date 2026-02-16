@@ -102,4 +102,11 @@ export interface ExecutionContext {
 
   // Console output
   appendConsoleOutput(text: string): void;
+
+  // Control flow - for jump/call/ret instructions
+  resolveLabel(label: string): number | undefined;
+  getEIP(): number;
+  setEIP(value: number): void;
+  pushCallStack(returnAddress: number): void;
+  popCallStack(): number | undefined;
 }
