@@ -459,7 +459,7 @@
       "mnemonic": "INT",
       "opcode": "0xCD",
       "operands": ["imm8"],
-      "description": "Software interrupt - call interrupt handler",
+      "description": "Software interrupt - call interrupt handler. Supported: INT 0x10 (video), INT 0x20 (terminate), INT 0x21 (DOS services: AH=0x02 write char from DL, AH=0x09 write $-terminated string from [EDX])",
       "cycles": 2,
       "flags": [],
       "examples": [
@@ -469,6 +469,10 @@
         "",
         "MOV AH, 0x02       ; Write character function",
         "MOV DL, 'A'        ; Character to print",
+        "INT 0x21           ; DOS services interrupt",
+        "",
+        "MOV AH, 0x09       ; Write string function",
+        "MOV EDX, msg_addr  ; Address of $-terminated string",
         "INT 0x21           ; DOS services interrupt",
         "",
         "INT 0x20           ; Terminate program"

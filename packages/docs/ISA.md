@@ -427,6 +427,36 @@ MOV ECX, [EBP+ESI+8]   ; Load from address (EBP + ESI + 8)
 - Operation: Executes interrupt handler for the specified number
 - Example: `INT 0x10`
 
+**Supported Interrupts:**
+
+- **INT 0x10** - Video services (LCD display)
+  - No sub-functions currently implemented
+
+- **INT 0x20** - Program terminate
+  - Terminates the program execution
+
+- **INT 0x21** - DOS services
+  - **AH=0x02**: Write character to stdout
+    - Input: DL = ASCII character to output
+    - Operation: Outputs the character in DL to console
+    - Example:
+      ```asm
+      MOV AH, 0x02
+      MOV DL, 'A'
+      INT 0x21
+      ```
+  
+  - **AH=0x09**: Write string to stdout
+    - Input: EDX = address of $-terminated string
+    - Operation: Outputs string from memory at [EDX] until '$' (0x24) terminator
+    - Maximum length: 4096 bytes (safety limit)
+    - Example:
+      ```asm
+      MOV AH, 0x09
+      MOV EDX, msg_addr
+      INT 0x21
+      ```
+
 **IRET** - Return from interrupt
 - Cycles: 2
 - Flags: All restored from stack
