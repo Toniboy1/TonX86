@@ -1144,6 +1144,26 @@ describe("executeInstruction - INT", () => {
         sim.executeInstruction("IRET", []);
       }).not.toThrow();
     });
+
+    test("IRET accepts no operands", () => {
+      // IRET takes no operands, should not throw
+      expect(() => {
+        sim.executeInstruction("IRET", []);
+      }).not.toThrow();
+    });
+
+    test("IRET is case insensitive", () => {
+      expect(() => {
+        sim.executeInstruction("iret", []);
+      }).not.toThrow();
+      expect(() => {
+        sim.executeInstruction("IrEt", []);
+      }).not.toThrow();
+    });
+
+    // Note: Full IRET behavior (popping return address and flags) is tested
+    // in simulator.test.ts using step() method, as IRET requires special
+    // control flow handling that is only active when using step()
   });
 
   describe("case insensitivity", () => {

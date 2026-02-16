@@ -316,7 +316,7 @@ export function executeInstruction(
       break;
 
     case "IRET":
-      // IRET placeholder
+      executeIret(ctx);
       break;
 
     case "RAND":
@@ -1351,4 +1351,18 @@ function executeInt3(ctx: ExecutionContext): void {
   // INT3 triggers a breakpoint - halt the processor
   ctx.cpu.halted = true;
   ctx.cpu.running = false;
+}
+
+// ---------------------------------------------------------------------------
+// IRET - Return from interrupt
+// ---------------------------------------------------------------------------
+
+function executeIret(ctx: ExecutionContext): void {
+  // IRET is handled in two parts:
+  // 1. step() pops the return address (IP) from stack
+  // 2. This function is called BEFORE step() pops IP
+  //
+  // Note: This function is intentionally empty because the actual
+  // popping and flag restoration happens in step() after control flow handling
+  // to ensure proper order: pop IP, then pop FLAGS
 }
