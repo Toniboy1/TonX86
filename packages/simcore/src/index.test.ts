@@ -1,5 +1,5 @@
-import { Simulator, CPUState, Memory, LCDDisplay, Keyboard } from "./index";
-import type { CompatibilityMode, Instruction } from "./index";
+import { Simulator, CPUState, Memory, LCDDisplay, Keyboard } from ".";
+import type { CompatibilityMode, Instruction } from ".";
 
 describe("index exports", () => {
   test("exports Simulator class", () => {

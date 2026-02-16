@@ -11,42 +11,26 @@
  *   - instructions.ts - per-instruction execution logic
  */
 
-// Re-export peripheral classes & types so existing consumers keep working
-// (e.g. `import { CPUState, Memory, ... } from "./simulator"`)
-export { CPUState } from "./cpu";
-export { Memory } from "./memory";
-export { LCDDisplay } from "./lcd";
-export { Keyboard } from "./keyboard";
-export type {
-  Instruction,
-  ParsedOperand,
-  RegisterOperand,
-  KeyboardEvent,
-  CompatibilityMode,
-  ExecutionContext,
-} from "./types";
-export { REGISTER_MAP, REGISTER8_MAP } from "./types";
-
 // Internal imports
-import { CPUState } from "./cpu";
-import { Memory } from "./memory";
-import { LCDDisplay } from "./lcd";
-import { Keyboard } from "./keyboard";
+import { CPUState } from "../cpu/index";
+import { Memory } from "../devices/memory";
+import { LCDDisplay } from "../devices/lcd";
+import { Keyboard } from "../devices/keyboard";
 import type {
   Instruction,
   ParsedOperand,
   RegisterOperand,
   CompatibilityMode,
   ExecutionContext,
-} from "./types";
-import { REGISTER_MAP, REGISTER8_MAP } from "./types";
+} from "../types";
+import { REGISTER_MAP, REGISTER8_MAP } from "../types";
 import {
   isZeroFlagSet,
   isSignFlagSet,
   isCarryFlagSet,
   isOverflowFlagSet,
-} from "./flags";
-import { executeInstruction } from "./instructions";
+} from "../flags/index";
+import { executeInstruction } from "../instructions/index";
 
 /**
  * TonX86 Simulator - main execution engine

@@ -1,4 +1,4 @@
-import { CPUState } from "./cpu";
+import { CPUState } from "./index";
 
 describe("CPUState", () => {
   let cpu: CPUState;

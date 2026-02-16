@@ -5,7 +5,7 @@
  * Copy the pattern below and modify for your specific instruction testing needs.
  */
 
-import { Simulator } from "./simulator";
+import { Simulator } from "./simulator/index";
 
 // Define the test case structure
 interface GoldenTest {

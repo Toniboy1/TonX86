@@ -47,7 +47,7 @@ jobs:
     - name: Run golden test suite
       run: |
         cd packages/simcore
-        npm test golden.test.ts
+        npm test -- src/golden.test.ts
 
     - name: Run functional tests (ASM examples)
       run: npm run test:examples

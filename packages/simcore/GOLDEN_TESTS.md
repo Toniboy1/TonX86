@@ -211,6 +211,6 @@ Some instructions behave differently based on compatibility mode:
 ## Resources
 
 - [Instruction Set Architecture](../docs/ISA.md)
-- [Simulator Implementation](../packages/simcore/src/simulator.ts)
+- [Simulator Implementation](src/simulator/index.ts)
 - [Example Programs](../examples/)
 - [Prompt File](.github/prompts/simcore.prompt.md)

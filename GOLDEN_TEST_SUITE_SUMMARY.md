@@ -3,7 +3,7 @@
 ## ✅ Completed Tasks
 
 ### 1. Golden Test Suite Creation
-Created comprehensive instruction-level test suite (`packages/simcore/src/golden.test.ts`) with **106 tests** covering:
+Created comprehensive instruction-level test suite (`packages/simcore/src/tests/golden.test.ts`) with **106 tests** covering:
 
 #### Arithmetic Instructions (30 tests)
 - ✅ ADD: positive/negative numbers, zero results, unsigned/signed overflow
@@ -111,7 +111,7 @@ Platform:    macOS ✅ | Windows ✅
 ## 📁 Files Modified/Created
 
 ### Created
-- `packages/simcore/src/golden.test.ts` (1409 lines)
+- `packages/simcore/src/tests/golden.test.ts` (1409 lines)
 - `packages/simcore/GOLDEN_TESTS.md` (300+ lines)
 - `packages/simcore/README.md` (140+ lines)
 
@@ -186,7 +186,7 @@ Example:
 ## 📚 References
 
 - [ISA Documentation](packages/docs/ISA.md)
-- [Simulator Implementation](packages/simcore/src/simulator.ts)
+- [Simulator Implementation](packages/simcore/src/simulator/index.ts)
 - [Example Programs](examples/)
 - [Calling Conventions](packages/docs/CALLING_CONVENTIONS.md)
 

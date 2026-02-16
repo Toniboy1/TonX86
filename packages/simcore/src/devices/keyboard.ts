@@ -1,4 +1,4 @@
-import type { KeyboardEvent } from "./types";
+import type { KeyboardEvent } from "../types";
 
 /**
  * TonX86 Keyboard Input - memory-mapped keyboard support
