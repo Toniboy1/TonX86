@@ -15,6 +15,14 @@ const EXAMPLES_DIR = path.join(__dirname, '..', 'examples');
 const MAX_STEPS = 100000; // Maximum instruction steps before timeout
 const SKIP_FILES = ['test-dap.js', 'tonx86-debug.log']; // Non-ASM files to skip
 
+// Files that are expected to timeout (interactive/infinite loop examples)
+const EXPECTED_TIMEOUT_FILES = new Set([
+  '14-keyboard.asm',
+  '21-snake.asm',
+  '24-keyboard-input.asm',
+  '25-keyboard-basics.asm',
+]);
+
 // All valid instruction mnemonics (must match simulator switch cases)
 const VALID_MNEMONICS = new Set([
   'MOV', 'XCHG', 'LEA', 'MOVZX', 'MOVSX',
@@ -342,31 +350,51 @@ function testASMFile(filePath) {
     }
 
     const sim = new Simulator(lcdSize, lcdSize);
+    
+    // Convert parsed instructions to Simulator format
+    const simInstructions = instructions.map(({ line, lineNumber }) => {
+      const parts = line.split(/\s+/);
+      const mnemonic = parts[0].toUpperCase();
+      const operands = parts.slice(1).join(' ').split(',').map(op => op.trim()).filter(op => op);
+      return {
+        line: lineNumber,
+        mnemonic,
+        operands,
+        raw: line
+      };
+    });
+
+    // Convert labels object to Map with instruction indices (0-based)
+    const labelsMap = new Map();
+    for (const [label, index] of Object.entries(labels)) {
+      labelsMap.set(label, index);
+    }
+
+    // Load instructions and labels into simulator
+    sim.loadInstructions(simInstructions, labelsMap);
+
     let steps = 0;
     let halted = false;
 
-    // Execute instructions
-    for (const { line } of instructions) {
-      if (steps >= MAX_STEPS) {
-        throw new Error(`Timeout: exceeded ${MAX_STEPS} steps`);
-      }
-
-      const parts = line.split(/\s+/);
-      const instruction = parts[0].toUpperCase();
-
-      // Check for HLT
-      if (instruction === 'HLT') {
+    // Execute using step() which properly handles control flow
+    while (!halted && steps < MAX_STEPS) {
+      const lineNum = sim.step();
+      
+      if (lineNum === -1 || sim.getState().halted) {
         halted = true;
         break;
       }
-
-      // Parse operands
-      const operands = parts.slice(1).join(' ').split(',').map(op => op.trim());
-
-      // Execute instruction - any error should fail the test
-      sim.executeInstruction(instruction, operands);
-
+      
       steps++;
+    }
+
+    if (steps >= MAX_STEPS) {
+      // Check if this is an expected timeout (interactive examples)
+      if (EXPECTED_TIMEOUT_FILES.has(fileName)) {
+        console.log(`✅ ${fileName}: ${steps} steps executed (expected timeout for interactive example)`);
+        return { success: true, steps, expectedTimeout: true };
+      }
+      throw new Error(`Timeout: exceeded ${MAX_STEPS} steps`);
     }
 
     console.log(`✅ ${fileName}: ${steps} steps executed${halted ? ' (halted)' : ''}`);
@@ -407,9 +435,11 @@ function main() {
   const successful = results.filter(r => r.success && !r.skipped).length;
   const failed = results.filter(r => !r.success).length;
   const skipped = results.filter(r => r.skipped).length;
+  const expectedTimeouts = results.filter(r => r.success && r.expectedTimeout).length;
   const total = results.length;
 
   console.log(`\n📊 Results: ${successful}/${total} passed`);
+  if (expectedTimeouts > 0) console.log(`   ${expectedTimeouts} expected timeouts (interactive examples)`);
   if (skipped > 0) console.log(`   ${skipped} skipped (empty files)`);
   if (failed > 0) console.log(`   ${failed} failed`);
 
