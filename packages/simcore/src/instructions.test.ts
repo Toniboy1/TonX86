@@ -1320,14 +1320,14 @@ describe("executeInstruction - NOP", () => {
   });
 });
 
-describe("executeInstruction - Jump NOPs (in executeInstruction context)", () => {
+describe("executeInstruction - Jump instructions now execute", () => {
   let sim: Simulator;
 
   beforeEach(() => {
     sim = new Simulator();
   });
 
-  test("conditional jumps are no-ops in executeInstruction", () => {
+  test("jump instructions throw when label not found", () => {
     const jumpMnemonics = [
       "JMP",
       "JE",
@@ -1346,13 +1346,53 @@ describe("executeInstruction - Jump NOPs (in executeInstruction context)", () =>
       "JBE",
     ];
     for (const mnemonic of jumpMnemonics) {
-      expect(() => sim.executeInstruction(mnemonic, ["label"])).not.toThrow();
+      expect(() => sim.executeInstruction(mnemonic, ["label"])).toThrow(
+        /Jump target "label" not found/,
+      );
     }
   });
 
-  test("CALL/RET are no-ops in executeInstruction", () => {
-    expect(() => sim.executeInstruction("CALL", ["function"])).not.toThrow();
-    expect(() => sim.executeInstruction("RET", [])).not.toThrow();
+  test("CALL throws when target not found", () => {
+    expect(() => sim.executeInstruction("CALL", ["function"])).toThrow(
+      'CALL target "function" not found in labels',
+    );
+  });
+
+  test("RET increments EIP when call stack is empty", () => {
+    const initialEIP = sim.getEIP();
+    sim.executeInstruction("RET", []);
+    expect(sim.getEIP()).toBe(initialEIP + 1);
+  });
+
+  test("jump instructions with wrong operand count are ignored", () => {
+    const jumpMnemonics = [
+      "JMP",
+      "JE",
+      "JNE",
+      "JG",
+      "JGE",
+      "JL",
+      "JLE",
+      "JS",
+      "JNS",
+      "JA",
+      "JAE",
+      "JB",
+      "JBE",
+    ];
+    for (const mnemonic of jumpMnemonics) {
+      const initialEIP = sim.getEIP();
+      sim.executeInstruction(mnemonic, []); // No operands
+      expect(sim.getEIP()).toBe(initialEIP); // EIP unchanged
+      sim.executeInstruction(mnemonic, ["label1", "label2"]); // Too many operands
+      expect(sim.getEIP()).toBe(initialEIP); // EIP unchanged
+    }
+  });
+
+  test("CALL with wrong operand count is ignored", () => {
+    const initialEIP = sim.getEIP();
+    sim.executeInstruction("CALL", []); // No operands
+    expect(sim.getEIP()).toBe(initialEIP); // EIP unchanged
   });
 });
 

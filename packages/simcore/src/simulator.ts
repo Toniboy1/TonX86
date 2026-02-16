@@ -360,6 +360,15 @@ export class Simulator {
       appendConsoleOutput: (text) => {
         this.consoleOutput += text;
       },
+      resolveLabel: (label) => this.labels.get(label),
+      getEIP: () => this.eip,
+      setEIP: (value) => {
+        this.eip = value;
+      },
+      pushCallStack: (returnAddress) => {
+        this.callStack.push(returnAddress);
+      },
+      popCallStack: () => this.callStack.pop(),
     };
   }
 
@@ -436,51 +445,6 @@ export class Simulator {
   // ---------------------------------------------------------------------------
 
   /**
-   * Evaluate whether a conditional jump should be taken.
-   */
-  private shouldTakeJump(mnemonic: string): boolean {
-    const flags = this.cpu.flags;
-    switch (mnemonic) {
-      case "JMP":
-        return true;
-      case "JE":
-      case "JZ":
-        return isZeroFlagSet(flags);
-      case "JNE":
-      case "JNZ":
-        return !isZeroFlagSet(flags);
-      case "JG":
-        return (
-          isSignFlagSet(flags) === isOverflowFlagSet(flags) &&
-          !isZeroFlagSet(flags)
-        );
-      case "JGE":
-        return isSignFlagSet(flags) === isOverflowFlagSet(flags);
-      case "JL":
-        return isSignFlagSet(flags) !== isOverflowFlagSet(flags);
-      case "JLE":
-        return (
-          isSignFlagSet(flags) !== isOverflowFlagSet(flags) ||
-          isZeroFlagSet(flags)
-        );
-      case "JS":
-        return isSignFlagSet(flags);
-      case "JNS":
-        return !isSignFlagSet(flags);
-      case "JA":
-        return !isCarryFlagSet(flags) && !isZeroFlagSet(flags);
-      case "JAE":
-        return !isCarryFlagSet(flags);
-      case "JB":
-        return isCarryFlagSet(flags);
-      case "JBE":
-        return isCarryFlagSet(flags) || isZeroFlagSet(flags);
-      default:
-        return false;
-    }
-  }
-
-  /**
    * Step to the next instruction based on control flow.
    * Returns the line number of the executed instruction, or -1 if program ended.
    */
@@ -502,8 +466,49 @@ export class Simulator {
     }
 
     const mnemonic = instr.mnemonic.toUpperCase();
-    if (
-      [
+
+    // Special handling for IRET and LOOP instructions
+    if (mnemonic === "IRET") {
+      // IRET: Pop return address and flags from stack
+      // Standard x86 interrupt pushes: FLAGS, then IP
+      // IRET pops: IP (first), then FLAGS (second)
+      const returnAddress = this.popStack();
+      const flags = this.popStack();
+      this.cpu.flags = flags;
+      this.eip = returnAddress;
+    } else if (
+      mnemonic === "LOOP" ||
+      mnemonic === "LOOPE" ||
+      mnemonic === "LOOPZ" ||
+      mnemonic === "LOOPNE" ||
+      mnemonic === "LOOPNZ"
+    ) {
+      // ECX was already decremented in executeInstruction
+      const targetLabel = instr.operands[0];
+      const targetIndex = this.labels.get(targetLabel);
+
+      if (targetIndex !== undefined) {
+        const ecx = this.cpu.registers[1];
+        let shouldBranch = false;
+        if (mnemonic === "LOOP") {
+          shouldBranch = ecx !== 0;
+        } else if (mnemonic === "LOOPE" || mnemonic === "LOOPZ") {
+          shouldBranch = ecx !== 0 && isZeroFlagSet(this.cpu.flags);
+        } else {
+          // LOOPNE / LOOPNZ
+          shouldBranch = ecx !== 0 && !isZeroFlagSet(this.cpu.flags);
+        }
+
+        if (shouldBranch) {
+          this.eip = targetIndex;
+        } else {
+          this.eip++;
+        }
+      } else {
+        throw new Error(`LOOP target "${targetLabel}" not found in labels`);
+      }
+    } else if (
+      ![
         "JMP",
         "JE",
         "JZ",
@@ -521,90 +526,14 @@ export class Simulator {
         "JBE",
         "CALL",
         "RET",
-        "IRET",
-        "LOOP",
-        "LOOPE",
-        "LOOPZ",
-        "LOOPNE",
-        "LOOPNZ",
       ].includes(mnemonic)
     ) {
-      if (mnemonic === "CALL") {
-        const targetLabel = instr.operands[0];
-        const targetIndex = this.labels.get(targetLabel);
-
-        if (targetIndex !== undefined) {
-          const returnAddress = this.eip + 1;
-          this.callStack.push(returnAddress);
-          this.pushStack(returnAddress);
-          this.eip = targetIndex;
-        } else {
-          throw new Error(`CALL target "${targetLabel}" not found in labels`);
-        }
-      } else if (mnemonic === "RET") {
-        if (this.callStack.length > 0) {
-          const returnAddress = this.callStack.pop()!;
-          this.popStack();
-          this.eip = returnAddress;
-        } else {
-          this.eip++;
-        }
-      } else if (mnemonic === "IRET") {
-        // IRET: Pop return address and flags from stack
-        // Standard x86 interrupt pushes: FLAGS, then IP
-        // IRET pops: IP (first), then FLAGS (second)
-        const returnAddress = this.popStack();
-        const flags = this.popStack();
-        this.cpu.flags = flags;
-        this.eip = returnAddress;
-      } else if (
-        mnemonic === "LOOP" ||
-        mnemonic === "LOOPE" ||
-        mnemonic === "LOOPZ" ||
-        mnemonic === "LOOPNE" ||
-        mnemonic === "LOOPNZ"
-      ) {
-        // ECX was already decremented in executeInstruction
-        const targetLabel = instr.operands[0];
-        const targetIndex = this.labels.get(targetLabel);
-
-        if (targetIndex !== undefined) {
-          const ecx = this.cpu.registers[1];
-          let shouldBranch = false;
-          if (mnemonic === "LOOP") {
-            shouldBranch = ecx !== 0;
-          } else if (mnemonic === "LOOPE" || mnemonic === "LOOPZ") {
-            shouldBranch = ecx !== 0 && isZeroFlagSet(this.cpu.flags);
-          } else {
-            // LOOPNE / LOOPNZ
-            shouldBranch = ecx !== 0 && !isZeroFlagSet(this.cpu.flags);
-          }
-
-          if (shouldBranch) {
-            this.eip = targetIndex;
-          } else {
-            this.eip++;
-          }
-        } else {
-          throw new Error(`LOOP target "${targetLabel}" not found in labels`);
-        }
-      } else {
-        const targetLabel = instr.operands[0];
-        const targetIndex = this.labels.get(targetLabel);
-
-        if (targetIndex !== undefined) {
-          if (this.shouldTakeJump(mnemonic)) {
-            this.eip = targetIndex;
-          } else {
-            this.eip++;
-          }
-        } else {
-          throw new Error(`Jump target "${targetLabel}" not found in labels`);
-        }
-      }
-    } else {
+      // For all instructions except jumps, calls, rets, iret, and loops,
+      // advance EIP normally
       this.eip++;
     }
+    // Note: Jump and CALL/RET instructions handle their own EIP updates
+    // via ExecutionContext.setEIP()
 
     return currentLine;
   }

@@ -678,13 +678,6 @@ describe("Simulator - JMP/Conditional Jumps via step()", () => {
     sim.step();
     expect(sim.getRegisters().EBX).toBe(2);
   });
-
-  test("shouldTakeJump returns false for unknown mnemonic", () => {
-    const shouldJump = (
-      sim as unknown as { shouldTakeJump: (mnemonic: string) => boolean }
-    ).shouldTakeJump("JXX");
-    expect(shouldJump).toBe(false);
-  });
 });
 
 describe("Simulator - CALL/RET via step()", () => {
