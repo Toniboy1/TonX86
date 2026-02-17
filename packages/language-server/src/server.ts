@@ -777,7 +777,6 @@ const FLAGS = [
 ];
 
 connection.onInitialize(
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   (_params: InitializeParams) => {
     const result: InitializeResult = {
       capabilities: {
