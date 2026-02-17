@@ -193,7 +193,7 @@ export function stripComment(line: string): string {
  * - ; tonx86-disable-next-line
  * - ; tonx86-ignore
  */
-function shouldSuppressWarning(
+export function shouldSuppressWarning(
   lines: string[],
   currentLineIndex: number,
 ): boolean {
@@ -592,9 +592,7 @@ export function validateControlFlow(
 
         if (prevClean.endsWith(":")) {
           const labelName = prevClean.substring(0, prevClean.length - 1);
-          if (functionLabels.has(labelName)) {
-            inFunction = true;
-          }
+          inFunction = functionLabels.has(labelName);
           break;
         }
 

@@ -180,3 +180,25 @@ describe("executeInstruction - INT3 (Breakpoint)", () => {
     expect(state.running).toBe(false);
   });
 });
+
+describe("INT edge cases", () => {
+  let sim: Simulator;
+
+  beforeEach(() => {
+    sim = new Simulator();
+  });
+
+  test("INT with non-immediate operand (register) is a no-op", () => {
+    sim.executeInstruction("MOV", ["EAX", "0x10"]);
+    sim.executeInstruction("INT", ["EAX"]);
+    const state = sim.getState();
+    expect(state.halted).toBe(false);
+  });
+
+  test("INT 0x10 with AH != 0x0E does nothing", () => {
+    // AH = 0x01, not 0x0E, so no character output
+    sim.executeInstruction("MOV", ["EAX", "0x0148"]);
+    sim.executeInstruction("INT", ["0x10"]);
+    expect(sim.getConsoleOutput()).toBe("");
+  });
+});

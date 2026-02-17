@@ -81,11 +81,10 @@ export function detectLCDDimensions(
         if (opUpper.includes("0XF")) {
           const match = opUpper.match(/0X(F[0-9A-F]{3})/);
           if (match) {
+            // Regex guarantees address is 0xF000..0xFFFF
             const address = parseInt(match[0], 16);
-            if (address >= 0xf000 && address <= 0xffff) {
-              maxAddress = Math.max(maxAddress, address);
-              foundLCDAccess = true;
-            }
+            maxAddress = Math.max(maxAddress, address);
+            foundLCDAccess = true;
           }
         }
       }

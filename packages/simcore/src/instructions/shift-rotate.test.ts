@@ -271,3 +271,105 @@ describe("executeInstruction - RCL/RCR (Rotate through Carry)", () => {
     expect(sim.isZeroFlagSet()).toBe(true);
   });
 });
+
+describe("Shift-rotate - non-register destination branches", () => {
+  let sim: Simulator;
+
+  beforeEach(() => {
+    sim = new Simulator();
+  });
+
+  test("SHL with non-register dest is a no-op", () => {
+    sim.executeInstruction("MOV", ["EAX", "5"]);
+    sim.executeInstruction("SHL", ["10", "2"]);
+    expect(sim.getRegisters().EAX).toBe(5);
+  });
+
+  test("SHR with non-register dest is a no-op", () => {
+    sim.executeInstruction("MOV", ["EAX", "5"]);
+    sim.executeInstruction("SHR", ["10", "2"]);
+    expect(sim.getRegisters().EAX).toBe(5);
+  });
+
+  test("SAR with non-register dest is a no-op", () => {
+    sim.executeInstruction("MOV", ["EAX", "5"]);
+    sim.executeInstruction("SAR", ["10", "2"]);
+    expect(sim.getRegisters().EAX).toBe(5);
+  });
+
+  test("ROL with non-register dest is a no-op", () => {
+    sim.executeInstruction("MOV", ["EAX", "5"]);
+    sim.executeInstruction("ROL", ["10", "2"]);
+    expect(sim.getRegisters().EAX).toBe(5);
+  });
+
+  test("ROR with non-register dest is a no-op", () => {
+    sim.executeInstruction("MOV", ["EAX", "5"]);
+    sim.executeInstruction("ROR", ["10", "2"]);
+    expect(sim.getRegisters().EAX).toBe(5);
+  });
+
+  test("RCL with non-register dest is a no-op", () => {
+    sim.executeInstruction("MOV", ["EAX", "5"]);
+    sim.executeInstruction("RCL", ["10", "2"]);
+    expect(sim.getRegisters().EAX).toBe(5);
+  });
+
+  test("RCR with non-register dest is a no-op", () => {
+    sim.executeInstruction("MOV", ["EAX", "5"]);
+    sim.executeInstruction("RCR", ["10", "2"]);
+    expect(sim.getRegisters().EAX).toBe(5);
+  });
+});
+
+describe("RCL/RCR educational mode", () => {
+  let sim: Simulator;
+
+  beforeEach(() => {
+    sim = new Simulator();
+    sim.setCompatibilityMode("educational");
+  });
+
+  test("RCL in educational mode sets ZF and SF", () => {
+    sim.executeInstruction("MOV", ["EAX", "0"]);
+    sim.executeInstruction("ADD", ["EAX", "0"]); // CF=0
+    sim.executeInstruction("MOV", ["EAX", "0"]);
+    sim.executeInstruction("RCL", ["EAX", "1"]);
+    expect(sim.isZeroFlagSet()).toBe(true);
+  });
+
+  test("RCR in educational mode sets SF for negative results", () => {
+    // CF=1, value=0 => after RCR 1, result = 0x80000000 (MSB set)
+    sim.executeInstruction("MOV", ["EBX", "0"]);
+    sim.executeInstruction("SUB", ["EBX", "1"]); // CF=1
+    sim.executeInstruction("MOV", ["EAX", "0"]);
+    sim.executeInstruction("RCR", ["EAX", "1"]);
+    expect(sim.isSignFlagSet()).toBe(true);
+  });
+});
+
+describe("RCL/RCR strict-x86 mode (no ZF/SF update)", () => {
+  let sim: Simulator;
+
+  beforeEach(() => {
+    sim = new Simulator();
+    sim.setCompatibilityMode("strict-x86");
+  });
+
+  test("RCL in strict-x86 mode does not set ZF", () => {
+    sim.executeInstruction("MOV", ["EAX", "0"]);
+    sim.executeInstruction("ADD", ["EAX", "0"]); // CF=0
+    sim.executeInstruction("MOV", ["EAX", "0"]);
+    sim.executeInstruction("RCL", ["EAX", "1"]);
+    // In strict-x86 mode, ZF is NOT affected by RCL
+    expect(sim.getRegisters().EAX).toBe(0);
+  });
+
+  test("RCR in strict-x86 mode does not set ZF", () => {
+    sim.executeInstruction("MOV", ["EAX", "0"]);
+    sim.executeInstruction("ADD", ["EAX", "0"]); // CF=0
+    sim.executeInstruction("MOV", ["EAX", "0"]);
+    sim.executeInstruction("RCR", ["EAX", "1"]);
+    expect(sim.getRegisters().EAX).toBe(0);
+  });
+});

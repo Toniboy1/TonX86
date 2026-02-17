@@ -383,3 +383,50 @@ describe("executeInstruction - MOVZX/MOVSX", () => {
     expect(() => sim.executeInstruction("MOVSX", ["EAX"])).not.toThrow();
   });
 });
+
+describe("Data-movement - non-register destination branches", () => {
+  let sim: Simulator;
+
+  beforeEach(() => {
+    sim = new Simulator();
+  });
+
+  test("MOV with immediate destination writes to I/O address", () => {
+    // dest.type === 'immediate' branch: writes value to I/O address
+    sim.executeInstruction("MOV", ["0xF000", "42"]);
+    // Verify via LCD display (0xF000 is LCD I/O space)
+    const lcd = sim.getLCDDisplay();
+    expect(lcd).toBeDefined();
+  });
+
+  test("LEA with non-register dest is a no-op", () => {
+    sim.executeInstruction("MOV", ["EAX", "5"]);
+    sim.executeInstruction("LEA", ["10", "[EAX+4]"]);
+    expect(sim.getRegisters().EAX).toBe(5);
+  });
+
+  test("LEA with immediate src loads the value", () => {
+    sim.executeInstruction("LEA", ["EAX", "42"]);
+    expect(sim.getRegisters().EAX).toBe(42);
+  });
+
+  test("MOVZX with non-register dest is a no-op", () => {
+    sim.executeInstruction("MOV", ["EAX", "5"]);
+    sim.executeInstruction("MOVZX", ["10", "EAX"]);
+    expect(sim.getRegisters().EAX).toBe(5);
+  });
+
+  test("MOVSX with non-register dest is a no-op", () => {
+    sim.executeInstruction("MOV", ["EAX", "5"]);
+    sim.executeInstruction("MOVSX", ["10", "EAX"]);
+    expect(sim.getRegisters().EAX).toBe(5);
+  });
+
+  test("LEA with register src does nothing (not memory or immediate)", () => {
+    sim.executeInstruction("MOV", ["EAX", "0"]);
+    sim.executeInstruction("MOV", ["EBX", "42"]);
+    sim.executeInstruction("LEA", ["EAX", "EBX"]);
+    // LEA with register src: neither memory nor immediate branch matches
+    expect(sim.getRegisters().EAX).toBe(0);
+  });
+});

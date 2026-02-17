@@ -410,3 +410,72 @@ describe("executeInstruction - MOD", () => {
     expect(() => sim.executeInstruction("MOD", ["5", "2"])).not.toThrow();
   });
 });
+
+describe("Arithmetic - non-register destination branches", () => {
+  let sim: Simulator;
+
+  beforeEach(() => {
+    sim = new Simulator();
+  });
+
+  test("ADD with non-register dest is a no-op", () => {
+    sim.executeInstruction("MOV", ["EAX", "5"]);
+    sim.executeInstruction("ADD", ["10", "3"]);
+    expect(sim.getRegisters().EAX).toBe(5);
+  });
+
+  test("SUB with non-register dest is a no-op", () => {
+    sim.executeInstruction("MOV", ["EAX", "5"]);
+    sim.executeInstruction("SUB", ["10", "3"]);
+    expect(sim.getRegisters().EAX).toBe(5);
+  });
+
+  test("INC with non-register dest is a no-op", () => {
+    sim.executeInstruction("MOV", ["EAX", "5"]);
+    sim.executeInstruction("INC", ["10"]);
+    expect(sim.getRegisters().EAX).toBe(5);
+  });
+
+  test("DEC with non-register dest is a no-op", () => {
+    sim.executeInstruction("MOV", ["EAX", "5"]);
+    sim.executeInstruction("DEC", ["10"]);
+    expect(sim.getRegisters().EAX).toBe(5);
+  });
+
+  test("CMP with non-register dest is a no-op", () => {
+    sim.executeInstruction("MOV", ["EAX", "5"]);
+    const flagsBefore = sim.getState().flags;
+    sim.executeInstruction("CMP", ["10", "3"]);
+    expect(sim.getState().flags).toBe(flagsBefore);
+  });
+
+  test("NEG with non-register dest is a no-op", () => {
+    sim.executeInstruction("MOV", ["EAX", "5"]);
+    sim.executeInstruction("NEG", ["10"]);
+    expect(sim.getRegisters().EAX).toBe(5);
+  });
+
+  test("IMUL 3-operand form: dest = src * const", () => {
+    sim.executeInstruction("MOV", ["EBX", "7"]);
+    sim.executeInstruction("IMUL", ["EAX", "EBX", "6"]);
+    expect(sim.getRegisters().EAX).toBe(42);
+  });
+
+  test("IMUL 3-operand with non-register dest is a no-op", () => {
+    sim.executeInstruction("MOV", ["EAX", "5"]);
+    sim.executeInstruction("IMUL", ["10", "EAX", "3"]);
+    expect(sim.getRegisters().EAX).toBe(5);
+  });
+
+  test("IMUL with 0 operands is a no-op", () => {
+    sim.executeInstruction("MOV", ["EAX", "5"]);
+    sim.executeInstruction("IMUL", []);
+    expect(sim.getRegisters().EAX).toBe(5);
+  });
+
+  test("IMUL with 4+ operands is a no-op", () => {
+    sim.executeInstruction("MOV", ["EAX", "5"]);
+    sim.executeInstruction("IMUL", ["EAX", "EBX", "3", "4"]);
+    expect(sim.getRegisters().EAX).toBe(5);
+  });
+});

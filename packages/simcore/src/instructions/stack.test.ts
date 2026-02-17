@@ -73,4 +73,12 @@ describe("executeInstruction - Stack (PUSH/POP)", () => {
     expect(sim.getRegisters().EBX).toBe(20);
     expect(sim.getRegisters().ECX).toBe(10);
   });
+
+  test("POP with non-register destination is a no-op", () => {
+    sim.executeInstruction("PUSH", ["42"]);
+    const espBefore = sim.getRegisters().ESP;
+    sim.executeInstruction("POP", ["10"]);
+    // ESP should not change because the POP didn't execute the pop
+    expect(sim.getRegisters().ESP).toBe(espBefore);
+  });
 });

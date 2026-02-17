@@ -9,6 +9,7 @@ import * as path from "path";
 import { Diagnostic, DiagnosticSeverity } from "vscode-languageserver/node";
 import {
   stripComment,
+  shouldSuppressWarning,
   collectLabelsAndConstants,
   validateInstructions,
   validateControlFlow,
@@ -1590,6 +1591,168 @@ describe("hex addresses and constants in jump targets", () => {
     );
     const errs = errors(diags);
     expect(errs).toHaveLength(0);
+  });
+});
+
+// ─── Edge-case branch coverage tests ──────────────────────
+describe("shouldSuppressWarning", () => {
+  test("returns false for first line (currentLineIndex=0) with no inline suppression", () => {
+    const lines = ["MOV EAX, 1"];
+    expect(shouldSuppressWarning(lines, 0)).toBe(false);
+  });
+
+  test("returns true for first line with inline suppression", () => {
+    const lines = ["MOV EAX, 1 ; tonx86-ignore"];
+    expect(shouldSuppressWarning(lines, 0)).toBe(true);
+  });
+});
+
+describe("collectLabelsAndConstants edge cases", () => {
+  test("handles malformed EQU with no name (equMatch fails)", () => {
+    const lines = ["EQU 42"];
+    const result = collectLabelsAndConstants(lines);
+    // EQU without a label name — regex fails, equConstants stays empty
+    expect(result.equConstants.size).toBe(0);
+    expect(result.labels.size).toBe(0);
+  });
+
+  test("handles colon at position 0 (colonIndex=0)", () => {
+    const lines = [":bad_label", "good_label: MOV EAX, 1"];
+    const result = collectLabelsAndConstants(lines);
+    // ":bad_label" has colonIndex=0 → skipped
+    expect(result.labels.has("bad_label")).toBe(false);
+    // "good_label: MOV EAX, 1" has colonIndex > 0 → parsed
+    expect(result.labels.has("good_label")).toBe(true);
+  });
+});
+
+describe("validateCallingConventions edge cases", () => {
+  test("handles malformed EQU and colon-at-0 in function label identification", () => {
+    // L721: malformed EQU where regex fails
+    // L738: colon at position 0 in function-label identification
+    // L775: colon at position 0 in function-parsing loop
+    const lines = [
+      "EQU 99",
+      ":orphan_colon",
+      "main:",
+      "  CALL my_func",
+      "  HLT",
+      "my_func:",
+      "  PUSH EBP",
+      "  MOV EBP, ESP",
+      "  MOV EAX, 1",
+      "  POP EBP",
+      "  RET",
+    ];
+    const labels = new Set(["main", "my_func"]);
+    const diags: Diagnostic[] = [];
+    validateCallingConventions(lines, labels, diags);
+    // Should not crash and should correctly identify my_func
+    const funcWarns = diags.filter((d) => d.message.includes("my_func"));
+    expect(funcWarns).toHaveLength(0); // properly formed function
+  });
+
+  test("handles CALL to unknown label not in labels set", () => {
+    // L756: labels.has(tokens[1]) is false
+    const lines = [
+      "main:",
+      "  CALL unknown_func",
+      "  HLT",
+    ];
+    const labels = new Set(["main"]); // unknown_func NOT in labels
+    const diags: Diagnostic[] = [];
+    validateCallingConventions(lines, labels, diags);
+    // unknown_func is not added to functionLabels, no convention analysis
+    const funcWarns = diags.filter((d) =>
+      d.message.includes("unknown_func"),
+    );
+    expect(funcWarns).toHaveLength(0);
+  });
+
+  test("handles bare PUSH and bare POP with no operand", () => {
+    // L814: tokens.length > 1 is false for bare PUSH
+    // L825: tokens.length > 1 is false for bare POP
+    const lines = [
+      "main:",
+      "  CALL my_func",
+      "  HLT",
+      "my_func:",
+      "  PUSH",
+      "  MOV EAX, 1",
+      "  POP",
+      "  RET",
+    ];
+    const labels = new Set(["main", "my_func"]);
+    const diags: Diagnostic[] = [];
+    validateCallingConventions(lines, labels, diags);
+    // Should handle bare PUSH/POP without crashing
+    // my_func has no PUSH EBP → missing prologue warning
+    const prologueWarns = diags.filter((d) =>
+      d.message.includes("should start with 'PUSH EBP'"),
+    );
+    expect(prologueWarns.length).toBeGreaterThanOrEqual(1);
+  });
+
+  test("handles function with nested CALL (callInstructions.length > 0)", () => {
+    // L877: covers the first operand of the OR condition being true
+    const lines = [
+      "main:",
+      "  CALL outer_func",
+      "  HLT",
+      "outer_func:",
+      "  CALL inner_func",
+      "  RET",
+      "inner_func:",
+      "  PUSH EBP",
+      "  MOV EBP, ESP",
+      "  MOV EAX, 1",
+      "  POP EBP",
+      "  RET",
+    ];
+    const labels = new Set(["main", "outer_func", "inner_func"]);
+    const diags: Diagnostic[] = [];
+    validateCallingConventions(lines, labels, diags);
+    // outer_func has CALL + RET but no PUSH EBP → missing prologue
+    const outerWarns = diags.filter((d) =>
+      d.message.includes("outer_func") && d.message.includes("PUSH EBP"),
+    );
+    expect(outerWarns.length).toBeGreaterThanOrEqual(1);
+  });
+
+  test("skips prologue check for CALL-target function with no CALL and no RET", () => {
+    // L877: false path — callInstructions.length == 0 && retInstructions.length == 0
+    const lines = [
+      "main:",
+      "  CALL simple_func",
+      "  HLT",
+      "simple_func:",
+      "  MOV EAX, 42",
+    ];
+    const labels = new Set(["main", "simple_func"]);
+    const diags: Diagnostic[] = [];
+    validateCallingConventions(lines, labels, diags);
+    // simple_func has no CALL/RET → prologue check is skipped
+    const funcWarns = diags.filter((d) =>
+      d.message.includes("simple_func"),
+    );
+    expect(funcWarns).toHaveLength(0);
+  });
+
+  test("handles CALL at end of file (no following instruction for cdecl check)", () => {
+    // L979: nextLineIndex >= lines.length
+    const lines = [
+      "main:",
+      "  PUSH 10",
+      "  CALL some_func",
+    ];
+    const labels = new Set(["main", "some_func"]);
+    const diags: Diagnostic[] = [];
+    validateCallingConventions(lines, labels, diags);
+    // CALL at end of file — no next line for cdecl ADD ESP detection
+    const cdeclAddHints = diags.filter((d) =>
+      d.message.includes("caller cleans stack with ADD ESP"),
+    );
+    expect(cdeclAddHints).toHaveLength(0);
   });
 });
 

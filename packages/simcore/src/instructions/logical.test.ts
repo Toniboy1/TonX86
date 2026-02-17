@@ -62,4 +62,34 @@ describe("executeInstruction - Logical (AND/OR/XOR/NOT/NEG/TEST)", () => {
     expect(() => sim.executeInstruction("NEG", [])).not.toThrow();
     expect(() => sim.executeInstruction("TEST", ["EAX"])).not.toThrow();
   });
+
+  test("AND with non-register dest is a no-op", () => {
+    sim.executeInstruction("MOV", ["EAX", "0xFF"]);
+    sim.executeInstruction("AND", ["10", "5"]);
+    expect(sim.getRegisters().EAX).toBe(0xFF);
+  });
+
+  test("OR with non-register dest is a no-op", () => {
+    sim.executeInstruction("MOV", ["EAX", "0xFF"]);
+    sim.executeInstruction("OR", ["10", "5"]);
+    expect(sim.getRegisters().EAX).toBe(0xFF);
+  });
+
+  test("XOR with non-register dest is a no-op", () => {
+    sim.executeInstruction("MOV", ["EAX", "0xFF"]);
+    sim.executeInstruction("XOR", ["10", "5"]);
+    expect(sim.getRegisters().EAX).toBe(0xFF);
+  });
+
+  test("NOT with non-register dest is a no-op", () => {
+    sim.executeInstruction("MOV", ["EAX", "5"]);
+    sim.executeInstruction("NOT", ["10"]);
+    expect(sim.getRegisters().EAX).toBe(5);
+  });
+
+  test("TEST with non-register dest is a no-op", () => {
+    const flagsBefore = sim.getState().flags;
+    sim.executeInstruction("TEST", ["10", "5"]);
+    expect(sim.getState().flags).toBe(flagsBefore);
+  });
 });

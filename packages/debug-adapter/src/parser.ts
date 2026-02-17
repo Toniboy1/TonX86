@@ -173,31 +173,29 @@ export function parseAssembly(lines: string[]): ParseResult {
       // Otherwise, handle as a regular label + instruction
       if (currentSection === "text") {
         labels.set(labelName, instructions.length);
-        // Parse the instruction part
-        const parts = rest.split(/\s+/);
-        if (parts.length > 0) {
-          const mnemonic = parts[0].toUpperCase();
-          const operandString = parts.slice(1).join(" ");
-          const operandStringWithoutComment = operandString.split(";")[0];
-          let processedOperands = operandStringWithoutComment;
-          constants.forEach((value, name) => {
-            const regex = new RegExp(`\\b${name}\\b`, "g");
-            processedOperands = processedOperands.replace(
-              regex,
-              value.toString(),
-            );
-          });
-          const operands = processedOperands
-            .split(",")
-            .map((op) => op.trim())
-            .filter((op) => op.length > 0);
-          instructions.push({
-            line: i + 1,
-            mnemonic,
-            operands,
-            raw: trimmed,
-          });
-        }
+        // Parse the instruction part (rest is guaranteed non-empty by labelWithCode regex)
+        const parts = rest.split(/\s+/).filter((p) => p.length > 0);
+        const mnemonic = parts[0].toUpperCase();
+        const operandString = parts.slice(1).join(" ");
+        const operandStringWithoutComment = operandString.split(";")[0];
+        let processedOperands = operandStringWithoutComment;
+        constants.forEach((value, name) => {
+          const regex = new RegExp(`\\b${name}\\b`, "g");
+          processedOperands = processedOperands.replace(
+            regex,
+            value.toString(),
+          );
+        });
+        const operands = processedOperands
+          .split(",")
+          .map((op) => op.trim())
+          .filter((op) => op.length > 0);
+        instructions.push({
+          line: i + 1,
+          mnemonic,
+          operands,
+          raw: trimmed,
+        });
         continue;
       } else {
         // In data section, save label for next line

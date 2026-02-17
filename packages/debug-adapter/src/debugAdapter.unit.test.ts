@@ -276,6 +276,32 @@ start:
       jest.advanceTimersByTime(100);
       jest.useRealTimers();
     });
+
+    it("should not auto-start if configurationDone is false when timeout fires", () => {
+      jest.useFakeTimers();
+      // Launch with stopOnEntry=false: sets a 100ms timeout
+      const response = makeResponse("launch");
+      const args: any = {
+        program: testProgramPath,
+        stopOnEntry: false,
+        __restart: undefined,
+        noDebug: false,
+      };
+      (session as any).launchRequest(response, args);
+
+      // Do NOT call configurationDoneRequest — configurationDone stays false
+      expect((session as any).configurationDone).toBe(false);
+
+      // Fire the timeout — should check configurationDone and skip execution
+      jest.advanceTimersByTime(200);
+      jest.useRealTimers();
+
+      // Verify no continue was triggered (no stopped/terminated events from execution)
+      const executionEvents = sentEvents.filter(
+        (e: any) => e.event === "stopped" && e.body?.reason === "breakpoint",
+      );
+      expect(executionEvents).toHaveLength(0);
+    });
   });
 
   // ==================== Breakpoints ====================
