@@ -274,6 +274,23 @@ describe("TonX86 Extension", () => {
       const item = provider.getTreeItem(provider.getChildren()[0]);
       expect(item.label).toBe("EAX: 0x000000ff");
     });
+
+    it("should handle updateRegisters with fewer values than registers", () => {
+      activate(mockContext);
+
+      const providerCall = (vscode.window.registerTreeDataProvider as jest.Mock)
+        .mock.calls[0];
+      const provider = providerCall[1];
+
+      // Only update first 3 registers; remaining should stay at 0
+      provider.updateRegisters([10, 20, 30]);
+
+      const children = provider.getChildren();
+      expect(children[0].value).toBe(10);
+      expect(children[2].value).toBe(30);
+      expect(children[3].value).toBe(0); // Unchanged
+      expect(children[7].value).toBe(0); // Unchanged
+    });
   });
 
   describe("MemoryProvider", () => {
@@ -321,6 +338,24 @@ describe("TonX86 Extension", () => {
       // Verify the format is correct with address and hex value
       expect(item.label).toMatch(/^0x[0-9a-f]{4}: 0x[0-9a-f]{2}$/);
       expect(item.collapsibleState).toBe(vscode.TreeItemCollapsibleState.None);
+    });
+
+    it("should handle updateMemory with data longer than memory length", () => {
+      activate(mockContext);
+
+      const providerCall = (vscode.window.registerTreeDataProvider as jest.Mock)
+        .mock.calls[1];
+      const provider = providerCall[1];
+
+      // Create data larger than the memory length (16)
+      const data = new Uint8Array(32);
+      data.fill(0xab);
+      provider.updateMemory(data);
+
+      const children = provider.getChildren();
+      // Only the first 16 bytes should be updated
+      expect(children).toHaveLength(16);
+      expect(children[15].value).toBe("0xab");
     });
   });
 
@@ -410,6 +445,19 @@ describe("TonX86 Extension", () => {
       provider.popIn();
 
       expect(mockPanel.dispose).toHaveBeenCalled();
+    });
+
+    it("should handle popIn when no panel exists", () => {
+      activate(mockContext);
+
+      const providerCall = (
+        vscode.window.registerWebviewViewProvider as jest.Mock
+      ).mock.calls[0];
+      const provider = providerCall[1];
+
+      // popIn without popOut — no panel exists
+      expect(() => provider.popIn()).not.toThrow();
+      expect(provider.isPopped()).toBe(false);
     });
 
     it("should check if LCD is popped out", () => {
@@ -557,6 +605,165 @@ describe("TonX86 Extension", () => {
       onMessageHandler({ type: "keyboardEvent", keyCode: 13, pressed: false });
 
       expect(mockHandler).toHaveBeenCalledWith(13, false);
+    });
+
+    it("should ignore non-keyboard messages in popped out panel", () => {
+      activate(mockContext);
+
+      const providerCall = (
+        vscode.window.registerWebviewViewProvider as jest.Mock
+      ).mock.calls[0];
+      const provider = providerCall[1];
+
+      const mockHandler = jest.fn();
+      provider.setKeyboardEventHandler(mockHandler);
+
+      provider.popOut();
+
+      const mockPanel = (vscode.window.createWebviewPanel as jest.Mock).mock
+        .results[0].value;
+      const onMessageHandler =
+        mockPanel.webview.onDidReceiveMessage.mock.calls[0][0];
+
+      // Send a non-keyboard message
+      onMessageHandler({ type: "otherEvent", data: "test" });
+
+      expect(mockHandler).not.toHaveBeenCalled();
+    });
+
+    it("should ignore keyboard events in popped out panel when keyboard disabled", () => {
+      const mockWorkspaceConfig = vscode.workspace
+        .getConfiguration as jest.Mock;
+      mockWorkspaceConfig.mockImplementation((section: string) => {
+        if (section === "tonx86.keyboard") {
+          return {
+            get: jest.fn((key: string, defaultValue?: any) => {
+              if (key === "enabled") return false;
+              return defaultValue;
+            }),
+          };
+        }
+        return {
+          get: jest.fn((key: string, defaultValue?: any) => defaultValue),
+        };
+      });
+
+      activate(mockContext);
+
+      const providerCall = (
+        vscode.window.registerWebviewViewProvider as jest.Mock
+      ).mock.calls[0];
+      const provider = providerCall[1];
+
+      const mockHandler = jest.fn();
+      provider.setKeyboardEventHandler(mockHandler);
+
+      provider.popOut();
+
+      const mockPanel = (vscode.window.createWebviewPanel as jest.Mock).mock
+        .results[0].value;
+      const onMessageHandler =
+        mockPanel.webview.onDidReceiveMessage.mock.calls[0][0];
+
+      onMessageHandler({ type: "keyboardEvent", keyCode: 65, pressed: true });
+
+      expect(mockHandler).not.toHaveBeenCalled();
+    });
+
+    it("should handle keyboard event in popped out panel with no handler set", () => {
+      activate(mockContext);
+
+      const providerCall = (
+        vscode.window.registerWebviewViewProvider as jest.Mock
+      ).mock.calls[0];
+      const provider = providerCall[1];
+
+      // Do NOT set a keyboard handler
+      provider.popOut();
+
+      const mockPanel = (vscode.window.createWebviewPanel as jest.Mock).mock
+        .results[0].value;
+      const onMessageHandler =
+        mockPanel.webview.onDidReceiveMessage.mock.calls[0][0];
+
+      // Should not throw even without handler
+      expect(() => {
+        onMessageHandler({ type: "keyboardEvent", keyCode: 65, pressed: true });
+      }).not.toThrow();
+    });
+
+    it("should ignore non-keyboard messages in resolveWebviewView", () => {
+      activate(mockContext);
+
+      const providerCall = (
+        vscode.window.registerWebviewViewProvider as jest.Mock
+      ).mock.calls[0];
+      const provider = providerCall[1];
+
+      const mockHandler = jest.fn();
+      provider.setKeyboardEventHandler(mockHandler);
+
+      let messageHandler: any;
+      const mockWebviewView: any = {
+        webview: {
+          options: {},
+          html: "",
+          onDidReceiveMessage: jest.fn((handler) => {
+            messageHandler = handler;
+            return { dispose: jest.fn() };
+          }),
+        },
+      };
+
+      provider.resolveWebviewView(mockWebviewView);
+
+      // Send a non-keyboard message
+      messageHandler({ type: "someOtherEvent" });
+
+      expect(mockHandler).not.toHaveBeenCalled();
+    });
+
+    it("should handle keyboard event in webview with no handler set", () => {
+      activate(mockContext);
+
+      const providerCall = (
+        vscode.window.registerWebviewViewProvider as jest.Mock
+      ).mock.calls[0];
+      const provider = providerCall[1];
+
+      // Do NOT set a keyboard handler
+      let messageHandler: any;
+      const mockWebviewView: any = {
+        webview: {
+          options: {},
+          html: "",
+          onDidReceiveMessage: jest.fn((handler) => {
+            messageHandler = handler;
+            return { dispose: jest.fn() };
+          }),
+        },
+      };
+
+      provider.resolveWebviewView(mockWebviewView);
+
+      // Should not throw even without handler
+      expect(() => {
+        messageHandler({ type: "keyboardEvent", keyCode: 65, pressed: true });
+      }).not.toThrow();
+    });
+
+    it("should update pixels when only webview view exists (no panel)", () => {
+      activate(mockContext);
+
+      const providerCall = (
+        vscode.window.registerWebviewViewProvider as jest.Mock
+      ).mock.calls[0];
+      const provider = providerCall[1];
+
+      // No panel, no webview view resolved yet
+      const pixels = new Array(256).fill(0);
+      // Should not throw when neither webview nor panel exists
+      expect(() => provider.updatePixels(pixels)).not.toThrow();
     });
 
     it("should render webview with keyboard disabled when configured", () => {
@@ -991,6 +1198,37 @@ describe("TonX86 Extension", () => {
       expect(mockSession.customRequest).not.toHaveBeenCalled();
     });
 
+    it("should ignore non-tonx86 debug session termination", () => {
+      activate(mockContext);
+
+      const terminateHandler = (
+        vscode.debug.onDidTerminateDebugSession as jest.Mock
+      ).mock.calls[0][0];
+
+      const mockSession = {
+        type: "node",
+      };
+
+      // Should not throw
+      expect(() => terminateHandler(mockSession)).not.toThrow();
+    });
+
+    it("should handle terminate when no interval is active", () => {
+      activate(mockContext);
+
+      const terminateHandler = (
+        vscode.debug.onDidTerminateDebugSession as jest.Mock
+      ).mock.calls[0][0];
+
+      // Terminate without starting, so no interval exists
+      const mockSession = {
+        type: "tonx86",
+      };
+
+      // Should not throw even with no interval
+      expect(() => terminateHandler(mockSession)).not.toThrow();
+    });
+
     it("should handle debug adapter output events", () => {
       activate(mockContext);
 
@@ -1085,6 +1323,61 @@ describe("TonX86 Extension", () => {
       tracker.onDidSendMessage(mockMessage);
 
       // Should not throw error
+    });
+
+    it("should ignore output events with no body output", () => {
+      activate(mockContext);
+
+      const trackerFactory = (
+        vscode.debug.registerDebugAdapterTrackerFactory as jest.Mock
+      ).mock.calls[0][1];
+
+      const mockSession = { type: "tonx86" };
+      const tracker = trackerFactory.createDebugAdapterTracker(mockSession);
+
+      // Output event with no output field in body
+      tracker.onDidSendMessage({
+        type: "event",
+        event: "output",
+        body: { category: "stdout" },
+      });
+
+      // Output event with null body
+      tracker.onDidSendMessage({
+        type: "event",
+        event: "output",
+        body: null,
+      });
+
+      // Non-event type message
+      tracker.onDidSendMessage({
+        type: "response",
+        command: "continue",
+      });
+
+      // Should not throw
+    });
+
+    it("should ignore output events with non-stdout/stderr category", () => {
+      activate(mockContext);
+
+      const trackerFactory = (
+        vscode.debug.registerDebugAdapterTrackerFactory as jest.Mock
+      ).mock.calls[0][1];
+
+      const mockSession = { type: "tonx86" };
+      const tracker = trackerFactory.createDebugAdapterTracker(mockSession);
+
+      tracker.onDidSendMessage({
+        type: "event",
+        event: "output",
+        body: {
+          output: "Some output",
+          category: "console",
+        },
+      });
+
+      // Should not throw
     });
   });
 
@@ -1278,6 +1571,56 @@ describe("TonX86 Extension", () => {
       // Should not throw error
     });
 
+    it("should handle getLCDState with response but no pixels", async () => {
+      activate(mockContext);
+
+      const startHandler = (vscode.debug.onDidStartDebugSession as jest.Mock)
+        .mock.calls[0][0];
+
+      const mockSession = {
+        type: "tonx86",
+        customRequest: jest.fn((command: string) => {
+          if (command === "getLCDState") {
+            return Promise.resolve({}); // Response without pixels
+          }
+          return Promise.resolve({ memoryA: [], memoryB: [] });
+        }),
+      };
+
+      startHandler(mockSession);
+
+      jest.advanceTimersByTime(10);
+      await Promise.resolve();
+      await Promise.resolve();
+
+      // Should not throw - updatePixels should not be called
+    });
+
+    it("should handle getLCDState with null response", async () => {
+      activate(mockContext);
+
+      const startHandler = (vscode.debug.onDidStartDebugSession as jest.Mock)
+        .mock.calls[0][0];
+
+      const mockSession = {
+        type: "tonx86",
+        customRequest: jest.fn((command: string) => {
+          if (command === "getLCDState") {
+            return Promise.resolve(null); // Null response
+          }
+          return Promise.resolve({ memoryA: [], memoryB: [] });
+        }),
+      };
+
+      startHandler(mockSession);
+
+      jest.advanceTimersByTime(10);
+      await Promise.resolve();
+      await Promise.resolve();
+
+      // Should not throw
+    });
+
     it("should handle getMemoryState request failure gracefully", async () => {
       activate(mockContext);
 
@@ -1345,6 +1688,90 @@ describe("TonX86 Extension", () => {
       await Promise.resolve();
 
       // Should not throw error
+    });
+
+    it("should handle getMemoryState with partial response (missing memoryB)", async () => {
+      activate(mockContext);
+
+      const startHandler = (vscode.debug.onDidStartDebugSession as jest.Mock)
+        .mock.calls[0][0];
+
+      const mockSession = {
+        type: "tonx86",
+        customRequest: jest.fn((command: string) => {
+          if (command === "getLCDState") {
+            return Promise.resolve({ pixels: [] });
+          }
+          if (command === "getMemoryState") {
+            return Promise.resolve({ memoryA: [1, 2, 3] }); // Missing memoryB
+          }
+          return Promise.resolve({});
+        }),
+      };
+
+      startHandler(mockSession);
+
+      jest.advanceTimersByTime(10);
+      await Promise.resolve();
+      await Promise.resolve();
+
+      // Should not throw
+    });
+
+    it("should handle getMemoryState with null response", async () => {
+      activate(mockContext);
+
+      const startHandler = (vscode.debug.onDidStartDebugSession as jest.Mock)
+        .mock.calls[0][0];
+
+      const mockSession = {
+        type: "tonx86",
+        customRequest: jest.fn((command: string) => {
+          if (command === "getLCDState") {
+            return Promise.resolve({ pixels: [] });
+          }
+          if (command === "getMemoryState") {
+            return Promise.resolve(null); // Null response
+          }
+          return Promise.resolve({});
+        }),
+      };
+
+      startHandler(mockSession);
+
+      jest.advanceTimersByTime(10);
+      await Promise.resolve();
+      await Promise.resolve();
+
+      // Should not throw
+    });
+
+    it("should handle getMemoryState with empty response", async () => {
+      activate(mockContext);
+
+      const startHandler = (vscode.debug.onDidStartDebugSession as jest.Mock)
+        .mock.calls[0][0];
+
+      const mockSession = {
+        type: "tonx86",
+        customRequest: jest.fn((command: string) => {
+          if (command === "getLCDState") {
+            return Promise.resolve({ pixels: [] });
+          }
+          if (command === "getMemoryState") {
+            return Promise.resolve({}); // Empty response
+          }
+          return Promise.resolve({});
+        }),
+      };
+
+      startHandler(mockSession);
+
+      jest.advanceTimersByTime(10);
+      await Promise.resolve();
+      await Promise.resolve();
+
+      // Should not throw
     });
   });
 });
