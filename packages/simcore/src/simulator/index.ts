@@ -74,16 +74,18 @@ export class Simulator {
 
     if (address >= IO_LCD_BASE && address < IO_LCD_LIMIT) {
       return 0;
-    } else if (address === IO_KEYBOARD_STATUS) {
+    }
+    if (address === IO_KEYBOARD_STATUS) {
       return this.keyboard.getStatus();
-    } else if (address === IO_KEYBOARD_KEYCODE) {
+    }
+    if (address === IO_KEYBOARD_KEYCODE) {
       this.keyboard.popKey();
       return this.keyboard.getKeyCode();
-    } else if (address === IO_KEYBOARD_KEYSTATE) {
-      return this.keyboard.getKeyState();
-    } else {
-      throw new Error(`Unknown I/O read address: 0x${address.toString(16)}`);
     }
+    if (address === IO_KEYBOARD_KEYSTATE) {
+      return this.keyboard.getKeyState();
+    }
+    throw new Error(`Unknown I/O read address: 0x${address.toString(16)}`);
   }
 
   /**

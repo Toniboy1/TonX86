@@ -40,6 +40,8 @@ export default tseslint.config(
     rules: {
       "max-lines-per-function": "off",
       complexity: "off",
+      "max-nested-callbacks": "off",
+      "max-depth": "off",
     },
   },
   {

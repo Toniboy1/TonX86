@@ -43,6 +43,9 @@ jobs:
       - name: Run unit tests with coverage
         run: npm run test:coverage
 
+      - name: Run functional tests (ASM examples)
+        run: npm run test:examples
+
       - name: Run benchmarks
         if: matrix.node-version == '20.x'
         run: npm run bench
@@ -55,14 +58,6 @@ jobs:
           files: ./packages/*/coverage/lcov.info
           fail_ci_if_error: false
           token: ${{ secrets.CODECOV_TOKEN }}
-
-      - name: Run golden test suite
-        run: |
-          cd packages/simcore
-          npm test -- src/golden.test.ts
-
-      - name: Run functional tests (ASM examples)
-        run: npm run test:examples
 
       - name: Upload coverage report as artifact
         # Note: Pinned to v4 (v5+ has breaking changes, see dependabot.yml)
