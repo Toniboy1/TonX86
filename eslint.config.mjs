@@ -14,6 +14,7 @@ export default tseslint.config(
       },
     },
     rules: {
+      // ── Type-safety ──────────────────────────────────────────
       "@typescript-eslint/no-unused-vars": [
         "warn",
         {
@@ -23,6 +24,22 @@ export default tseslint.config(
         },
       ],
       "@typescript-eslint/no-explicit-any": "warn",
+
+      // ── Code complexity / writability ────────────────────────
+      complexity: ["warn", { max: 25 }],
+      "max-depth": ["warn", { max: 5 }],
+      "max-lines-per-function": ["warn", { max: 200, skipBlankLines: true, skipComments: true }],
+      "max-params": ["warn", { max: 5 }],
+      "max-nested-callbacks": ["warn", { max: 4 }],
+      "no-else-return": "warn",
+    },
+  },
+  {
+    // Relax complexity limits for test files
+    files: ["**/*.test.ts", "**/*.spec.ts"],
+    rules: {
+      "max-lines-per-function": "off",
+      complexity: "off",
     },
   },
   {

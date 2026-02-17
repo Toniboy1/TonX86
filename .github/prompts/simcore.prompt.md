@@ -18,12 +18,14 @@ The simcore package is organized into domain-specific modules under `packages/si
 ## Assembler Directives Support (NEW in v0.5.1)
 
 TonX86 now supports assembler directives for separating code and data:
+
 - **`.text`** / **`.data`** - Section directives (code vs data)
 - **`DB`** / **`DW`** / **`DD`** - Data definition (byte, word, doubleword)
 - **`ORG address`** - Set origin address for current section
 - **`NAME EQU value`** - Define constants (existing feature, enhanced)
 
 ### Data Loading API
+
 ```typescript
 loadData(dataItems: Array<{address: number, size: 1|2|4, values: number[]}>): void
 ```
@@ -31,6 +33,7 @@ loadData(dataItems: Array<{address: number, size: 1|2|4, values: number[]}>): vo
 Loads data items into memory before program execution. Data is stored in little-endian format.
 
 ## CPU Architecture
+
 - **Registers**: 8x 32-bit (EAX, ECX, EDX, EBX, ESP, EBP, ESI, EDI)
 - **8-bit Registers**: AL, AH, CL, CH, DL, DH, BL, BH (low/high bytes of EAX-EBX)
 - **Flags**: Z (Zero), C (Carry), O (Overflow), S (Sign)
@@ -42,6 +45,7 @@ Loads data items into memory before program execution. Data is stored in little-
 ## Control Flow (NEW in v0.5.0)
 
 Simcore now owns all control flow logic, including:
+
 - **EIP (Instruction Pointer)**: Tracks current instruction index
 - **Instructions Array**: Loaded via `loadInstructions(instructions, labels)`
 - **Labels Map**: Maps label names to instruction indices
@@ -49,6 +53,7 @@ Simcore now owns all control flow logic, including:
 - **CALL/RET Handling**: Manages call stack and return addresses
 
 ### Control Flow API
+
 ```typescript
 // Load program
 loadInstructions(instructions: Instruction[], labels: Map<string, number>): void
@@ -69,7 +74,9 @@ getLabels(): Map<string, number>
 ```
 
 ### step() Method
+
 The `step()` method:
+
 1. Executes the instruction at EIP
 2. Evaluates control flow (JMP, CALL, RET, conditional jumps)
 3. Updates EIP automatically based on instruction type
@@ -78,6 +85,7 @@ The `step()` method:
 6. Throws error if instruction execution fails
 
 ### Jump Instructions Handled by step()
+
 - **JMP label**: Unconditional jump
 - **JE/JZ label**: Jump if Zero flag set
 - **JNE/JNZ label**: Jump if Zero flag clear
@@ -95,9 +103,11 @@ The `step()` method:
 - **RET**: Pop return address and jump
 
 ## Instruction Execution
+
 `executeInstruction(mnemonic: string, operands: string[])`
 
 ### Data Movement
+
 - **MOV dest, src** - Move data (register, immediate, memory-mapped I/O, 8-bit registers)
   - If src >= 0xF000: call `readIO(address)`
   - If dest >= 0xF000: call `writeIO(address, value)`
@@ -108,12 +118,13 @@ The `step()` method:
 - **MOVSX dest, src** - Move with sign extend (8-bit to 32-bit)
 
 ### Arithmetic
+
 - **ADD dest, src** - Add (sets Z, C, O, S flags)
 - **SUB dest, src** - Subtract (sets Z, C, O, S flags)
 - **INC dest** - Increment by 1 (sets Z, O, S flags)
 - **DEC dest** - Decrement by 1 (sets Z, O, S flags)
-- **MUL src** - Unsigned multiply (EAX * src → EDX:EAX, sets Z, S)
-- **IMUL src** - Signed multiply (EAX * src → EAX, sets Z, S)
+- **MUL src** - Unsigned multiply (EAX \* src → EDX:EAX, sets Z, S)
+- **IMUL src** - Signed multiply (EAX \* src → EAX, sets Z, S)
 - **DIV src** - Unsigned divide (EAX / src → quotient in EAX, remainder in EDX)
 - **IDIV src** - Signed divide (EAX / src → quotient in EAX, remainder in EDX)
 - **MOD dest, src** - Modulo (dest % src, sets Z, S)
@@ -121,6 +132,7 @@ The `step()` method:
 - **NEG dest** - Two's complement negation (sets Z, C, O, S)
 
 ### Logical
+
 - **AND dest, src** - Bitwise AND (sets Z, S flags)
 - **OR dest, src** - Bitwise OR (sets Z, S flags)
 - **XOR dest, src** - Bitwise XOR (sets Z, S flags)
@@ -128,6 +140,7 @@ The `step()` method:
 - **TEST op1, op2** - Logical AND (flags only, sets Z, S)
 
 ### Shifts and Rotates
+
 - **SHL dest, count** - Shift left (sets Z, S)
 - **SHR dest, count** - Shift right logical (sets Z, S)
 - **SAR dest, count** - Shift arithmetic right (sets Z, S)
@@ -135,12 +148,14 @@ The `step()` method:
 - **ROR dest, count** - Rotate right (sets Z, S)
 
 ### Stack Operations
+
 - **PUSH src** - Push register/immediate onto stack (ESP -= 4)
 - **POP dest** - Pop from stack into register (ESP += 4)
 - **CALL label** - Call subroutine (handled by step() method, pushes return address)
 - **RET** - Return from subroutine (handled by step() method, pops return address)
 
 ### Interrupts
+
 - **INT num** - Software interrupt (executes handler based on number)
   - 0x10: Video services (AH=0x0E: teletype output from AL)
   - 0x20: Program terminate
@@ -148,17 +163,20 @@ The `step()` method:
 - **IRET** - Return from interrupt (restore flags from stack)
 
 ### Control Flow Instructions
+
 - **JMP**, **JE/JZ**, **JNE/JNZ**, **HLT** - Handled by step() method
 - **JG**, **JGE**, **JL**, **JLE**, **JS**, **JNS** - Conditional jumps (handled by step())
 - **JA**, **JAE**, **JB**, **JBE** - Unsigned conditional jumps (handled by step())
 - **CALL**, **RET** - Subroutine calls (handled by step())
 
 ### Special Instructions
+
 - **RAND dest, max** - Random number 0 to max-1 (educational instruction)
 
 ## Memory-Mapped I/O
 
 ### LCD Display (0xF000-0xFFFF)
+
 ```typescript
 writeIO(address: number, value: number): void {
   const offset = address - 0xF000;
@@ -173,6 +191,7 @@ getLCDDisplay(): Uint8Array {
 ```
 
 ### Keyboard (0x10100-0x10102)
+
 ```typescript
 class Keyboard {
   private keyQueue: KeyboardEvent[] = [];
@@ -197,12 +216,14 @@ readIO(address: number): number {
 ```
 
 ## Flag Calculation
+
 - **Zero Flag**: Result == 0
 - **Carry Flag**: Unsigned overflow (result > MAX_UINT32)
 - **Overflow Flag**: Signed overflow (opposite signs)
 - **Sign Flag**: Result < 0 (bit 31 set)
 
 ### Compatibility Mode Flag Behavior
+
 - **Educational Mode** (default): All instructions update flags for learning purposes
   - DIV/IDIV: Set ZF and SF based on quotient
   - MUL/IMUL: Set ZF and SF based on lower 32 bits
@@ -213,6 +234,7 @@ readIO(address: number): number {
   - Rotates: ZF/SF not modified (per x86 spec)
 
 ## Flag Checking Methods
+
 ```typescript
 isZeroFlagSet(): boolean     // Zero flag (bit 6)
 isSignFlagSet(): boolean     // Sign flag (bit 7)
@@ -221,6 +243,7 @@ isCarryFlagSet(): boolean    // Carry flag (bit 0)
 ```
 
 ## Public API
+
 - `loadInstructions(instructions, labels)` - Load program with instructions and labels
 - `step()` - Execute one instruction and handle control flow
 - `getEIP()` / `setEIP(value)` - Get/set instruction pointer
@@ -235,7 +258,9 @@ isCarryFlagSet(): boolean    // Carry flag (bit 0)
 - `reset()` - Clear all state (including EIP and call stack)
 
 ## Testing
+
 Comprehensive test suite in `simulator/simulator.test.ts`:
+
 - All instruction execution (30+ instruction types)
 - Flag operations
 - LCD display writes (64x64 support)
@@ -245,6 +270,7 @@ Comprehensive test suite in `simulator/simulator.test.ts`:
 - Interrupt handlers
 
 **Golden Test Suite** (`golden.test.ts`):
+
 - 106 comprehensive instruction-level validation tests
 - Arithmetic operations (ADD, SUB, MUL, DIV, NEG, etc.)
 - Logical operations (AND, OR, XOR, NOT, TEST)

@@ -46,10 +46,7 @@ describe("DAP Assembly Parser", () => {
   });
 
   it("should handle instructions with inline comments", () => {
-    const lines = [
-      "MOV EAX, 0x10 ; Load value",
-      "ADD EBX, EAX  ; Add registers",
-    ];
+    const lines = ["MOV EAX, 0x10 ; Load value", "ADD EBX, EAX  ; Add registers"];
     const result = parseAssembly(lines);
 
     expect(result.instructions).toHaveLength(2);
@@ -100,13 +97,7 @@ describe("DAP Assembly Parser", () => {
   });
 
   it("should preserve line numbers correctly", () => {
-    const lines = [
-      "; Line 1 comment",
-      "",
-      "MOV EAX, 1  ; Line 3",
-      "",
-      "ADD EBX, 2  ; Line 5",
-    ];
+    const lines = ["; Line 1 comment", "", "MOV EAX, 1  ; Line 3", "", "ADD EBX, 2  ; Line 5"];
     const result = parseAssembly(lines);
 
     expect(result.instructions[0].line).toBe(3);

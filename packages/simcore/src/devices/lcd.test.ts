@@ -17,15 +17,11 @@ describe("LCDDisplay class", () => {
   });
 
   test("constructor validates dimensions (too small)", () => {
-    expect(() => new LCDDisplay(1, 8)).toThrow(
-      "LCD dimensions must be between 2x2 and 256x256",
-    );
+    expect(() => new LCDDisplay(1, 8)).toThrow("LCD dimensions must be between 2x2 and 256x256");
   });
 
   test("constructor validates dimensions (not power of 2)", () => {
-    expect(() => new LCDDisplay(3, 8)).toThrow(
-      "LCD dimensions must be powers of 2",
-    );
+    expect(() => new LCDDisplay(3, 8)).toThrow("LCD dimensions must be powers of 2");
   });
 
   test("getPixel returns 0 for unset pixel", () => {

@@ -45,9 +45,7 @@ describe("TonX86 Extension", () => {
         keys: jest.fn(() => []),
       },
       extensionUri: vscode.Uri.file("/mock/extension/path"),
-      asAbsolutePath: jest.fn(
-        (relativePath: string) => `/mock/extension/path/${relativePath}`,
-      ),
+      asAbsolutePath: jest.fn((relativePath: string) => `/mock/extension/path/${relativePath}`),
       storagePath: "/mock/storage",
       globalStoragePath: "/mock/global/storage",
       logPath: "/mock/log",
@@ -73,13 +71,12 @@ describe("TonX86 Extension", () => {
       activate(mockContext);
 
       expect(vscode.window.createOutputChannel).toHaveBeenCalledWith("TonX86");
-      expect(
-        vscode.debug.registerDebugConfigurationProvider,
-      ).toHaveBeenCalledWith("tonx86", expect.any(Object));
-      expect(vscode.window.registerTreeDataProvider).toHaveBeenCalledTimes(3);
-      expect(vscode.window.registerWebviewViewProvider).toHaveBeenCalledTimes(
-        2,
+      expect(vscode.debug.registerDebugConfigurationProvider).toHaveBeenCalledWith(
+        "tonx86",
+        expect.any(Object),
       );
+      expect(vscode.window.registerTreeDataProvider).toHaveBeenCalledTimes(3);
+      expect(vscode.window.registerWebviewViewProvider).toHaveBeenCalledTimes(2);
     });
 
     it("should register all commands", () => {
@@ -98,10 +95,7 @@ describe("TonX86 Extension", () => {
       ];
 
       expectedCommands.forEach((cmd) => {
-        expect(vscode.commands.registerCommand).toHaveBeenCalledWith(
-          cmd,
-          expect.any(Function),
-        );
+        expect(vscode.commands.registerCommand).toHaveBeenCalledWith(cmd, expect.any(Function));
       });
     });
 
@@ -110,9 +104,7 @@ describe("TonX86 Extension", () => {
 
       expect(vscode.debug.onDidStartDebugSession).toHaveBeenCalled();
       expect(vscode.debug.onDidTerminateDebugSession).toHaveBeenCalled();
-      expect(
-        vscode.debug.registerDebugAdapterTrackerFactory,
-      ).toHaveBeenCalled();
+      expect(vscode.debug.registerDebugAdapterTrackerFactory).toHaveBeenCalled();
     });
 
     it("should register configuration change handler", () => {
@@ -128,9 +120,7 @@ describe("TonX86 Extension", () => {
       const result = deactivate();
 
       expect(result).toBeDefined();
-      expect(console.log).toHaveBeenCalledWith(
-        "TonX86 extension is now deactivated",
-      );
+      expect(console.log).toHaveBeenCalledWith("TonX86 extension is now deactivated");
 
       if (result) {
         await expect(result).resolves.toBeUndefined();
@@ -159,9 +149,8 @@ describe("TonX86 Extension", () => {
     it("should inject extension settings into debug configuration", () => {
       activate(mockContext);
 
-      const providerCall = (
-        vscode.debug.registerDebugConfigurationProvider as jest.Mock
-      ).mock.calls[0];
+      const providerCall = (vscode.debug.registerDebugConfigurationProvider as jest.Mock).mock
+        .calls[0];
       const provider = providerCall[1];
 
       const mockConfig: vscode.DebugConfiguration = {
@@ -176,11 +165,7 @@ describe("TonX86 Extension", () => {
         index: 0,
       };
 
-      const result = provider.resolveDebugConfiguration(
-        mockWorkspaceFolder,
-        mockConfig,
-        undefined,
-      );
+      const result = provider.resolveDebugConfiguration(mockWorkspaceFolder, mockConfig, undefined);
 
       expect(result).toBeDefined();
       expect(result.cpuSpeed).toBe(100);
@@ -189,8 +174,7 @@ describe("TonX86 Extension", () => {
     });
 
     it("should use custom settings when provided", () => {
-      const mockWorkspaceConfig = vscode.workspace
-        .getConfiguration as jest.Mock;
+      const mockWorkspaceConfig = vscode.workspace.getConfiguration as jest.Mock;
       mockWorkspaceConfig.mockImplementation((section: string) => {
         const configs: Record<string, any> = {
           "tonx86.cpu": {
@@ -211,9 +195,8 @@ describe("TonX86 Extension", () => {
 
       activate(mockContext);
 
-      const providerCall = (
-        vscode.debug.registerDebugConfigurationProvider as jest.Mock
-      ).mock.calls[0];
+      const providerCall = (vscode.debug.registerDebugConfigurationProvider as jest.Mock).mock
+        .calls[0];
       const provider = providerCall[1];
 
       const mockConfig: vscode.DebugConfiguration = {
@@ -222,11 +205,7 @@ describe("TonX86 Extension", () => {
         name: "Test",
       };
 
-      const result = provider.resolveDebugConfiguration(
-        undefined,
-        mockConfig,
-        undefined,
-      );
+      const result = provider.resolveDebugConfiguration(undefined, mockConfig, undefined);
 
       expect(result.cpuSpeed).toBe(150);
       expect(result.enableLogging).toBe(true);
@@ -238,8 +217,7 @@ describe("TonX86 Extension", () => {
     it("should return tree items for registers", () => {
       activate(mockContext);
 
-      const providerCall = (vscode.window.registerTreeDataProvider as jest.Mock)
-        .mock.calls[0];
+      const providerCall = (vscode.window.registerTreeDataProvider as jest.Mock).mock.calls[0];
       const provider = providerCall[1];
 
       const children = provider.getChildren();
@@ -251,8 +229,7 @@ describe("TonX86 Extension", () => {
     it("should update register values", () => {
       activate(mockContext);
 
-      const providerCall = (vscode.window.registerTreeDataProvider as jest.Mock)
-        .mock.calls[0];
+      const providerCall = (vscode.window.registerTreeDataProvider as jest.Mock).mock.calls[0];
       const provider = providerCall[1];
 
       provider.updateRegisters([1, 2, 3, 4, 5, 6, 7, 8]);
@@ -265,8 +242,7 @@ describe("TonX86 Extension", () => {
     it("should create tree items with correct format", () => {
       activate(mockContext);
 
-      const providerCall = (vscode.window.registerTreeDataProvider as jest.Mock)
-        .mock.calls[0];
+      const providerCall = (vscode.window.registerTreeDataProvider as jest.Mock).mock.calls[0];
       const provider = providerCall[1];
 
       provider.updateRegisters([255, 0, 0, 0, 0, 0, 0, 0]);
@@ -278,8 +254,7 @@ describe("TonX86 Extension", () => {
     it("should handle updateRegisters with fewer values than registers", () => {
       activate(mockContext);
 
-      const providerCall = (vscode.window.registerTreeDataProvider as jest.Mock)
-        .mock.calls[0];
+      const providerCall = (vscode.window.registerTreeDataProvider as jest.Mock).mock.calls[0];
       const provider = providerCall[1];
 
       // Only update first 3 registers; remaining should stay at 0
@@ -297,8 +272,7 @@ describe("TonX86 Extension", () => {
     it("should initialize memory with default values", () => {
       activate(mockContext);
 
-      const providerCall = (vscode.window.registerTreeDataProvider as jest.Mock)
-        .mock.calls[1];
+      const providerCall = (vscode.window.registerTreeDataProvider as jest.Mock).mock.calls[1];
       const provider = providerCall[1];
 
       const children = provider.getChildren();
@@ -310,8 +284,7 @@ describe("TonX86 Extension", () => {
     it("should update memory values", () => {
       activate(mockContext);
 
-      const providerCall = (vscode.window.registerTreeDataProvider as jest.Mock)
-        .mock.calls[1];
+      const providerCall = (vscode.window.registerTreeDataProvider as jest.Mock).mock.calls[1];
       const provider = providerCall[1];
 
       const data = new Uint8Array([0xff, 0xaa, 0x55]);
@@ -327,8 +300,7 @@ describe("TonX86 Extension", () => {
       jest.clearAllMocks();
       activate(mockContext);
 
-      const providerCall = (vscode.window.registerTreeDataProvider as jest.Mock)
-        .mock.calls[1];
+      const providerCall = (vscode.window.registerTreeDataProvider as jest.Mock).mock.calls[1];
       const provider = providerCall[1];
 
       // Get current state and verify format (value may vary due to previous tests)
@@ -343,8 +315,7 @@ describe("TonX86 Extension", () => {
     it("should handle updateMemory with data longer than memory length", () => {
       activate(mockContext);
 
-      const providerCall = (vscode.window.registerTreeDataProvider as jest.Mock)
-        .mock.calls[1];
+      const providerCall = (vscode.window.registerTreeDataProvider as jest.Mock).mock.calls[1];
       const provider = providerCall[1];
 
       // Create data larger than the memory length (16)
@@ -363,9 +334,7 @@ describe("TonX86 Extension", () => {
     it("should resolve webview view with HTML content", () => {
       activate(mockContext);
 
-      const providerCall = (
-        vscode.window.registerWebviewViewProvider as jest.Mock
-      ).mock.calls[0];
+      const providerCall = (vscode.window.registerWebviewViewProvider as jest.Mock).mock.calls[0];
       const provider = providerCall[1];
 
       const mockWebviewView: any = {
@@ -386,9 +355,7 @@ describe("TonX86 Extension", () => {
     it("should update pixels in webview", () => {
       activate(mockContext);
 
-      const providerCall = (
-        vscode.window.registerWebviewViewProvider as jest.Mock
-      ).mock.calls[0];
+      const providerCall = (vscode.window.registerWebviewViewProvider as jest.Mock).mock.calls[0];
       const provider = providerCall[1];
 
       const mockWebviewView = {
@@ -415,9 +382,7 @@ describe("TonX86 Extension", () => {
     it("should pop out LCD display", () => {
       activate(mockContext);
 
-      const providerCall = (
-        vscode.window.registerWebviewViewProvider as jest.Mock
-      ).mock.calls[0];
+      const providerCall = (vscode.window.registerWebviewViewProvider as jest.Mock).mock.calls[0];
       const provider = providerCall[1];
 
       provider.popOut();
@@ -433,14 +398,11 @@ describe("TonX86 Extension", () => {
     it("should pop in LCD display", async () => {
       activate(mockContext);
 
-      const providerCall = (
-        vscode.window.registerWebviewViewProvider as jest.Mock
-      ).mock.calls[0];
+      const providerCall = (vscode.window.registerWebviewViewProvider as jest.Mock).mock.calls[0];
       const provider = providerCall[1];
 
       provider.popOut();
-      const mockPanel = (vscode.window.createWebviewPanel as jest.Mock).mock
-        .results[0].value;
+      const mockPanel = (vscode.window.createWebviewPanel as jest.Mock).mock.results[0].value;
 
       provider.popIn();
 
@@ -450,9 +412,7 @@ describe("TonX86 Extension", () => {
     it("should handle popIn when no panel exists", () => {
       activate(mockContext);
 
-      const providerCall = (
-        vscode.window.registerWebviewViewProvider as jest.Mock
-      ).mock.calls[0];
+      const providerCall = (vscode.window.registerWebviewViewProvider as jest.Mock).mock.calls[0];
       const provider = providerCall[1];
 
       // popIn without popOut — no panel exists
@@ -463,9 +423,7 @@ describe("TonX86 Extension", () => {
     it("should check if LCD is popped out", () => {
       activate(mockContext);
 
-      const providerCall = (
-        vscode.window.registerWebviewViewProvider as jest.Mock
-      ).mock.calls[0];
+      const providerCall = (vscode.window.registerWebviewViewProvider as jest.Mock).mock.calls[0];
       const provider = providerCall[1];
 
       expect(provider.isPopped()).toBe(false);
@@ -480,14 +438,11 @@ describe("TonX86 Extension", () => {
     it("should reveal panel if already popped out", () => {
       activate(mockContext);
 
-      const providerCall = (
-        vscode.window.registerWebviewViewProvider as jest.Mock
-      ).mock.calls[0];
+      const providerCall = (vscode.window.registerWebviewViewProvider as jest.Mock).mock.calls[0];
       const provider = providerCall[1];
 
       provider.popOut();
-      const mockPanel = (vscode.window.createWebviewPanel as jest.Mock).mock
-        .results[0].value;
+      const mockPanel = (vscode.window.createWebviewPanel as jest.Mock).mock.results[0].value;
 
       jest.clearAllMocks();
       provider.popOut();
@@ -499,9 +454,7 @@ describe("TonX86 Extension", () => {
     it("should update pixels in both webview and panel", () => {
       activate(mockContext);
 
-      const providerCall = (
-        vscode.window.registerWebviewViewProvider as jest.Mock
-      ).mock.calls[0];
+      const providerCall = (vscode.window.registerWebviewViewProvider as jest.Mock).mock.calls[0];
       const provider = providerCall[1];
 
       const mockWebviewView = {
@@ -516,8 +469,7 @@ describe("TonX86 Extension", () => {
       provider.resolveWebviewView(mockWebviewView);
       provider.popOut();
 
-      const mockPanel = (vscode.window.createWebviewPanel as jest.Mock).mock
-        .results[0].value;
+      const mockPanel = (vscode.window.createWebviewPanel as jest.Mock).mock.results[0].value;
 
       const pixels = new Array(256).fill(1);
       provider.updatePixels(pixels);
@@ -535,9 +487,7 @@ describe("TonX86 Extension", () => {
     it("should handle panel disposal", () => {
       activate(mockContext);
 
-      const providerCall = (
-        vscode.window.registerWebviewViewProvider as jest.Mock
-      ).mock.calls[0];
+      const providerCall = (vscode.window.registerWebviewViewProvider as jest.Mock).mock.calls[0];
       const provider = providerCall[1];
 
       provider.popOut();
@@ -550,8 +500,7 @@ describe("TonX86 Extension", () => {
     });
 
     it("should update LCD config", () => {
-      const mockWorkspaceConfig = vscode.workspace
-        .getConfiguration as jest.Mock;
+      const mockWorkspaceConfig = vscode.workspace.getConfiguration as jest.Mock;
       mockWorkspaceConfig.mockImplementation((section: string) => {
         if (section === "tonx86.lcd") {
           return {
@@ -570,9 +519,7 @@ describe("TonX86 Extension", () => {
 
       activate(mockContext);
 
-      const providerCall = (
-        vscode.window.registerWebviewViewProvider as jest.Mock
-      ).mock.calls[0];
+      const providerCall = (vscode.window.registerWebviewViewProvider as jest.Mock).mock.calls[0];
       const provider = providerCall[1];
 
       provider.updateLCDConfig();
@@ -586,9 +533,7 @@ describe("TonX86 Extension", () => {
     it("should handle keyboard events in popped out panel", () => {
       activate(mockContext);
 
-      const providerCall = (
-        vscode.window.registerWebviewViewProvider as jest.Mock
-      ).mock.calls[0];
+      const providerCall = (vscode.window.registerWebviewViewProvider as jest.Mock).mock.calls[0];
       const provider = providerCall[1];
 
       const mockHandler = jest.fn();
@@ -596,10 +541,8 @@ describe("TonX86 Extension", () => {
 
       provider.popOut();
 
-      const mockPanel = (vscode.window.createWebviewPanel as jest.Mock).mock
-        .results[0].value;
-      const onMessageHandler =
-        mockPanel.webview.onDidReceiveMessage.mock.calls[0][0];
+      const mockPanel = (vscode.window.createWebviewPanel as jest.Mock).mock.results[0].value;
+      const onMessageHandler = mockPanel.webview.onDidReceiveMessage.mock.calls[0][0];
 
       // Simulate keyboard event from panel
       onMessageHandler({ type: "keyboardEvent", keyCode: 13, pressed: false });
@@ -610,9 +553,7 @@ describe("TonX86 Extension", () => {
     it("should ignore non-keyboard messages in popped out panel", () => {
       activate(mockContext);
 
-      const providerCall = (
-        vscode.window.registerWebviewViewProvider as jest.Mock
-      ).mock.calls[0];
+      const providerCall = (vscode.window.registerWebviewViewProvider as jest.Mock).mock.calls[0];
       const provider = providerCall[1];
 
       const mockHandler = jest.fn();
@@ -620,10 +561,8 @@ describe("TonX86 Extension", () => {
 
       provider.popOut();
 
-      const mockPanel = (vscode.window.createWebviewPanel as jest.Mock).mock
-        .results[0].value;
-      const onMessageHandler =
-        mockPanel.webview.onDidReceiveMessage.mock.calls[0][0];
+      const mockPanel = (vscode.window.createWebviewPanel as jest.Mock).mock.results[0].value;
+      const onMessageHandler = mockPanel.webview.onDidReceiveMessage.mock.calls[0][0];
 
       // Send a non-keyboard message
       onMessageHandler({ type: "otherEvent", data: "test" });
@@ -632,8 +571,7 @@ describe("TonX86 Extension", () => {
     });
 
     it("should ignore keyboard events in popped out panel when keyboard disabled", () => {
-      const mockWorkspaceConfig = vscode.workspace
-        .getConfiguration as jest.Mock;
+      const mockWorkspaceConfig = vscode.workspace.getConfiguration as jest.Mock;
       mockWorkspaceConfig.mockImplementation((section: string) => {
         if (section === "tonx86.keyboard") {
           return {
@@ -650,9 +588,7 @@ describe("TonX86 Extension", () => {
 
       activate(mockContext);
 
-      const providerCall = (
-        vscode.window.registerWebviewViewProvider as jest.Mock
-      ).mock.calls[0];
+      const providerCall = (vscode.window.registerWebviewViewProvider as jest.Mock).mock.calls[0];
       const provider = providerCall[1];
 
       const mockHandler = jest.fn();
@@ -660,10 +596,8 @@ describe("TonX86 Extension", () => {
 
       provider.popOut();
 
-      const mockPanel = (vscode.window.createWebviewPanel as jest.Mock).mock
-        .results[0].value;
-      const onMessageHandler =
-        mockPanel.webview.onDidReceiveMessage.mock.calls[0][0];
+      const mockPanel = (vscode.window.createWebviewPanel as jest.Mock).mock.results[0].value;
+      const onMessageHandler = mockPanel.webview.onDidReceiveMessage.mock.calls[0][0];
 
       onMessageHandler({ type: "keyboardEvent", keyCode: 65, pressed: true });
 
@@ -673,18 +607,14 @@ describe("TonX86 Extension", () => {
     it("should handle keyboard event in popped out panel with no handler set", () => {
       activate(mockContext);
 
-      const providerCall = (
-        vscode.window.registerWebviewViewProvider as jest.Mock
-      ).mock.calls[0];
+      const providerCall = (vscode.window.registerWebviewViewProvider as jest.Mock).mock.calls[0];
       const provider = providerCall[1];
 
       // Do NOT set a keyboard handler
       provider.popOut();
 
-      const mockPanel = (vscode.window.createWebviewPanel as jest.Mock).mock
-        .results[0].value;
-      const onMessageHandler =
-        mockPanel.webview.onDidReceiveMessage.mock.calls[0][0];
+      const mockPanel = (vscode.window.createWebviewPanel as jest.Mock).mock.results[0].value;
+      const onMessageHandler = mockPanel.webview.onDidReceiveMessage.mock.calls[0][0];
 
       // Should not throw even without handler
       expect(() => {
@@ -695,9 +625,7 @@ describe("TonX86 Extension", () => {
     it("should ignore non-keyboard messages in resolveWebviewView", () => {
       activate(mockContext);
 
-      const providerCall = (
-        vscode.window.registerWebviewViewProvider as jest.Mock
-      ).mock.calls[0];
+      const providerCall = (vscode.window.registerWebviewViewProvider as jest.Mock).mock.calls[0];
       const provider = providerCall[1];
 
       const mockHandler = jest.fn();
@@ -726,9 +654,7 @@ describe("TonX86 Extension", () => {
     it("should handle keyboard event in webview with no handler set", () => {
       activate(mockContext);
 
-      const providerCall = (
-        vscode.window.registerWebviewViewProvider as jest.Mock
-      ).mock.calls[0];
+      const providerCall = (vscode.window.registerWebviewViewProvider as jest.Mock).mock.calls[0];
       const provider = providerCall[1];
 
       // Do NOT set a keyboard handler
@@ -755,9 +681,7 @@ describe("TonX86 Extension", () => {
     it("should update pixels when only webview view exists (no panel)", () => {
       activate(mockContext);
 
-      const providerCall = (
-        vscode.window.registerWebviewViewProvider as jest.Mock
-      ).mock.calls[0];
+      const providerCall = (vscode.window.registerWebviewViewProvider as jest.Mock).mock.calls[0];
       const provider = providerCall[1];
 
       // No panel, no webview view resolved yet
@@ -767,8 +691,7 @@ describe("TonX86 Extension", () => {
     });
 
     it("should render webview with keyboard disabled when configured", () => {
-      const mockWorkspaceConfig = vscode.workspace
-        .getConfiguration as jest.Mock;
+      const mockWorkspaceConfig = vscode.workspace.getConfiguration as jest.Mock;
       mockWorkspaceConfig.mockImplementation((section: string) => {
         if (section === "tonx86.keyboard") {
           return {
@@ -785,9 +708,7 @@ describe("TonX86 Extension", () => {
 
       activate(mockContext);
 
-      const providerCall = (
-        vscode.window.registerWebviewViewProvider as jest.Mock
-      ).mock.calls[0];
+      const providerCall = (vscode.window.registerWebviewViewProvider as jest.Mock).mock.calls[0];
       const provider = providerCall[1];
 
       const mockWebviewView: any = {
@@ -810,9 +731,7 @@ describe("TonX86 Extension", () => {
     it("should resolve webview view with documentation", () => {
       activate(mockContext);
 
-      const providerCall = (
-        vscode.window.registerWebviewViewProvider as jest.Mock
-      ).mock.calls[1];
+      const providerCall = (vscode.window.registerWebviewViewProvider as jest.Mock).mock.calls[1];
       const provider = providerCall[1];
 
       const mockWebviewView: any = {
@@ -836,114 +755,100 @@ describe("TonX86 Extension", () => {
     it("should execute assemble command", () => {
       activate(mockContext);
 
-      const assembleCall = (
-        vscode.commands.registerCommand as jest.Mock
-      ).mock.calls.find((call) => call[0] === "tonx86.assemble");
+      const assembleCall = (vscode.commands.registerCommand as jest.Mock).mock.calls.find(
+        (call) => call[0] === "tonx86.assemble",
+      );
       const handler = assembleCall[1];
 
       handler();
 
-      expect(vscode.window.showInformationMessage).toHaveBeenCalledWith(
-        "TonX86: Assemble",
-      );
+      expect(vscode.window.showInformationMessage).toHaveBeenCalledWith("TonX86: Assemble");
     });
 
     it("should execute run command and update registers", () => {
       activate(mockContext);
 
-      const runCall = (
-        vscode.commands.registerCommand as jest.Mock
-      ).mock.calls.find((call) => call[0] === "tonx86.run");
+      const runCall = (vscode.commands.registerCommand as jest.Mock).mock.calls.find(
+        (call) => call[0] === "tonx86.run",
+      );
       const handler = runCall[1];
 
       handler();
 
-      expect(vscode.window.showInformationMessage).toHaveBeenCalledWith(
-        "TonX86: Run",
-      );
+      expect(vscode.window.showInformationMessage).toHaveBeenCalledWith("TonX86: Run");
     });
 
     it("should execute pause command", () => {
       activate(mockContext);
 
-      const pauseCall = (
-        vscode.commands.registerCommand as jest.Mock
-      ).mock.calls.find((call) => call[0] === "tonx86.pause");
+      const pauseCall = (vscode.commands.registerCommand as jest.Mock).mock.calls.find(
+        (call) => call[0] === "tonx86.pause",
+      );
       const handler = pauseCall[1];
 
       handler();
 
-      expect(vscode.window.showInformationMessage).toHaveBeenCalledWith(
-        "TonX86: Pause",
-      );
+      expect(vscode.window.showInformationMessage).toHaveBeenCalledWith("TonX86: Pause");
     });
 
     it("should execute stepOver command", () => {
       activate(mockContext);
 
-      const stepOverCall = (
-        vscode.commands.registerCommand as jest.Mock
-      ).mock.calls.find((call) => call[0] === "tonx86.stepOver");
+      const stepOverCall = (vscode.commands.registerCommand as jest.Mock).mock.calls.find(
+        (call) => call[0] === "tonx86.stepOver",
+      );
       const handler = stepOverCall[1];
 
       handler();
 
-      expect(vscode.window.showInformationMessage).toHaveBeenCalledWith(
-        "TonX86: Step Over",
-      );
+      expect(vscode.window.showInformationMessage).toHaveBeenCalledWith("TonX86: Step Over");
     });
 
     it("should execute stepIn command", () => {
       activate(mockContext);
 
-      const stepInCall = (
-        vscode.commands.registerCommand as jest.Mock
-      ).mock.calls.find((call) => call[0] === "tonx86.stepIn");
+      const stepInCall = (vscode.commands.registerCommand as jest.Mock).mock.calls.find(
+        (call) => call[0] === "tonx86.stepIn",
+      );
       const handler = stepInCall[1];
 
       handler();
 
-      expect(vscode.window.showInformationMessage).toHaveBeenCalledWith(
-        "TonX86: Step In",
-      );
+      expect(vscode.window.showInformationMessage).toHaveBeenCalledWith("TonX86: Step In");
     });
 
     it("should execute stepOut command", () => {
       activate(mockContext);
 
-      const stepOutCall = (
-        vscode.commands.registerCommand as jest.Mock
-      ).mock.calls.find((call) => call[0] === "tonx86.stepOut");
+      const stepOutCall = (vscode.commands.registerCommand as jest.Mock).mock.calls.find(
+        (call) => call[0] === "tonx86.stepOut",
+      );
       const handler = stepOutCall[1];
 
       handler();
 
-      expect(vscode.window.showInformationMessage).toHaveBeenCalledWith(
-        "TonX86: Step Out",
-      );
+      expect(vscode.window.showInformationMessage).toHaveBeenCalledWith("TonX86: Step Out");
     });
 
     it("should execute reset command and reset registers", () => {
       activate(mockContext);
 
-      const resetCall = (
-        vscode.commands.registerCommand as jest.Mock
-      ).mock.calls.find((call) => call[0] === "tonx86.reset");
+      const resetCall = (vscode.commands.registerCommand as jest.Mock).mock.calls.find(
+        (call) => call[0] === "tonx86.reset",
+      );
       const handler = resetCall[1];
 
       handler();
 
-      expect(vscode.window.showInformationMessage).toHaveBeenCalledWith(
-        "TonX86: Reset",
-      );
+      expect(vscode.window.showInformationMessage).toHaveBeenCalledWith("TonX86: Reset");
     });
 
     it("should execute lcdPopOut command", () => {
       activate(mockContext);
 
-      const popOutCall = (
-        vscode.commands.registerCommand as jest.Mock
-      ).mock.calls.find((call) => call[0] === "tonx86.lcdPopOut");
+      const popOutCall = (vscode.commands.registerCommand as jest.Mock).mock.calls.find(
+        (call) => call[0] === "tonx86.lcdPopOut",
+      );
       const handler = popOutCall[1];
 
       handler();
@@ -954,17 +859,16 @@ describe("TonX86 Extension", () => {
     it("should execute lcdPopIn command", () => {
       activate(mockContext);
 
-      const popOutCall = (
-        vscode.commands.registerCommand as jest.Mock
-      ).mock.calls.find((call) => call[0] === "tonx86.lcdPopOut");
+      const popOutCall = (vscode.commands.registerCommand as jest.Mock).mock.calls.find(
+        (call) => call[0] === "tonx86.lcdPopOut",
+      );
       popOutCall[1]();
 
-      const mockPanel = (vscode.window.createWebviewPanel as jest.Mock).mock
-        .results[0].value;
+      const mockPanel = (vscode.window.createWebviewPanel as jest.Mock).mock.results[0].value;
 
-      const popInCall = (
-        vscode.commands.registerCommand as jest.Mock
-      ).mock.calls.find((call) => call[0] === "tonx86.lcdPopIn");
+      const popInCall = (vscode.commands.registerCommand as jest.Mock).mock.calls.find(
+        (call) => call[0] === "tonx86.lcdPopIn",
+      );
       const handler = popInCall[1];
 
       handler();
@@ -975,8 +879,7 @@ describe("TonX86 Extension", () => {
 
   describe("Configuration validation", () => {
     it("should validate and normalize LCD configuration with invalid width", () => {
-      const mockWorkspaceConfig = vscode.workspace
-        .getConfiguration as jest.Mock;
+      const mockWorkspaceConfig = vscode.workspace.getConfiguration as jest.Mock;
       mockWorkspaceConfig.mockImplementation((section: string) => {
         if (section === "tonx86.lcd") {
           return {
@@ -995,9 +898,7 @@ describe("TonX86 Extension", () => {
 
       activate(mockContext);
 
-      const providerCall = (
-        vscode.window.registerWebviewViewProvider as jest.Mock
-      ).mock.calls[0];
+      const providerCall = (vscode.window.registerWebviewViewProvider as jest.Mock).mock.calls[0];
       const provider = providerCall[1];
 
       const config = provider.getLCDConfig();
@@ -1005,8 +906,7 @@ describe("TonX86 Extension", () => {
     });
 
     it("should validate and normalize LCD configuration with invalid height", () => {
-      const mockWorkspaceConfig = vscode.workspace
-        .getConfiguration as jest.Mock;
+      const mockWorkspaceConfig = vscode.workspace.getConfiguration as jest.Mock;
       mockWorkspaceConfig.mockImplementation((section: string) => {
         if (section === "tonx86.lcd") {
           return {
@@ -1025,9 +925,7 @@ describe("TonX86 Extension", () => {
 
       activate(mockContext);
 
-      const providerCall = (
-        vscode.window.registerWebviewViewProvider as jest.Mock
-      ).mock.calls[0];
+      const providerCall = (vscode.window.registerWebviewViewProvider as jest.Mock).mock.calls[0];
       const provider = providerCall[1];
 
       const config = provider.getLCDConfig();
@@ -1035,8 +933,7 @@ describe("TonX86 Extension", () => {
     });
 
     it("should validate and normalize LCD configuration with invalid pixelSize", () => {
-      const mockWorkspaceConfig = vscode.workspace
-        .getConfiguration as jest.Mock;
+      const mockWorkspaceConfig = vscode.workspace.getConfiguration as jest.Mock;
       mockWorkspaceConfig.mockImplementation((section: string) => {
         if (section === "tonx86.lcd") {
           return {
@@ -1055,9 +952,7 @@ describe("TonX86 Extension", () => {
 
       activate(mockContext);
 
-      const providerCall = (
-        vscode.window.registerWebviewViewProvider as jest.Mock
-      ).mock.calls[0];
+      const providerCall = (vscode.window.registerWebviewViewProvider as jest.Mock).mock.calls[0];
       const provider = providerCall[1];
 
       const config = provider.getLCDConfig();
@@ -1065,8 +960,7 @@ describe("TonX86 Extension", () => {
     });
 
     it("should validate and normalize LCD configuration with non-integer width", () => {
-      const mockWorkspaceConfig = vscode.workspace
-        .getConfiguration as jest.Mock;
+      const mockWorkspaceConfig = vscode.workspace.getConfiguration as jest.Mock;
       mockWorkspaceConfig.mockImplementation((section: string) => {
         if (section === "tonx86.lcd") {
           return {
@@ -1085,9 +979,7 @@ describe("TonX86 Extension", () => {
 
       activate(mockContext);
 
-      const providerCall = (
-        vscode.window.registerWebviewViewProvider as jest.Mock
-      ).mock.calls[0];
+      const providerCall = (vscode.window.registerWebviewViewProvider as jest.Mock).mock.calls[0];
       const provider = providerCall[1];
 
       const config = provider.getLCDConfig();
@@ -1095,8 +987,7 @@ describe("TonX86 Extension", () => {
     });
 
     it("should validate and normalize LCD configuration with non-integer pixelSize", () => {
-      const mockWorkspaceConfig = vscode.workspace
-        .getConfiguration as jest.Mock;
+      const mockWorkspaceConfig = vscode.workspace.getConfiguration as jest.Mock;
       mockWorkspaceConfig.mockImplementation((section: string) => {
         if (section === "tonx86.lcd") {
           return {
@@ -1115,9 +1006,7 @@ describe("TonX86 Extension", () => {
 
       activate(mockContext);
 
-      const providerCall = (
-        vscode.window.registerWebviewViewProvider as jest.Mock
-      ).mock.calls[0];
+      const providerCall = (vscode.window.registerWebviewViewProvider as jest.Mock).mock.calls[0];
       const provider = providerCall[1];
 
       const config = provider.getLCDConfig();
@@ -1129,14 +1018,11 @@ describe("TonX86 Extension", () => {
     it("should handle debug session start", async () => {
       activate(mockContext);
 
-      const startHandler = (vscode.debug.onDidStartDebugSession as jest.Mock)
-        .mock.calls[0][0];
+      const startHandler = (vscode.debug.onDidStartDebugSession as jest.Mock).mock.calls[0][0];
 
       const mockSession = {
         type: "tonx86",
-        customRequest: jest.fn(() =>
-          Promise.resolve({ pixels: [], memoryA: [], memoryB: [] }),
-        ),
+        customRequest: jest.fn(() => Promise.resolve({ pixels: [], memoryA: [], memoryB: [] })),
       };
 
       startHandler(mockSession);
@@ -1154,17 +1040,13 @@ describe("TonX86 Extension", () => {
     it("should handle debug session terminate", async () => {
       activate(mockContext);
 
-      const startHandler = (vscode.debug.onDidStartDebugSession as jest.Mock)
-        .mock.calls[0][0];
-      const terminateHandler = (
-        vscode.debug.onDidTerminateDebugSession as jest.Mock
-      ).mock.calls[0][0];
+      const startHandler = (vscode.debug.onDidStartDebugSession as jest.Mock).mock.calls[0][0];
+      const terminateHandler = (vscode.debug.onDidTerminateDebugSession as jest.Mock).mock
+        .calls[0][0];
 
       const mockSession = {
         type: "tonx86",
-        customRequest: jest.fn(() =>
-          Promise.resolve({ pixels: [], memoryA: [], memoryB: [] }),
-        ),
+        customRequest: jest.fn(() => Promise.resolve({ pixels: [], memoryA: [], memoryB: [] })),
       };
 
       // Start session to create interval
@@ -1185,8 +1067,7 @@ describe("TonX86 Extension", () => {
     it("should ignore non-tonx86 debug sessions", () => {
       activate(mockContext);
 
-      const startHandler = (vscode.debug.onDidStartDebugSession as jest.Mock)
-        .mock.calls[0][0];
+      const startHandler = (vscode.debug.onDidStartDebugSession as jest.Mock).mock.calls[0][0];
 
       const mockSession = {
         type: "node",
@@ -1201,9 +1082,8 @@ describe("TonX86 Extension", () => {
     it("should ignore non-tonx86 debug session termination", () => {
       activate(mockContext);
 
-      const terminateHandler = (
-        vscode.debug.onDidTerminateDebugSession as jest.Mock
-      ).mock.calls[0][0];
+      const terminateHandler = (vscode.debug.onDidTerminateDebugSession as jest.Mock).mock
+        .calls[0][0];
 
       const mockSession = {
         type: "node",
@@ -1216,9 +1096,8 @@ describe("TonX86 Extension", () => {
     it("should handle terminate when no interval is active", () => {
       activate(mockContext);
 
-      const terminateHandler = (
-        vscode.debug.onDidTerminateDebugSession as jest.Mock
-      ).mock.calls[0][0];
+      const terminateHandler = (vscode.debug.onDidTerminateDebugSession as jest.Mock).mock
+        .calls[0][0];
 
       // Terminate without starting, so no interval exists
       const mockSession = {
@@ -1232,9 +1111,8 @@ describe("TonX86 Extension", () => {
     it("should handle debug adapter output events", () => {
       activate(mockContext);
 
-      const trackerFactory = (
-        vscode.debug.registerDebugAdapterTrackerFactory as jest.Mock
-      ).mock.calls[0][1];
+      const trackerFactory = (vscode.debug.registerDebugAdapterTrackerFactory as jest.Mock).mock
+        .calls[0][1];
 
       const mockSession = {
         type: "tonx86",
@@ -1261,9 +1139,8 @@ describe("TonX86 Extension", () => {
     it("should ignore non-output events from debug adapter", () => {
       activate(mockContext);
 
-      const trackerFactory = (
-        vscode.debug.registerDebugAdapterTrackerFactory as jest.Mock
-      ).mock.calls[0][1];
+      const trackerFactory = (vscode.debug.registerDebugAdapterTrackerFactory as jest.Mock).mock
+        .calls[0][1];
 
       const mockSession = {
         type: "tonx86",
@@ -1285,9 +1162,8 @@ describe("TonX86 Extension", () => {
     it("should return undefined tracker for non-tonx86 sessions", () => {
       activate(mockContext);
 
-      const trackerFactory = (
-        vscode.debug.registerDebugAdapterTrackerFactory as jest.Mock
-      ).mock.calls[0][1];
+      const trackerFactory = (vscode.debug.registerDebugAdapterTrackerFactory as jest.Mock).mock
+        .calls[0][1];
 
       const mockSession = {
         type: "node",
@@ -1301,9 +1177,8 @@ describe("TonX86 Extension", () => {
     it("should handle stderr output from debug adapter", () => {
       activate(mockContext);
 
-      const trackerFactory = (
-        vscode.debug.registerDebugAdapterTrackerFactory as jest.Mock
-      ).mock.calls[0][1];
+      const trackerFactory = (vscode.debug.registerDebugAdapterTrackerFactory as jest.Mock).mock
+        .calls[0][1];
 
       const mockSession = {
         type: "tonx86",
@@ -1328,9 +1203,8 @@ describe("TonX86 Extension", () => {
     it("should ignore output events with no body output", () => {
       activate(mockContext);
 
-      const trackerFactory = (
-        vscode.debug.registerDebugAdapterTrackerFactory as jest.Mock
-      ).mock.calls[0][1];
+      const trackerFactory = (vscode.debug.registerDebugAdapterTrackerFactory as jest.Mock).mock
+        .calls[0][1];
 
       const mockSession = { type: "tonx86" };
       const tracker = trackerFactory.createDebugAdapterTracker(mockSession);
@@ -1361,9 +1235,8 @@ describe("TonX86 Extension", () => {
     it("should ignore output events with non-stdout/stderr category", () => {
       activate(mockContext);
 
-      const trackerFactory = (
-        vscode.debug.registerDebugAdapterTrackerFactory as jest.Mock
-      ).mock.calls[0][1];
+      const trackerFactory = (vscode.debug.registerDebugAdapterTrackerFactory as jest.Mock).mock
+        .calls[0][1];
 
       const mockSession = { type: "tonx86" };
       const tracker = trackerFactory.createDebugAdapterTracker(mockSession);
@@ -1385,14 +1258,11 @@ describe("TonX86 Extension", () => {
     it("should handle LCD configuration changes", () => {
       activate(mockContext);
 
-      const configChangeHandler = (
-        vscode.workspace.onDidChangeConfiguration as jest.Mock
-      ).mock.calls[0][0];
+      const configChangeHandler = (vscode.workspace.onDidChangeConfiguration as jest.Mock).mock
+        .calls[0][0];
 
       const mockEvent = {
-        affectsConfiguration: jest.fn(
-          (section: string) => section === "tonx86.lcd",
-        ),
+        affectsConfiguration: jest.fn((section: string) => section === "tonx86.lcd"),
       };
 
       configChangeHandler(mockEvent);
@@ -1405,9 +1275,8 @@ describe("TonX86 Extension", () => {
     it("should ignore non-LCD configuration changes", () => {
       activate(mockContext);
 
-      const configChangeHandler = (
-        vscode.workspace.onDidChangeConfiguration as jest.Mock
-      ).mock.calls[0][0];
+      const configChangeHandler = (vscode.workspace.onDidChangeConfiguration as jest.Mock).mock
+        .calls[0][0];
 
       const mockEvent = {
         affectsConfiguration: jest.fn(() => false),
@@ -1425,22 +1294,17 @@ describe("TonX86 Extension", () => {
       activate(mockContext);
 
       // Start a debug session
-      const startHandler = (vscode.debug.onDidStartDebugSession as jest.Mock)
-        .mock.calls[0][0];
+      const startHandler = (vscode.debug.onDidStartDebugSession as jest.Mock).mock.calls[0][0];
 
       const mockSession = {
         type: "tonx86",
-        customRequest: jest.fn(() =>
-          Promise.resolve({ pixels: [], memoryA: [], memoryB: [] }),
-        ),
+        customRequest: jest.fn(() => Promise.resolve({ pixels: [], memoryA: [], memoryB: [] })),
       };
 
       startHandler(mockSession);
 
       // Get LCD provider
-      const providerCall = (
-        vscode.window.registerWebviewViewProvider as jest.Mock
-      ).mock.calls[0];
+      const providerCall = (vscode.window.registerWebviewViewProvider as jest.Mock).mock.calls[0];
       const provider = providerCall[1];
 
       // Manually call the keyboard handler that was set
@@ -1468,14 +1332,11 @@ describe("TonX86 Extension", () => {
       activate(mockContext);
 
       // Ensure no debug session is active by calling terminate handler
-      const terminateHandler = (
-        vscode.debug.onDidTerminateDebugSession as jest.Mock
-      ).mock.calls[0][0];
+      const terminateHandler = (vscode.debug.onDidTerminateDebugSession as jest.Mock).mock
+        .calls[0][0];
       terminateHandler({ type: "tonx86" });
 
-      const providerCall = (
-        vscode.window.registerWebviewViewProvider as jest.Mock
-      ).mock.calls[0];
+      const providerCall = (vscode.window.registerWebviewViewProvider as jest.Mock).mock.calls[0];
       const provider = providerCall[1];
 
       const mockWebviewView: any = {
@@ -1493,16 +1354,13 @@ describe("TonX86 Extension", () => {
       provider.resolveWebviewView(mockWebviewView);
 
       // Should log that keyboard event is ignored
-      expect(console.log).toHaveBeenCalledWith(
-        expect.stringContaining("Keyboard event ignored"),
-      );
+      expect(console.log).toHaveBeenCalledWith(expect.stringContaining("Keyboard event ignored"));
     });
 
     it("should send keyboard events during active debug session", async () => {
       activate(mockContext);
 
-      const startHandler = (vscode.debug.onDidStartDebugSession as jest.Mock)
-        .mock.calls[0][0];
+      const startHandler = (vscode.debug.onDidStartDebugSession as jest.Mock).mock.calls[0][0];
 
       const mockSession = {
         type: "tonx86",
@@ -1513,9 +1371,7 @@ describe("TonX86 Extension", () => {
       startHandler(mockSession);
 
       // Get LCD provider and trigger keyboard event
-      const providerCall = (
-        vscode.window.registerWebviewViewProvider as jest.Mock
-      ).mock.calls[0];
+      const providerCall = (vscode.window.registerWebviewViewProvider as jest.Mock).mock.calls[0];
       const provider = providerCall[1];
 
       let messageHandler: any;
@@ -1553,14 +1409,11 @@ describe("TonX86 Extension", () => {
     it("should handle getLCDState request failure gracefully", async () => {
       activate(mockContext);
 
-      const startHandler = (vscode.debug.onDidStartDebugSession as jest.Mock)
-        .mock.calls[0][0];
+      const startHandler = (vscode.debug.onDidStartDebugSession as jest.Mock).mock.calls[0][0];
 
       const mockSession = {
         type: "tonx86",
-        customRequest: jest.fn(() =>
-          Promise.reject(new Error("Request failed")),
-        ),
+        customRequest: jest.fn(() => Promise.reject(new Error("Request failed"))),
       };
 
       startHandler(mockSession);
@@ -1574,8 +1427,7 @@ describe("TonX86 Extension", () => {
     it("should handle getLCDState with response but no pixels", async () => {
       activate(mockContext);
 
-      const startHandler = (vscode.debug.onDidStartDebugSession as jest.Mock)
-        .mock.calls[0][0];
+      const startHandler = (vscode.debug.onDidStartDebugSession as jest.Mock).mock.calls[0][0];
 
       const mockSession = {
         type: "tonx86",
@@ -1599,8 +1451,7 @@ describe("TonX86 Extension", () => {
     it("should handle getLCDState with null response", async () => {
       activate(mockContext);
 
-      const startHandler = (vscode.debug.onDidStartDebugSession as jest.Mock)
-        .mock.calls[0][0];
+      const startHandler = (vscode.debug.onDidStartDebugSession as jest.Mock).mock.calls[0][0];
 
       const mockSession = {
         type: "tonx86",
@@ -1624,8 +1475,7 @@ describe("TonX86 Extension", () => {
     it("should handle getMemoryState request failure gracefully", async () => {
       activate(mockContext);
 
-      const startHandler = (vscode.debug.onDidStartDebugSession as jest.Mock)
-        .mock.calls[0][0];
+      const startHandler = (vscode.debug.onDidStartDebugSession as jest.Mock).mock.calls[0][0];
 
       const mockSession = {
         type: "tonx86",
@@ -1648,8 +1498,7 @@ describe("TonX86 Extension", () => {
     it("should handle keyboard event request failure gracefully", async () => {
       activate(mockContext);
 
-      const startHandler = (vscode.debug.onDidStartDebugSession as jest.Mock)
-        .mock.calls[0][0];
+      const startHandler = (vscode.debug.onDidStartDebugSession as jest.Mock).mock.calls[0][0];
 
       const mockSession = {
         type: "tonx86",
@@ -1663,9 +1512,7 @@ describe("TonX86 Extension", () => {
 
       startHandler(mockSession);
 
-      const providerCall = (
-        vscode.window.registerWebviewViewProvider as jest.Mock
-      ).mock.calls[0];
+      const providerCall = (vscode.window.registerWebviewViewProvider as jest.Mock).mock.calls[0];
       const provider = providerCall[1];
 
       const mockWebviewView = {
@@ -1693,8 +1540,7 @@ describe("TonX86 Extension", () => {
     it("should handle getMemoryState with partial response (missing memoryB)", async () => {
       activate(mockContext);
 
-      const startHandler = (vscode.debug.onDidStartDebugSession as jest.Mock)
-        .mock.calls[0][0];
+      const startHandler = (vscode.debug.onDidStartDebugSession as jest.Mock).mock.calls[0][0];
 
       const mockSession = {
         type: "tonx86",
@@ -1721,8 +1567,7 @@ describe("TonX86 Extension", () => {
     it("should handle getMemoryState with null response", async () => {
       activate(mockContext);
 
-      const startHandler = (vscode.debug.onDidStartDebugSession as jest.Mock)
-        .mock.calls[0][0];
+      const startHandler = (vscode.debug.onDidStartDebugSession as jest.Mock).mock.calls[0][0];
 
       const mockSession = {
         type: "tonx86",
@@ -1749,8 +1594,7 @@ describe("TonX86 Extension", () => {
     it("should handle getMemoryState with empty response", async () => {
       activate(mockContext);
 
-      const startHandler = (vscode.debug.onDidStartDebugSession as jest.Mock)
-        .mock.calls[0][0];
+      const startHandler = (vscode.debug.onDidStartDebugSession as jest.Mock).mock.calls[0][0];
 
       const mockSession = {
         type: "tonx86",
@@ -1789,9 +1633,7 @@ describe("TonX86 Extension - Deactivate without client", () => {
       const result = deactivate();
 
       expect(result).toBeUndefined();
-      expect(consoleSpy).toHaveBeenCalledWith(
-        "TonX86 extension is now deactivated",
-      );
+      expect(consoleSpy).toHaveBeenCalledWith("TonX86 extension is now deactivated");
 
       consoleSpy.mockRestore();
     });

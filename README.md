@@ -17,7 +17,6 @@
 
 ## ⭐ Features
 
-
 - **Assembly Debugging** - Full DAP support with breakpoints, stepping, pause/continue
 - **CPU Simulator** - 8 general-purpose 32-bit registers with flags (Z, C, O, S)
 - **Memory-Mapped I/O** - LCD display (0xF000-0xFFFF, up to 64x64) and keyboard input (0x10100-0x10102)
@@ -31,16 +30,19 @@
 ## 🚀 Quick Start
 
 ### Install (1 minute)
+
 1. Open VS Code Extensions (Ctrl+Shift+X / Cmd+Shift+X)
 2. Search "TonX86"
 3. Click **Install**
 
 ### Run Your First Program (2 minutes)
+
 ```bash
 # Create a simple file: hello.asm
 MOV EAX, 42
 ADD EAX, 8
 ```
+
 Open and press **F5** to debug! Watch registers and memory update in real-time.
 
 👉 **[See Examples](examples/)** • 📖 **[Tutorials](#documentation)** • 🎯 **[Interactive Snake Game](examples/21-snake.asm)**
@@ -54,6 +56,7 @@ Extension (UI/LCD/Keyboard) ←→ Debug Adapter (DAP) ←→ Simulator Core
 ```
 
 **Packages:**
+
 - `extension/` - VS Code UI, LCD webview, keyboard capture
 - `debug-adapter/` - DAP server, execution control, breakpoints
 - `language-server/` - LSP for syntax support
@@ -65,6 +68,7 @@ Extension (UI/LCD/Keyboard) ←→ Debug Adapter (DAP) ←→ Simulator Core
 We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ### Quick Development Setup
+
 ```bash
 git clone https://github.com/Toniboy1/TonX86.git
 cd TonX86
@@ -88,6 +92,7 @@ npm run check          # lint → build → test → test:examples
 ```
 
 If `npm run check` fails with `eslint: command not found`:
+
 ```bash
 # Re-install to ensure all dev deps are hoisted
 rm -rf node_modules package-lock.json
@@ -101,36 +106,38 @@ npm run check
 
 ### Settings
 
-| Setting | Default | Description |
-|---------|---------|-------------|
-| **LCD Display** | | |
-| `tonx86.lcd.enabled` | `true` | Enable LCD display |
-| `tonx86.lcd.width` | `16` | LCD width (2-256 pixels) |
-| `tonx86.lcd.height` | `16` | LCD height (2-256 pixels) |
-| `tonx86.lcd.pixelSize` | `5` | Pixel size in pixels (1-50) |
-| **Keyboard** | | |
-| `tonx86.keyboard.enabled` | `true` | Enable keyboard input capture |
-| `tonx86.keyboard.memoryAddress` | `0x10100` | Keyboard buffer memory address |
-| **CPU** | | |
-| `tonx86.cpu.speed` | `100` | CPU speed percentage (1-200%, 100=normal) |
-| **Debugging** | | |
-| `tonx86.debug.stopOnEntry` | `true` | Pause at first instruction when debugging |
-| `tonx86.debug.enableLogging` | `false` | Enable debug adapter logging |
-| **Language** | | |
-| `tonx86.assemblyLanguage.diagnostics.undefinedLabels` | `true` | Show warnings for undefined labels |
-| `tonx86.assemblyLanguage.diagnostics.callingConventions` | `false` | Enable calling convention checks |
-| **Compatibility** | | |
-| `tonx86.compatibility.mode` | `"educational"` | Compatibility mode: "educational" or "strict-x86" |
+| Setting                                                  | Default         | Description                                       |
+| -------------------------------------------------------- | --------------- | ------------------------------------------------- |
+| **LCD Display**                                          |                 |                                                   |
+| `tonx86.lcd.enabled`                                     | `true`          | Enable LCD display                                |
+| `tonx86.lcd.width`                                       | `16`            | LCD width (2-256 pixels)                          |
+| `tonx86.lcd.height`                                      | `16`            | LCD height (2-256 pixels)                         |
+| `tonx86.lcd.pixelSize`                                   | `5`             | Pixel size in pixels (1-50)                       |
+| **Keyboard**                                             |                 |                                                   |
+| `tonx86.keyboard.enabled`                                | `true`          | Enable keyboard input capture                     |
+| `tonx86.keyboard.memoryAddress`                          | `0x10100`       | Keyboard buffer memory address                    |
+| **CPU**                                                  |                 |                                                   |
+| `tonx86.cpu.speed`                                       | `100`           | CPU speed percentage (1-200%, 100=normal)         |
+| **Debugging**                                            |                 |                                                   |
+| `tonx86.debug.stopOnEntry`                               | `true`          | Pause at first instruction when debugging         |
+| `tonx86.debug.enableLogging`                             | `false`         | Enable debug adapter logging                      |
+| **Language**                                             |                 |                                                   |
+| `tonx86.assemblyLanguage.diagnostics.undefinedLabels`    | `true`          | Show warnings for undefined labels                |
+| `tonx86.assemblyLanguage.diagnostics.callingConventions` | `false`         | Enable calling convention checks                  |
+| **Compatibility**                                        |                 |                                                   |
+| `tonx86.compatibility.mode`                              | `"educational"` | Compatibility mode: "educational" or "strict-x86" |
 
 ### Compatibility Modes
 
 **Educational Mode** (default):
+
 - Simplified instruction behavior for learning
 - Flexible memory access (memory-to-memory operations allowed)
 - Memory-mapped I/O support
 - Ideal for beginners learning assembly concepts
 
 **Strict x86 Mode**:
+
 - Enforces realistic x86 constraints
 - No memory-to-memory MOV instructions (use register as intermediate)
 - More realistic flag behavior (planned)
@@ -152,6 +159,7 @@ Students should start in **educational mode** to learn core concepts, then switc
 ```
 
 **Note**: All settings are configured via **VS Code Settings UI**:
+
 - Go to **File > Preferences > Settings** (or **Code > Settings** on macOS)
 - Search for "tonx86" to see all available options
 - All settings (CPU speed, logging, LCD dimensions, stop-on-entry, etc.) are applied automatically on each debug session
@@ -160,6 +168,7 @@ Students should start in **educational mode** to learn core concepts, then switc
 ## Instruction Set
 
 ### Registers
+
 `EAX` `ECX` `EDX` `EBX` `ESP` `EBP` `ESI` `EDI`
 
 8-bit aliases: `AL`/`AH`, `BL`/`BH`, `CL`/`CH`, `DL`/`DH` (low/high bytes of EAX, EBX, ECX, EDX)
@@ -172,69 +181,69 @@ Students should start in **educational mode** to learn core concepts, then switc
 
 ### Instructions
 
-| Mnemonic | Operands | Flags | Description |
-|----------|----------|-------|-------------|
-| `MOV` | reg/mem, reg/imm | - | Move data |
-| `XCHG` | reg, reg | - | Exchange values |
-| `LEA` | reg, imm | - | Load effective address |
-| `MOVZX` | reg, reg/imm | - | Move with zero extend |
-| `MOVSX` | reg, reg/imm | - | Move with sign extend |
-| `ADD` | reg, reg/imm/mem | ZCOS | Add |
-| `SUB` | reg, reg/imm/mem | ZCOS | Subtract |
-| `INC` | reg | ZOS | Increment (CF not modified) |
-| `DEC` | reg | ZOS | Decrement (CF not modified) |
-| `NEG` | reg | ZCOS | Two's complement negation |
-| `MUL` | reg/imm | ZS | Unsigned multiply |
-| `IMUL` | reg/imm | ZS | Signed multiply |
-| `DIV` | reg/imm | ZS | Unsigned divide |
-| `IDIV` | reg/imm | ZS | Signed divide |
-| `MOD` | reg, reg/imm | ZS | Unsigned modulo |
-| `CMP` | reg, reg/imm | ZCOS | Compare (SUB without storing) |
-| `AND` | reg, reg/imm | ZS | Bitwise AND (CF/OF cleared) |
-| `OR` | reg, reg/imm | ZS | Bitwise OR (CF/OF cleared) |
-| `XOR` | reg, reg/imm | ZS | Bitwise XOR (CF/OF cleared) |
-| `NOT` | reg | - | Bitwise NOT (one's complement) |
-| `TEST` | reg, reg/imm | ZS | Logical AND (flags only) |
-| `SHL` | reg, imm/reg | ZS | Shift left |
-| `SHR` | reg, imm/reg | ZS | Shift right (logical) |
-| `SAR` | reg, imm/reg | ZS | Shift arithmetic right |
-| `ROL` | reg, imm/reg | ZS | Rotate left |
-| `ROR` | reg, imm/reg | ZS | Rotate right |
-| `RCL` | reg, imm/reg | CO | Rotate left through carry |
-| `RCR` | reg, imm/reg | CO | Rotate right through carry |
-| `NOP` | - | - | No operation |
-| `JMP` | label | - | Unconditional jump |
-| `JE/JZ` | label | - | Jump if zero |
-| `JNE/JNZ` | label | - | Jump if not zero |
-| `JG/JGE` | label | - | Jump if greater / greater or equal |
-| `JL/JLE` | label | - | Jump if less / less or equal |
-| `JS/JNS` | label | - | Jump if sign / not sign |
-| `JA/JAE` | label | - | Jump if above / above or equal |
-| `JB/JBE` | label | - | Jump if below / below or equal |
-| `LOOP` | label | - | Decrement ECX, jump if ECX ≠ 0 |
-| `LOOPE/LOOPZ` | label | - | Loop while equal (ECX ≠ 0 and ZF=1) |
-| `LOOPNE/LOOPNZ` | label | - | Loop while not equal (ECX ≠ 0 and ZF=0) |
-| `CMOVxx` | reg, reg/imm | - | Conditional move (E/NE/L/LE/G/GE/A/AE/B/BE/S/NS) |
-| `CALL` | label | - | Push return address, jump to label |
-| `RET` | - | - | Pop return address, jump to it |
-| `PUSH` | reg/imm/mem | - | Push register/immediate/memory onto stack |
-| `POP` | reg | - | Pop from stack into register |
-| `LAHF` | - | - | Load flags (SF, ZF, CF) into AH |
-| `SAHF` | - | ZCS | Store AH into flags |
-| `XADD` | reg, reg | ZCOS | Exchange and add |
-| `BSF` | reg, reg/imm | Z | Bit scan forward |
-| `BSR` | reg, reg/imm | Z | Bit scan reverse |
-| `BSWAP` | reg | - | Byte swap (endianness conversion) |
-| `LODSB/LODS` | - | - | Load byte from [ESI] into AL, ESI++ |
-| `STOSB/STOS` | - | - | Store AL to [EDI], EDI++ |
-| `MOVSB/MOVS` | - | - | Copy byte from [ESI] to [EDI], both++ |
-| `SCASB/SCAS` | - | ZCOS | Compare AL with [EDI], EDI++ |
-| `CMPSB/CMPS` | - | ZCOS | Compare [ESI] with [EDI], both++ |
-| `INT` | imm8 | - | Software interrupt (syscall) |
-| `INT3` | - | - | Breakpoint interrupt |
-| `IRET` | - | All | Return from interrupt |
-| `RAND` | reg, reg/imm | ZS | Random number generation |
-| `HLT` | - | - | Halt execution |
+| Mnemonic        | Operands         | Flags | Description                                      |
+| --------------- | ---------------- | ----- | ------------------------------------------------ |
+| `MOV`           | reg/mem, reg/imm | -     | Move data                                        |
+| `XCHG`          | reg, reg         | -     | Exchange values                                  |
+| `LEA`           | reg, imm         | -     | Load effective address                           |
+| `MOVZX`         | reg, reg/imm     | -     | Move with zero extend                            |
+| `MOVSX`         | reg, reg/imm     | -     | Move with sign extend                            |
+| `ADD`           | reg, reg/imm/mem | ZCOS  | Add                                              |
+| `SUB`           | reg, reg/imm/mem | ZCOS  | Subtract                                         |
+| `INC`           | reg              | ZOS   | Increment (CF not modified)                      |
+| `DEC`           | reg              | ZOS   | Decrement (CF not modified)                      |
+| `NEG`           | reg              | ZCOS  | Two's complement negation                        |
+| `MUL`           | reg/imm          | ZS    | Unsigned multiply                                |
+| `IMUL`          | reg/imm          | ZS    | Signed multiply                                  |
+| `DIV`           | reg/imm          | ZS    | Unsigned divide                                  |
+| `IDIV`          | reg/imm          | ZS    | Signed divide                                    |
+| `MOD`           | reg, reg/imm     | ZS    | Unsigned modulo                                  |
+| `CMP`           | reg, reg/imm     | ZCOS  | Compare (SUB without storing)                    |
+| `AND`           | reg, reg/imm     | ZS    | Bitwise AND (CF/OF cleared)                      |
+| `OR`            | reg, reg/imm     | ZS    | Bitwise OR (CF/OF cleared)                       |
+| `XOR`           | reg, reg/imm     | ZS    | Bitwise XOR (CF/OF cleared)                      |
+| `NOT`           | reg              | -     | Bitwise NOT (one's complement)                   |
+| `TEST`          | reg, reg/imm     | ZS    | Logical AND (flags only)                         |
+| `SHL`           | reg, imm/reg     | ZS    | Shift left                                       |
+| `SHR`           | reg, imm/reg     | ZS    | Shift right (logical)                            |
+| `SAR`           | reg, imm/reg     | ZS    | Shift arithmetic right                           |
+| `ROL`           | reg, imm/reg     | ZS    | Rotate left                                      |
+| `ROR`           | reg, imm/reg     | ZS    | Rotate right                                     |
+| `RCL`           | reg, imm/reg     | CO    | Rotate left through carry                        |
+| `RCR`           | reg, imm/reg     | CO    | Rotate right through carry                       |
+| `NOP`           | -                | -     | No operation                                     |
+| `JMP`           | label            | -     | Unconditional jump                               |
+| `JE/JZ`         | label            | -     | Jump if zero                                     |
+| `JNE/JNZ`       | label            | -     | Jump if not zero                                 |
+| `JG/JGE`        | label            | -     | Jump if greater / greater or equal               |
+| `JL/JLE`        | label            | -     | Jump if less / less or equal                     |
+| `JS/JNS`        | label            | -     | Jump if sign / not sign                          |
+| `JA/JAE`        | label            | -     | Jump if above / above or equal                   |
+| `JB/JBE`        | label            | -     | Jump if below / below or equal                   |
+| `LOOP`          | label            | -     | Decrement ECX, jump if ECX ≠ 0                   |
+| `LOOPE/LOOPZ`   | label            | -     | Loop while equal (ECX ≠ 0 and ZF=1)              |
+| `LOOPNE/LOOPNZ` | label            | -     | Loop while not equal (ECX ≠ 0 and ZF=0)          |
+| `CMOVxx`        | reg, reg/imm     | -     | Conditional move (E/NE/L/LE/G/GE/A/AE/B/BE/S/NS) |
+| `CALL`          | label            | -     | Push return address, jump to label               |
+| `RET`           | -                | -     | Pop return address, jump to it                   |
+| `PUSH`          | reg/imm/mem      | -     | Push register/immediate/memory onto stack        |
+| `POP`           | reg              | -     | Pop from stack into register                     |
+| `LAHF`          | -                | -     | Load flags (SF, ZF, CF) into AH                  |
+| `SAHF`          | -                | ZCS   | Store AH into flags                              |
+| `XADD`          | reg, reg         | ZCOS  | Exchange and add                                 |
+| `BSF`           | reg, reg/imm     | Z     | Bit scan forward                                 |
+| `BSR`           | reg, reg/imm     | Z     | Bit scan reverse                                 |
+| `BSWAP`         | reg              | -     | Byte swap (endianness conversion)                |
+| `LODSB/LODS`    | -                | -     | Load byte from [ESI] into AL, ESI++              |
+| `STOSB/STOS`    | -                | -     | Store AL to [EDI], EDI++                         |
+| `MOVSB/MOVS`    | -                | -     | Copy byte from [ESI] to [EDI], both++            |
+| `SCASB/SCAS`    | -                | ZCOS  | Compare AL with [EDI], EDI++                     |
+| `CMPSB/CMPS`    | -                | ZCOS  | Compare [ESI] with [EDI], both++                 |
+| `INT`           | imm8             | -     | Software interrupt (syscall)                     |
+| `INT3`          | -                | -     | Breakpoint interrupt                             |
+| `IRET`          | -                | All   | Return from interrupt                            |
+| `RAND`          | reg, reg/imm     | ZS    | Random number generation                         |
+| `HLT`           | -                | -     | Halt execution                                   |
 
 ### Stack Operations
 
@@ -250,12 +259,14 @@ Students should start in **educational mode** to learn core concepts, then switc
 ### Memory Addressing
 
 Supports indirect memory access with register-based addressing:
+
 - `[REG]` - Direct memory access via register (e.g., `MOV EAX, [ESP]`)
 - `[REG+offset]` - Register with positive offset (e.g., `MOV EAX, [EBP+8]`)
 - `[REG-offset]` - Register with negative offset (e.g., `MOV EAX, [EBP-4]`)
 - `[REG+REG]` - Register with register offset (e.g., `MOV EAX, [EBX+ECX]`)
 
 Examples:
+
 ```asm
 MOV EAX, [EBP+8]      ; Load from stack (parameter access)
 MOV [ESP], EBX        ; Store to stack
@@ -266,11 +277,13 @@ ADD EAX, [ESI+4]      ; Add memory value to register
 ### Calling Conventions
 
 TonX86 supports standard x86 calling conventions with LSP diagnostics:
+
 - **cdecl** - C declaration (caller cleans stack, parameters right-to-left)
 - **stdcall** - Standard call (callee cleans stack, Windows API style)
 - **fastcall** - Fast call (first 2 params in registers ECX/EDX)
 
 The language server provides real-time diagnostics for:
+
 - Missing function prologues/epilogues
 - Unbalanced stack operations
 - Callee-saved register violations
@@ -308,6 +321,7 @@ TonX86 supports assembler directives for organizing code and data sections, defi
 #### Examples
 
 **Basic Data Section:**
+
 ```asm
 .data
 message: DB "Hello, World!", 0x00
@@ -316,6 +330,7 @@ buffer: DD 0x12345678
 ```
 
 **Using EQU Constants:**
+
 ```asm
 SCREEN_WIDTH EQU 64
 LCD_BASE EQU 0xF000
@@ -328,6 +343,7 @@ MOV EAX, LCD_BASE
 ```
 
 **Complete Program with Directives:**
+
 ```asm
 ; Constants
 LCD_BASE EQU 0xF000
@@ -357,16 +373,19 @@ display_text:
 ```
 
 **Memory Layout:**
+
 - **Code**: Starts at 0x0000 by default (configurable with ORG)
 - **Data**: Starts at 0x2000 by default (configurable with ORG)
 - **Stack**: Grows downward from 0xFFFF
 - **I/O**: Memory-mapped at 0xF000-0xFFFF (LCD), 0x10100-0x10102 (Keyboard)
 
 **Label Resolution:**
+
 - **`.text` labels**: Resolved to instruction indices (for JMP, CALL)
 - **`.data` labels**: Resolved to memory addresses (for MOV, etc.)
 
 ### Flags
+
 **Z** (Zero) | **C** (Carry) | **O** (Overflow) | **S** (Sign)
 
 ### Interrupts
@@ -374,15 +393,18 @@ display_text:
 Software interrupts enable system calls and I/O operations similar to DOS/BIOS.
 
 **INT num** - Software interrupt
+
 - Executes interrupt handler for the specified number
 - Output appears in VS Code Debug Console
 
 Notes:
+
 - `AL`/`AH` are used for INT 0x10 (teletype output)
 - `DL`/`AH` are used for INT 0x21 (DOS-style output)
 - `EDX` is used for INT 0x21 AH=0x09 (string address)
 
 **Supported Interrupts:**
+
 - `INT 0x10` - Video services
   - `AH=0x0E` - Teletype output (write character in AL to console)
 - `INT 0x21` - DOS-style services
@@ -391,6 +413,7 @@ Notes:
 - `INT 0x20` - Program terminate (halts execution)
 
 **IRET** - Return from interrupt
+
 - Pops the return address from the stack
 - Pops and restores CPU flags from the stack
 - Jumps to the return address
@@ -399,15 +422,18 @@ Notes:
 ## Memory-Mapped I/O
 
 ### LCD Display (0xF000-0xF0FF)
+
 - Write pixel: `MOV 0xF000 + (y*width + x), value`
 - Example: `MOV 0xF000, 1` turns on pixel (0,0)
 
 ### Keyboard (0x10100-0x10102)
+
 - `0x10100` - Status (1=key available, 0=empty)
 - `0x10101` - Key code (read pops from queue)
 - `0x10102` - Key state (1=pressed, 0=released)
 
 **Key Codes:**
+
 - Letters: A-Z=65-90, a-z=97-122
 - Numbers: 0-9=48-57
 - Arrows: Up=128, Down=129, Left=130, Right=131
@@ -438,10 +464,10 @@ main:
     MOV EBX, 20
     PUSH EAX               ; Save EAX
     PUSH EBX               ; Save EBX
-    
+
     MOV EAX, 99            ; Modify registers
     MOV EBX, 88
-    
+
     POP EBX                ; Restore EBX (20)
     POP EAX                ; Restore EAX (10)
     HLT
@@ -455,13 +481,13 @@ main_loop:
     MOV EAX, 0x10100        ; Read keyboard status
     CMP EAX, 1             ; Key available?
     JNE main_loop          ; No - keep waiting
-    
+
     MOV EBX, 0x10101        ; Read key code (pops key)
     MOV ECX, 0x10102        ; Read key state
-    
+
     CMP ECX, 1             ; Key pressed?
     JE key_pressed
-    
+
     MOV 0xF000, 0          ; Key released - turn off pixel
     JMP main_loop
 
@@ -478,17 +504,17 @@ main:
     MOV AH, 0x0E           ; Teletype output function
     MOV AL, 'H'            ; Character 'H'
     INT 0x10               ; Video services interrupt
-    
+
     MOV AL, 'e'            ; Character 'e'
     INT 0x10
-    
+
     MOV AL, 'l'            ; Character 'l'
     INT 0x10
     INT 0x10               ; Print 'l' twice
-    
+
     MOV AL, 'o'            ; Character 'o'
     INT 0x10
-    
+
     INT 0x20               ; Terminate program
 ```
 
@@ -500,10 +526,10 @@ main:
     MOV AH, 0x02           ; Write character function
     MOV DL, 'H'            ; Character 'H'
     INT 0x21               ; DOS services interrupt
-    
+
     MOV DL, 'i'            ; Character 'i'
     INT 0x21
-    
+
     HLT                    ; Halt execution
 ```
 
@@ -520,7 +546,7 @@ main:
     MOV AH, 0x09           ; Write string function
     MOV EDX, message       ; Address of string
     INT 0x21               ; DOS services interrupt
-    
+
     HLT                    ; Halt execution
 ```
 
@@ -534,7 +560,6 @@ main:
 - **[Contributing Guide](CONTRIBUTING.md)**
 - **[Issue Tracker](https://github.com/Toniboy1/TonX86/issues)**
 - **[Discussions](https://github.com/Toniboy1/TonX86/discussions)** - Ask questions, share ideas
-
 
 ## 🛠️ Development & Testing
 
@@ -567,6 +592,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines and the full development w
 We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for full guidelines.
 
 **Quick Links:**
+
 - [Report a Bug](https://github.com/Toniboy1/TonX86/issues/new?template=bug_report.yml)
 - [Request a Feature](https://github.com/Toniboy1/TonX86/issues/new?template=feature_request.yml)
 - [Security Policy](SECURITY.md)
@@ -577,6 +603,7 @@ We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for full guidel
 MIT License - Free to use for educational and commercial purposes.
 
 **Attribution Required:** When using or distributing this software, please:
+
 - Include the original copyright notice
 - Credit the author: **Anthony Fasano (Toniboy1)**
 - Link to: https://github.com/Toniboy1/TonX86

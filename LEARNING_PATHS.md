@@ -10,12 +10,14 @@ This guide outlines structured learning paths for different skill levels and goa
 ### Week 1-2: Foundations
 
 **Topics:**
+
 - Registers and their purposes
 - Basic instructions (MOV, ADD, SUB)
 - Memory addressing
 - Flags and comparisons
 
 **Activities:**
+
 1. Read [GETTING_STARTED.md](GETTING_STARTED.md)
 2. Follow [Instruction Set Reference](packages/docs/ISA.md) for `MOV` and `ADD`
 3. Run and modify examples:
@@ -29,11 +31,13 @@ This guide outlines structured learning paths for different skill levels and goa
 ### Week 3: Control Flow
 
 **Topics:**
+
 - Labels and jumps
 - Conditional jumps (JE, JNE, JL, JG, etc.)
 - Conditionals with CMP
 
 **Activities:**
+
 1. Study [ISA.md](packages/docs/ISA.md) section on jumps
 2. Run examples:
    - `examples/02-jumps.asm` - All jump types
@@ -46,12 +50,14 @@ This guide outlines structured learning paths for different skill levels and goa
 ### Week 4: Functions & Stack
 
 **Topics:**
+
 - Stack (PUSH/POP)
 - CALL and RET instructions
 - Return values
 - Local variables
 
 **Activities:**
+
 1. Study examples:
    - `examples/03-call-ret.asm` - Simple function calls
    - `examples/04-stack.asm` - Stack operations
@@ -74,12 +80,14 @@ This guide outlines structured learning paths for different skill levels and goa
 ### Phase 1: Advanced Instructions
 
 **Topics:**
+
 - Bitwise operations (AND, OR, XOR, NOT)
 - Shift/rotate operations
 - Multiplication and division
 - String operations
 
 **Activities:**
+
 1. Study examples:
    - `examples/09-bitwise.asm` - AND, OR, XOR, NOT
    - `examples/12-shift-rotate.asm` - SHL, SHR, ROL, ROR
@@ -93,12 +101,14 @@ This guide outlines structured learning paths for different skill levels and goa
 ### Phase 2: Memory & Data Structures
 
 **Topics:**
+
 - Different addressing modes
 - Data section
 - Constants and labels
 - Arrays and structures
 
 **Activities:**
+
 1. Study examples:
    - `examples/05-memory.asm` - Memory addressing modes
    - `examples/26-data-section.asm` - Data definitions
@@ -111,12 +121,14 @@ This guide outlines structured learning paths for different skill levels and goa
 ### Phase 3: I/O and Interrupts
 
 **Topics:**
+
 - Memory-mapped I/O
 - LCD display
 - Keyboard input
 - Interrupt handling (INT)
 
 **Activities:**
+
 1. Study examples:
    - `examples/08-lcd.asm` - LCD display programming
    - `examples/14-keyboard.asm` - Keyboard input
@@ -139,12 +151,14 @@ This guide outlines structured learning paths for different skill levels and goa
 ### Phase 1: Game Development
 
 **Topics:**
+
 - Game loop structure
 - Sprite positioning
 - Collision detection
 - Game state management
 
 **Activities:**
+
 1. Study `examples/21-snake.asm`:
    - Understand game structure
    - Study collision detection
@@ -158,12 +172,14 @@ This guide outlines structured learning paths for different skill levels and goa
 ### Phase 2: Performance Optimization
 
 **Topics:**
+
 - CPU speed control
 - Efficient loops
 - Register allocation
 - Cache considerations
 
 **Activities:**
+
 1. Write algorithm implementations:
    - Bubble sort
    - Binary search
@@ -176,12 +192,14 @@ This guide outlines structured learning paths for different skill levels and goa
 ### Phase 3: Strict x86 Compliance
 
 **Topics:**
+
 - Real x86 constraints
 - Memory operand restrictions
 - Segment registers (overview)
 - Flag behavior accuracy
 
 **Activities:**
+
 1. Switch to `strict-x86` mode
 2. Port your programs to follow real x86 rules
 3. Study real x86 assembly:
@@ -210,26 +228,31 @@ This guide outlines structured learning paths for different skill levels and goa
 ### Teaching Guide
 
 **Lesson 1 (30 min): Introduction**
+
 - What is assembly? Why learn it?
 - Overview of TonX86 features
 - Quick demo: Run `examples/01-basic-instructions.asm`
 
 **Lesson 2 (45 min): Registers & Instructions**
+
 - Show register view in debugger
 - Live walkthrough of `examples/01-basic-instructions.asm`
 - Students: Modify and re-run
 
 **Lesson 3 (45 min): Control Flow**
+
 - Explain CMP, jumps
 - Step through `examples/02-jumps.asm` together
 - Students: Implement a loop exercise
 
 **Lesson 4 (1 hour): Functions & Stack**
+
 - Show CALL/RET mechanics
 - Demonstrate with `examples/03-call-ret.asm`
 - Students: Write a simple function
 
 **Lesson 5 (1 hour): All Together**
+
 - Build a small program together
 - Review memory visualization
 - Q&A
@@ -237,6 +260,7 @@ This guide outlines structured learning paths for different skill levels and goa
 ### Resources for Students
 
 Provide:
+
 - [GETTING_STARTED.md](GETTING_STARTED.md) - First reference
 - [FAQ.md](FAQ.md) - Common questions
 - [examples/](../examples/) folder - All example programs
@@ -309,21 +333,24 @@ Provide:
 ## Recommended Study Schedule
 
 ### Self-Paced Learner
+
 - Week 1: Path 1 Foundations
 - Week 2: Path 1 Control Flow + Functions
 - Week 3: Path 2 Advanced Instructions
 - Week 4+: Path 2 & 3 based on interest
 
 ### Classroom (Semester)
+
 - Weeks 1-3: Path 1 (all phases)
 - Weeks 4-7: Path 2 (Phases 1-2)
 - Weeks 8-14: Path 2 Phase 3 + projects
 - Week 15: Path 3 or student presentations
 
 ### Intensive Bootcamp (1-2 weeks)
+
 - Day 1-2: Path 1 Foundations
 - Day 3: Path 1 Control Flow + Functions
-- Day 4-5: Path 2 Phases 1-2  
+- Day 4-5: Path 2 Phases 1-2
 - Day 6-10: Path 3 + projects
 
 ---

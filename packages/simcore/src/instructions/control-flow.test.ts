@@ -437,9 +437,7 @@ describe("executeInstruction - LOOP/LOOPE/LOOPNE (via step)", () => {
     const labels = new Map<string, number>();
     sim.loadInstructions(instructions, labels);
     sim.step(); // MOV
-    expect(() => sim.step()).toThrow(
-      'LOOP target "unknown" not found in labels',
-    );
+    expect(() => sim.step()).toThrow('LOOP target "unknown" not found in labels');
   });
 
   test("LOOP/LOOPE/LOOPNE are no-ops in executeInstruction (only decrement ECX)", () => {

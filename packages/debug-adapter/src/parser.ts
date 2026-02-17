@@ -39,11 +39,7 @@ function parseValue(valueStr: string): number {
   const trimmed = valueStr.trim();
 
   // Character literal: 'A'
-  if (
-    trimmed.startsWith("'") &&
-    trimmed.endsWith("'") &&
-    trimmed.length === 3
-  ) {
+  if (trimmed.startsWith("'") && trimmed.endsWith("'") && trimmed.length === 3) {
     return trimmed.charCodeAt(1);
   }
 
@@ -181,10 +177,7 @@ export function parseAssembly(lines: string[]): ParseResult {
         let processedOperands = operandStringWithoutComment;
         constants.forEach((value, name) => {
           const regex = new RegExp(`\\b${name}\\b`, "g");
-          processedOperands = processedOperands.replace(
-            regex,
-            value.toString(),
-          );
+          processedOperands = processedOperands.replace(regex, value.toString());
         });
         const operands = processedOperands
           .split(",")

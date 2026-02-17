@@ -7,7 +7,7 @@ body:
     attributes:
       value: |
         Thanks for taking the time to report a bug! Please fill out the information below.
-  
+
   - type: textarea
     id: description
     attributes:
@@ -16,7 +16,7 @@ body:
       placeholder: Tell us what happened
     validations:
       required: true
-  
+
   - type: textarea
     id: reproduce
     attributes:
@@ -28,7 +28,7 @@ body:
         3. See error
     validations:
       required: true
-  
+
   - type: textarea
     id: expected
     attributes:
@@ -36,7 +36,7 @@ body:
       description: What you expected to happen
     validations:
       required: true
-  
+
   - type: textarea
     id: actual
     attributes:
@@ -44,14 +44,14 @@ body:
       description: What actually happened
     validations:
       required: true
-  
+
   - type: textarea
     id: assembly
     attributes:
       label: Assembly Code (if applicable)
       description: The assembly code that triggers the bug
       render: asm
-  
+
   - type: input
     id: version
     attributes:
@@ -60,7 +60,7 @@ body:
       placeholder: "0.0.1"
     validations:
       required: true
-  
+
   - type: input
     id: vscode-version
     attributes:
@@ -69,7 +69,7 @@ body:
       placeholder: "1.84.0"
     validations:
       required: true
-  
+
   - type: dropdown
     id: os
     attributes:
@@ -80,14 +80,14 @@ body:
         - Linux
     validations:
       required: true
-  
+
   - type: textarea
     id: logs
     attributes:
       label: Debug Console Output
       description: Paste any relevant output from the Debug Console
       render: shell
-  
+
   - type: textarea
     id: additional
     attributes:

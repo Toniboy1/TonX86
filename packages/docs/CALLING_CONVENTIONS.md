@@ -50,6 +50,7 @@ function_name:
 **Overview:** The default calling convention for C programs on x86.
 
 **Characteristics:**
+
 - Parameters pushed **right-to-left** onto the stack
 - **Caller** cleans up the stack after the call
 - Return value in **EAX**
@@ -57,6 +58,7 @@ function_name:
 - Callee-saved registers: EBX, ESI, EDI, EBP
 
 **Advantages:**
+
 - Supports variable argument functions (like printf)
 - Clean separation between caller and callee
 
@@ -79,16 +81,17 @@ caller:
 add:
     PUSH EBP           ; Save base pointer
     MOV EBP, ESP       ; Set up stack frame
-    
+
     MOV EAX, [EBP+8]   ; Load first parameter (a)
     ADD EAX, [EBP+12]  ; Add second parameter (b)
     ; Result is in EAX
-    
+
     POP EBP            ; Restore base pointer
     RET                ; Return (caller will clean stack)
 ```
 
 **Stack Cleanup Pattern (cdecl):**
+
 ```asm
 CALL function
 ADD ESP, N             ; N = number_of_parameters * 4
@@ -99,16 +102,19 @@ ADD ESP, N             ; N = number_of_parameters * 4
 **Overview:** Used by Windows API functions.
 
 **Characteristics:**
+
 - Parameters pushed **right-to-left** onto the stack
 - **Callee** cleans up the stack before returning
 - Return value in **EAX**
 - Same register preservation as cdecl
 
 **Advantages:**
+
 - Smaller code size (cleanup code only in callee)
 - More efficient when function is called multiple times
 
 **Disadvantages:**
+
 - Cannot support variable argument functions
 
 **Example:**
@@ -131,10 +137,10 @@ caller:
 multiply:
     PUSH EBP           ; Save base pointer
     MOV EBP, ESP       ; Set up stack frame
-    
+
     MOV EAX, [EBP+8]   ; Load first parameter (a)
     MOV ECX, [EBP+12]  ; Load second parameter (b)
-    
+
     ; Simple multiplication using repeated addition
     MOV EDX, 0         ; Initialize result
     CMP ECX, 0
@@ -145,7 +151,7 @@ multiply_loop:
     JNZ multiply_loop
 multiply_done:
     MOV EAX, EDX       ; Result in EAX
-    
+
     POP EBP            ; Restore base pointer
     RET 8              ; Return and clean 8 bytes (2 params * 4)
 ```
@@ -163,12 +169,14 @@ multiply_done:
 **Overview:** Optimized convention using registers for first arguments.
 
 **Characteristics:**
+
 - First **two** parameters passed in **ECX** and **EDX** registers
 - Additional parameters pushed **right-to-left** onto the stack
 - **Callee** cleans up the stack
 - Return value in **EAX**
 
 **Advantages:**
+
 - Faster for functions with 1-2 parameters (no memory access needed)
 - Reduced stack traffic
 
@@ -191,12 +199,12 @@ caller:
 subtract:
     PUSH EBP           ; Save base pointer
     MOV EBP, ESP       ; Set up stack frame
-    
+
     ; Parameters already in ECX and EDX
     MOV EAX, ECX       ; Load first parameter (a)
     SUB EAX, EDX       ; Subtract second parameter (b)
     ; Result is in EAX
-    
+
     POP EBP            ; Restore base pointer
     RET                ; Return
 ```
@@ -222,12 +230,12 @@ caller:
 add3:
     PUSH EBP           ; Save base pointer
     MOV EBP, ESP       ; Set up stack frame
-    
+
     MOV EAX, ECX       ; Load first parameter (a)
     ADD EAX, EDX       ; Add second parameter (b)
     ADD EAX, [EBP+8]   ; Add third parameter (c) from stack
     ; Result is in EAX
-    
+
     POP EBP            ; Restore base pointer
     RET 4              ; Return and clean 4 bytes (1 param on stack)
 ```
@@ -235,12 +243,15 @@ add3:
 ## Register Usage
 
 ### Caller-Saved Registers (Volatile)
+
 These registers may be modified by the called function:
+
 - **EAX** - Return value, scratch register
 - **ECX** - Scratch register (first param in fastcall)
 - **EDX** - Scratch register (second param in fastcall)
 
 If the caller needs these values after a function call, they must be saved before the call:
+
 ```asm
 PUSH ECX           ; Save ECX
 PUSH EDX           ; Save EDX
@@ -250,24 +261,27 @@ POP ECX            ; Restore ECX
 ```
 
 ### Callee-Saved Registers (Non-Volatile)
+
 These registers must be preserved by the called function:
+
 - **EBX** - Must be saved/restored if used
 - **ESI** - Must be saved/restored if used
 - **EDI** - Must be saved/restored if used
 - **EBP** - Must be saved/restored (stack frame)
 
 **Example of preserving registers:**
+
 ```asm
 function:
     PUSH EBP           ; Save EBP (required)
     MOV EBP, ESP
     PUSH EBX           ; Save EBX (if we use it)
     PUSH ESI           ; Save ESI (if we use it)
-    
+
     ; Function body using EBX and ESI
     MOV EBX, 10
     MOV ESI, 20
-    
+
     POP ESI            ; Restore ESI
     POP EBX            ; Restore EBX
     POP EBP            ; Restore EBP
@@ -287,12 +301,12 @@ function:
 function:
     PUSH EBP
     MOV EBP, ESP
-    
+
     MOV EAX, [EBP+8]   ; First parameter
     MOV ECX, [EBP+12]  ; Second parameter
     MOV EDX, [EBP+16]  ; Third parameter
     ; ...
-    
+
     POP EBP
     RET
 ```
@@ -304,12 +318,12 @@ function:
     PUSH EBP
     MOV EBP, ESP
     SUB ESP, 8         ; Allocate 2 local variables (8 bytes)
-    
+
     MOV [EBP-4], 10    ; First local variable
     MOV [EBP-8], 20    ; Second local variable
-    
+
     ; Function body
-    
+
     MOV ESP, EBP       ; Deallocate locals
     POP EBP
     RET
@@ -322,18 +336,18 @@ function:
 functionA:
     PUSH EBP
     MOV EBP, ESP
-    
+
     ; Save caller-saved registers if needed
     PUSH EAX
-    
+
     ; Call another function
     PUSH 5
     CALL functionB
     ADD ESP, 4         ; Clean stack (if cdecl)
-    
+
     ; Restore caller-saved registers
     POP EAX
-    
+
     POP EBP
     RET
 ```
@@ -350,6 +364,7 @@ functionA:
 ## Common Mistakes
 
 ### 1. Wrong Stack Cleanup
+
 ```asm
 ; WRONG (cdecl) - Callee cleaning stack
 function:
@@ -368,6 +383,7 @@ caller:
 ```
 
 ### 2. Wrong Parameter Order
+
 ```asm
 ; WRONG - Pushing left-to-right
 PUSH 5             ; First parameter
@@ -381,6 +397,7 @@ CALL add           ; add(5, 3) - correct order
 ```
 
 ### 3. Forgetting to Preserve Registers
+
 ```asm
 ; WRONG - Modifying EBX without saving
 function:
@@ -402,6 +419,7 @@ function:
 ```
 
 ### 4. Unbalanced Stack
+
 ```asm
 ; WRONG - Unbalanced stack operations
 function:
@@ -415,11 +433,11 @@ function:
 
 ## Summary Table
 
-| Convention | Parameter Order | Stack Cleanup | Reg Params | Use Case |
-|------------|-----------------|---------------|------------|----------|
-| **cdecl** | Right-to-left | Caller | None | C functions, varargs |
-| **stdcall** | Right-to-left | Callee | None | Windows API |
-| **fastcall** | Right-to-left | Callee | ECX, EDX | Performance-critical |
+| Convention   | Parameter Order | Stack Cleanup | Reg Params | Use Case             |
+| ------------ | --------------- | ------------- | ---------- | -------------------- |
+| **cdecl**    | Right-to-left   | Caller        | None       | C functions, varargs |
+| **stdcall**  | Right-to-left   | Callee        | None       | Windows API          |
+| **fastcall** | Right-to-left   | Callee        | ECX, EDX   | Performance-critical |
 
 ## See Also
 

@@ -25,14 +25,14 @@ GitHub Actions automatically builds, packages, and publishes the extension.
 
 ### Common Commands
 
-| Command | Description |
-|---------|-------------|
-| `npm run release` | Auto-detect version bump from commits |
-| `npm run release:patch` | Force patch version (0.0.X) |
-| `npm run release:minor` | Force minor version (0.X.0) |
-| `npm run release:major` | Force major version (X.0.0) |
-| `npm run release:first` | First release (no bump) |
-| `npx standard-version --dry-run` | Preview changes |
+| Command                          | Description                           |
+| -------------------------------- | ------------------------------------- |
+| `npm run release`                | Auto-detect version bump from commits |
+| `npm run release:patch`          | Force patch version (0.0.X)           |
+| `npm run release:minor`          | Force minor version (0.X.0)           |
+| `npm run release:major`          | Force major version (X.0.0)           |
+| `npm run release:first`          | First release (no bump)               |
+| `npx standard-version --dry-run` | Preview changes                       |
 
 ## Conventional Commits
 
@@ -48,12 +48,12 @@ GitHub Actions automatically builds, packages, and publishes the extension.
 
 ### Version Bump Rules
 
-| Commit Type | Example | Version Bump |
-|-------------|---------|--------------|
-| `fix:` | `fix: crash on startup` | Patch (0.0.X) |
-| `feat:` | `feat: add keyboard support` | Minor (0.X.0) |
-| `feat!:` or `BREAKING CHANGE:` | `feat!: redesign API` | Major (X.0.0) |
-| `docs:`, `chore:`, `style:`, etc. | `docs: update README` | No bump |
+| Commit Type                       | Example                      | Version Bump  |
+| --------------------------------- | ---------------------------- | ------------- |
+| `fix:`                            | `fix: crash on startup`      | Patch (0.0.X) |
+| `feat:`                           | `feat: add keyboard support` | Minor (0.X.0) |
+| `feat!:` or `BREAKING CHANGE:`    | `feat!: redesign API`        | Major (X.0.0) |
+| `docs:`, `chore:`, `style:`, etc. | `docs: update README`        | No bump       |
 
 ### Commit Types
 
@@ -113,20 +113,25 @@ git commit -m "docs: update installation guide"
 ## Troubleshooting
 
 ### No commits to bump
+
 **Cause:** No `feat:` or `fix:` commits since last release  
 **Solution:** Use `npm run release:patch` to force a version bump
 
 ### Wrong version bump
+
 **Cause:** Incorrect automated detection  
 **Solution:**
+
 ```bash
 git reset --soft HEAD~1  # Undo release commit
 npm run release:major    # Force correct version
 ```
 
 ### Tag already exists
+
 **Cause:** Re-creating an existing release  
 **Solution:**
+
 ```bash
 git tag -d v0.1.10                    # Delete local tag
 git push origin :refs/tags/v0.1.10   # Delete remote tag
@@ -134,12 +139,14 @@ npm run release                       # Create new release
 ```
 
 ### Preview changes
+
 **Cause:** Want to see what will happen  
 **Solution:** `npx standard-version --dry-run`
 
 ## Configuration
 
 Version management is configured in `.versionrc.json`:
+
 - Tracks both root and extension `package.json`
 - Configures changelog sections
 - Sets commit message format

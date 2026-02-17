@@ -28,9 +28,7 @@ interface KeyboardConfig {
  * Debug Configuration Provider
  * Injects extension settings into debug configuration
  */
-class TonX86DebugConfigurationProvider
-  implements vscode.DebugConfigurationProvider
-{
+class TonX86DebugConfigurationProvider implements vscode.DebugConfigurationProvider {
   /**
    * Resolve a debug configuration before it is used to start a debug session
    * This allows us to inject extension settings into the debug configuration
@@ -128,9 +126,7 @@ interface RegisterItem {
  * Tree Data Provider for Registers
  */
 class RegistersProvider implements vscode.TreeDataProvider<RegisterItem> {
-  private _onDidChangeTreeData = new vscode.EventEmitter<
-    RegisterItem | undefined
-  >();
+  private _onDidChangeTreeData = new vscode.EventEmitter<RegisterItem | undefined>();
   readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
 
   private registers: RegisterItem[] = [
@@ -178,9 +174,7 @@ interface MemoryRange {
  * Tree Data Provider for Memory
  */
 class MemoryProvider implements vscode.TreeDataProvider<MemoryRange> {
-  private _onDidChangeTreeData = new vscode.EventEmitter<
-    MemoryRange | undefined
-  >();
+  private _onDidChangeTreeData = new vscode.EventEmitter<MemoryRange | undefined>();
   readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
 
   private memory: MemoryRange[] = [];
@@ -236,9 +230,7 @@ export class LCDViewProvider implements vscode.WebviewViewProvider {
   private keyboardConfig: KeyboardConfig;
   private lcdPanel: vscode.WebviewPanel | undefined;
   private webviewView: vscode.WebviewView | undefined;
-  private onKeyboardEvent:
-    | ((keyCode: number, pressed: boolean) => void)
-    | undefined;
+  private onKeyboardEvent: ((keyCode: number, pressed: boolean) => void) | undefined;
 
   constructor() {
     this.lcdConfig = getLCDConfig();
@@ -248,9 +240,7 @@ export class LCDViewProvider implements vscode.WebviewViewProvider {
   /**
    * Set keyboard event handler
    */
-  setKeyboardEventHandler(
-    handler: (keyCode: number, pressed: boolean) => void,
-  ): void {
+  setKeyboardEventHandler(handler: (keyCode: number, pressed: boolean) => void): void {
     this.onKeyboardEvent = handler;
   }
 
@@ -713,9 +703,7 @@ export function activate(context: vscode.ExtensionContext): void {
   console.log("TonX86 extension is now active");
 
   // Initialize Language Server
-  const serverModule = context.asAbsolutePath(
-    path.join("dist", "languageServer.js"),
-  );
+  const serverModule = context.asAbsolutePath(path.join("dist", "languageServer.js"));
 
   // Server options
   const serverOptions: ServerOptions = {
@@ -770,9 +758,7 @@ export function activate(context: vscode.ExtensionContext): void {
   // Set keyboard event handler to forward to debug adapter
   lcdProvider.setKeyboardEventHandler((keyCode: number, pressed: boolean) => {
     if (!currentDebugSession) {
-      console.log(
-        "Keyboard event ignored - no active debug session. Start debugging (F5) first.",
-      );
+      console.log("Keyboard event ignored - no active debug session. Start debugging (F5) first.");
       return;
     }
     currentDebugSession
@@ -781,25 +767,16 @@ export function activate(context: vscode.ExtensionContext): void {
         pressed,
       })
       .then(undefined, (err: unknown) => {
-        console.error(
-          `Failed to send keyboard event (keyCode=${keyCode}):`,
-          err,
-        );
+        console.error(`Failed to send keyboard event (keyCode=${keyCode}):`, err);
       });
   });
 
   context.subscriptions.push(
-    vscode.window.registerWebviewViewProvider(
-      LCDViewProvider.viewType,
-      lcdProvider,
-    ),
+    vscode.window.registerWebviewViewProvider(LCDViewProvider.viewType, lcdProvider),
   );
 
   context.subscriptions.push(
-    vscode.window.registerWebviewViewProvider(
-      DocsViewProvider.viewType,
-      new DocsViewProvider(),
-    ),
+    vscode.window.registerWebviewViewProvider(DocsViewProvider.viewType, new DocsViewProvider()),
   );
 
   // Listen for debug events to update LCD display and memory views
@@ -876,8 +853,7 @@ export function activate(context: vscode.ExtensionContext): void {
               message.type === "event" &&
               message.event === "output" &&
               message.body?.output &&
-              (message.body.category === "stdout" ||
-                message.body.category === "stderr")
+              (message.body.category === "stdout" || message.body.category === "stderr")
             ) {
               outputChannel.append(message.body.output);
             }
@@ -889,18 +865,16 @@ export function activate(context: vscode.ExtensionContext): void {
 
   // Monitor configuration changes
   context.subscriptions.push(
-    vscode.workspace.onDidChangeConfiguration(
-      (event: vscode.ConfigurationChangeEvent) => {
-        if (event.affectsConfiguration("tonx86.lcd")) {
-          console.log("LCD configuration changed");
-          lcdProvider.updateLCDConfig();
-          // Reload the webview
-          vscode.window.showInformationMessage(
-            "LCD configuration updated. Reload the LCD view to apply changes.",
-          );
-        }
-      },
-    ),
+    vscode.workspace.onDidChangeConfiguration((event: vscode.ConfigurationChangeEvent) => {
+      if (event.affectsConfiguration("tonx86.lcd")) {
+        console.log("LCD configuration changed");
+        lcdProvider.updateLCDConfig();
+        // Reload the webview
+        vscode.window.showInformationMessage(
+          "LCD configuration updated. Reload the LCD view to apply changes.",
+        );
+      }
+    }),
   );
 
   // Register commands

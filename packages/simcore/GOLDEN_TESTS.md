@@ -7,6 +7,7 @@ The Golden Test Suite provides comprehensive instruction-level validation for th
 ## Test Coverage
 
 ### Arithmetic Instructions (30 tests)
+
 - **ADD**: Positive numbers, zero results, unsigned overflow (carry), signed overflow, negative numbers
 - **SUB**: Basic subtraction, zero results, underflow (borrow), edge cases
 - **INC/DEC**: Increment/decrement with overflow/underflow handling
@@ -16,6 +17,7 @@ The Golden Test Suite provides comprehensive instruction-level validation for th
 - **CMP**: Comparison operations that set flags without modifying operands
 
 ### Logical Instructions (18 tests)
+
 - **AND**: Bitwise AND with masking operations, zero results
 - **OR**: Bitwise OR with identity operations, all bits set
 - **XOR**: Bitwise XOR including zero-self trick, bit toggling
@@ -23,6 +25,7 @@ The Golden Test Suite provides comprehensive instruction-level validation for th
 - **TEST**: Logical AND for flag testing without modifying operands
 
 ### Shift and Rotate Instructions (15 tests)
+
 - **SHL**: Shift left logical with various shift counts
 - **SHR**: Shift right logical with high bit handling
 - **SAR**: Shift arithmetic right with sign extension
@@ -30,17 +33,20 @@ The Golden Test Suite provides comprehensive instruction-level validation for th
 - **ROR**: Rotate right with wrap-around
 
 ### Stack Operations (5 tests)
+
 - **PUSH/POP**: Stack operations with LIFO verification
 - Register preservation through stack
 - Immediate value push operations
 - ESP manipulation validation
 
 ### Control Flow (9 tests)
+
 - **Conditional Jumps**: Flag requirements for JE/JZ, JNE/JNZ, JS, JNS, JB, JAE
 - **Signed Comparisons**: JG, JGE, JL, JLE flag interactions
 - **Flag Conditions**: Zero, Sign, Carry, Overflow flag testing
 
 ### Flag Correctness (22 tests)
+
 - **Zero Flag (ZF)**: Set/clear conditions for arithmetic and logical operations
 - **Carry Flag (CF)**: Unsigned overflow/underflow detection
 - **Overflow Flag (OF)**: Signed overflow detection
@@ -48,7 +54,9 @@ The Golden Test Suite provides comprehensive instruction-level validation for th
 - **Flag Preservation**: Instructions that don't modify flags (MOV, NOT)
 
 ### Complex Scenarios (7 tests)
+
 Realistic programming patterns:
+
 - Factorial calculation (iterative)
 - Array sum simulation
 - Bit counting algorithms
@@ -100,18 +108,21 @@ interface GoldenTest {
 ## Running the Tests
 
 ### Run all golden tests
+
 ```bash
 cd packages/simcore
 npm test golden.test.ts
 ```
 
 ### Run specific test suite
+
 ```bash
 npm test -- golden.test.ts -t "Arithmetic"
 npm test -- golden.test.ts -t "Flag Correctness"
 ```
 
 ### Run with coverage
+
 ```bash
 npm test -- golden.test.ts --coverage
 ```
@@ -160,20 +171,24 @@ const addTests: GoldenTest[] = [
 ## Flag Behavior Reference
 
 ### Zero Flag (ZF)
+
 - Set when result equals zero
 - Cleared when result is non-zero
 - Used by: JE/JZ, JNE/JNZ
 
 ### Carry Flag (CF)
+
 - Set on unsigned overflow (ADD) or underflow (SUB)
 - Set by NEG on non-zero values
 - Used by: JB, JAE, JBE, JA (unsigned comparisons)
 
 ### Overflow Flag (OF)
+
 - Set on signed overflow (two positives → negative, or two negatives → positive)
 - Used by: JG, JGE, JL, JLE (signed comparisons)
 
 ### Sign Flag (SF)
+
 - Set when bit 31 is set (negative in signed interpretation)
 - Cleared when bit 31 is clear
 - Used by: JS, JNS

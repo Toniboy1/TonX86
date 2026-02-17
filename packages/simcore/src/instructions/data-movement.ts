@@ -33,10 +33,7 @@ export function executeMov(ctx: ExecutionContext, operands: string[]): void {
       addr = (ctx.cpu.registers[src.base!] + (src.offset || 0)) & 0xffff;
     }
 
-    if (
-      (addr >= 0xf000 && addr <= 0xffff) ||
-      (addr >= 0x10100 && addr <= 0x101ff)
-    ) {
+    if ((addr >= 0xf000 && addr <= 0xffff) || (addr >= 0x10100 && addr <= 0x101ff)) {
       srcValue = ctx.readIO(addr);
     } else {
       srcValue = ctx.readMemory32(addr);
@@ -56,10 +53,7 @@ export function executeMov(ctx: ExecutionContext, operands: string[]): void {
       addr = (ctx.cpu.registers[dest.base!] + (dest.offset || 0)) & 0xffff;
     }
 
-    if (
-      (addr >= 0xf000 && addr <= 0xffff) ||
-      (addr >= 0x10100 && addr <= 0x101ff)
-    ) {
+    if ((addr >= 0xf000 && addr <= 0xffff) || (addr >= 0x10100 && addr <= 0x101ff)) {
       ctx.writeIO(addr, srcValue);
     } else {
       ctx.writeMemory32(addr, srcValue);
@@ -80,10 +74,7 @@ export function executeXchg(ctx: ExecutionContext, operands: string[]): void {
     (src.type === "register" || src.type === "register8")
   ) {
     const temp = ctx.readRegisterValue(dest as RegisterOperand);
-    ctx.writeRegisterValue(
-      dest as RegisterOperand,
-      ctx.readRegisterValue(src as RegisterOperand),
-    );
+    ctx.writeRegisterValue(dest as RegisterOperand, ctx.readRegisterValue(src as RegisterOperand));
     ctx.writeRegisterValue(src as RegisterOperand, temp);
   }
 }

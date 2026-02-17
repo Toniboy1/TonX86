@@ -58,13 +58,7 @@ export function executeXadd(ctx: ExecutionContext, operands: string[]): void {
     const result = (destVal + srcVal) & 0xffffffff;
     ctx.cpu.registers[src.value] = destVal; // old dest -> source
     ctx.cpu.registers[dest.value] = result; // sum -> dest
-    ctx.cpu.flags = computeArithFlags(
-      ctx.cpu.flags,
-      result,
-      destVal,
-      srcVal,
-      false,
-    );
+    ctx.cpu.flags = computeArithFlags(ctx.cpu.flags, result, destVal, srcVal, false);
   }
 }
 
@@ -134,7 +128,6 @@ export function executeBswap(ctx: ExecutionContext, operands: string[]): void {
     const byte1 = (value >> 8) & 0xff;
     const byte2 = (value >> 16) & 0xff;
     const byte3 = (value >> 24) & 0xff;
-    ctx.cpu.registers[dest.value] =
-      ((byte0 << 24) | (byte1 << 16) | (byte2 << 8) | byte3) >>> 0;
+    ctx.cpu.registers[dest.value] = ((byte0 << 24) | (byte1 << 16) | (byte2 << 8) | byte3) >>> 0;
   }
 }

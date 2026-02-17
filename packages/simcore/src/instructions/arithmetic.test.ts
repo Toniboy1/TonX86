@@ -272,9 +272,7 @@ describe("executeInstruction - MUL/IMUL", () => {
 
   test("IMUL operand guards", () => {
     expect(() => sim.executeInstruction("IMUL", ["5", "EAX"])).not.toThrow();
-    expect(() =>
-      sim.executeInstruction("IMUL", ["5", "EAX", "2"]),
-    ).not.toThrow();
+    expect(() => sim.executeInstruction("IMUL", ["5", "EAX", "2"])).not.toThrow();
   });
 
   test("MUL/IMUL in strict-x86 mode clears ZF and SF", () => {

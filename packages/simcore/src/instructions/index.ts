@@ -1,18 +1,7 @@
 import type { ExecutionContext } from "../types";
-import {
-  isZeroFlagSet,
-  isSignFlagSet,
-  isCarryFlagSet,
-  isOverflowFlagSet,
-} from "../flags";
+import { isZeroFlagSet, isSignFlagSet, isCarryFlagSet, isOverflowFlagSet } from "../flags";
 
-import {
-  executeMov,
-  executeXchg,
-  executeLea,
-  executeMovzx,
-  executeMovsx,
-} from "./data-movement";
+import { executeMov, executeXchg, executeLea, executeMovzx, executeMovsx } from "./data-movement";
 import {
   executeAdd,
   executeSub,
@@ -26,13 +15,7 @@ import {
   executeCmp,
   executeNeg,
 } from "./arithmetic";
-import {
-  executeAnd,
-  executeOr,
-  executeXor,
-  executeNot,
-  executeTest,
-} from "./logical";
+import { executeAnd, executeOr, executeXor, executeNot, executeTest } from "./logical";
 import {
   executeShl,
   executeShr,
@@ -62,13 +45,7 @@ import {
   executeLoop,
   executeCmov,
 } from "./control-flow";
-import {
-  executeLods,
-  executeStos,
-  executeMovs,
-  executeScas,
-  executeCmps,
-} from "./string-ops";
+import { executeLods, executeStos, executeMovs, executeScas, executeCmps } from "./string-ops";
 import {
   executeLahf,
   executeSahf,

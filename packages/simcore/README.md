@@ -18,12 +18,15 @@ Core CPU simulator for TonX86 assembly execution.
 ## Testing
 
 ### Unit Tests
+
 ```bash
 npm test
 ```
 
 ### Golden Test Suite
+
 Comprehensive instruction-level validation suite with 106 tests covering:
+
 - Arithmetic operations (ADD, SUB, MUL, DIV, NEG, etc.)
 - Logical operations (AND, OR, XOR, NOT, TEST)
 - Shift/rotate operations (SHL, SHR, SAR, ROL, ROR)
@@ -38,6 +41,7 @@ npm test golden.test.ts
 See [GOLDEN_TESTS.md](./GOLDEN_TESTS.md) for detailed documentation.
 
 ### Test Coverage
+
 ```bash
 npm test -- --coverage
 ```
@@ -45,14 +49,16 @@ npm test -- --coverage
 ## API
 
 ### Initialization
+
 ```typescript
-import { Simulator } from '@tonx86/simcore';
+import { Simulator } from "@tonx86/simcore";
 
 const sim = new Simulator();
 sim.reset();
 ```
 
 ### Loading Programs
+
 ```typescript
 // Load instructions and labels
 const instructions = [
@@ -65,6 +71,7 @@ sim.loadInstructions(instructions, labels);
 ```
 
 ### Execution
+
 ```typescript
 // Execute one instruction
 const lineNumber = sim.step();
@@ -74,6 +81,7 @@ sim.executeInstruction("MOV", ["EAX", "42"]);
 ```
 
 ### State Access
+
 ```typescript
 // Get registers
 const regs = sim.getRegisters(); // { EAX, ECX, EDX, EBX, ESP, EBP, ESI, EDI }
@@ -92,6 +100,7 @@ const eip = sim.getEIP();
 ```
 
 ### I/O Operations
+
 ```typescript
 // LCD Display (64x64 pixels)
 const display = sim.getLCDDisplay(); // Uint8Array
@@ -106,24 +115,31 @@ const status = sim.getKeyboardStatus();
 See the [ISA documentation](../docs/ISA.md) for complete instruction reference.
 
 ### Data Movement
+
 MOV, XCHG, LEA, MOVZX, MOVSX, PUSH, POP
 
 ### Arithmetic
+
 ADD, SUB, INC, DEC, MUL, IMUL, DIV, IDIV, NEG, CMP, MOD
 
 ### Logical
+
 AND, OR, XOR, NOT, TEST
 
 ### Shift/Rotate
+
 SHL, SHR, SAR, ROL, ROR
 
 ### Control Flow
+
 JMP, JE/JZ, JNE/JNZ, JG, JGE, JL, JLE, JS, JNS, JA, JAE, JB, JBE, CALL, RET, HLT
 
 ### Interrupts
+
 INT, IRET
 
 ### Special
+
 NOP, RAND
 
 ## Development

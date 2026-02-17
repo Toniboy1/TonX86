@@ -62,9 +62,7 @@ describe("Golden Test Suite - Arithmetic Instructions", () => {
     // Verify expected state
     if (test.expectedState.registers) {
       const regs = sim.getRegisters();
-      for (const [reg, expectedValue] of Object.entries(
-        test.expectedState.registers,
-      )) {
+      for (const [reg, expectedValue] of Object.entries(test.expectedState.registers)) {
         expect(regs[reg as keyof typeof regs]).toBe(expectedValue);
       }
     }
@@ -506,9 +504,7 @@ describe("Golden Test Suite - Logical Instructions", () => {
 
     if (test.expectedState.registers) {
       const regs = sim.getRegisters();
-      for (const [reg, expectedValue] of Object.entries(
-        test.expectedState.registers,
-      )) {
+      for (const [reg, expectedValue] of Object.entries(test.expectedState.registers)) {
         expect(regs[reg as keyof typeof regs]).toBe(expectedValue);
       }
     }
@@ -775,9 +771,7 @@ describe("Golden Test Suite - Shift and Rotate Instructions", () => {
 
     if (test.expectedState.registers) {
       const regs = sim.getRegisters();
-      for (const [reg, expectedValue] of Object.entries(
-        test.expectedState.registers,
-      )) {
+      for (const [reg, expectedValue] of Object.entries(test.expectedState.registers)) {
         expect(regs[reg as keyof typeof regs]).toBe(expectedValue);
       }
     }

@@ -166,8 +166,7 @@ const INSTRUCTIONS = [
   },
   {
     name: "IMUL",
-    description:
-      "Signed multiply (supports 1, 2, and 3 operand forms per x86 spec)",
+    description: "Signed multiply (supports 1, 2, and 3 operand forms per x86 spec)",
     syntax: "IMUL source | IMUL dest, src | IMUL dest, src, const",
     cycles: 2,
     flags: ["Z", "C", "O", "S"],
@@ -439,8 +438,7 @@ const INSTRUCTIONS = [
   },
   {
     name: "LOOPE",
-    description:
-      "Loop while equal - decrement ECX, jump if ECX != 0 AND ZF set",
+    description: "Loop while equal - decrement ECX, jump if ECX != 0 AND ZF set",
     syntax: "LOOPE label",
     cycles: 1,
     flags: [],
@@ -456,8 +454,7 @@ const INSTRUCTIONS = [
   },
   {
     name: "LOOPNE",
-    description:
-      "Loop while not equal - decrement ECX, jump if ECX != 0 AND ZF clear",
+    description: "Loop while not equal - decrement ECX, jump if ECX != 0 AND ZF clear",
     syntax: "LOOPNE label",
     cycles: 1,
     flags: [],
@@ -617,8 +614,7 @@ const INSTRUCTIONS = [
   },
   {
     name: "XADD",
-    description:
-      "Exchange and add - adds source to dest, loads old dest into source",
+    description: "Exchange and add - adds source to dest, loads old dest into source",
     syntax: "XADD destination, source",
     cycles: 1,
     flags: ["Z", "C", "O", "S"],
@@ -650,8 +646,7 @@ const INSTRUCTIONS = [
   },
   {
     name: "LODSB",
-    description:
-      "Load string byte - load byte from [ESI] into AL, increment ESI",
+    description: "Load string byte - load byte from [ESI] into AL, increment ESI",
     syntax: "LODSB",
     cycles: 1,
     flags: [],
@@ -683,8 +678,7 @@ const INSTRUCTIONS = [
   },
   {
     name: "MOVSB",
-    description:
-      "Move string byte - copy byte from [ESI] to [EDI], increment both",
+    description: "Move string byte - copy byte from [ESI] to [EDI], increment both",
     syntax: "MOVSB",
     cycles: 1,
     flags: [],
@@ -700,8 +694,7 @@ const INSTRUCTIONS = [
   },
   {
     name: "SCASB",
-    description:
-      "Scan string byte - compare AL with [EDI], set flags, increment EDI",
+    description: "Scan string byte - compare AL with [EDI], set flags, increment EDI",
     syntax: "SCASB",
     cycles: 1,
     flags: ["Z", "C", "O", "S"],
@@ -717,8 +710,7 @@ const INSTRUCTIONS = [
   },
   {
     name: "CMPSB",
-    description:
-      "Compare string bytes - compare [ESI] with [EDI], set flags, increment both",
+    description: "Compare string bytes - compare [ESI] with [EDI], set flags, increment both",
     syntax: "CMPSB",
     cycles: 1,
     flags: ["Z", "C", "O", "S"],
@@ -776,21 +768,19 @@ const FLAGS = [
   { name: "S", description: "Sign flag - Set when result is negative" },
 ];
 
-connection.onInitialize(
-  (_params: InitializeParams) => {
-    const result: InitializeResult = {
-      capabilities: {
-        textDocumentSync: TextDocumentSyncKind.Full,
-        completionProvider: {
-          resolveProvider: false,
-          triggerCharacters: [" ", ","],
-        },
-        hoverProvider: true,
+connection.onInitialize((_params: InitializeParams) => {
+  const result: InitializeResult = {
+    capabilities: {
+      textDocumentSync: TextDocumentSyncKind.Full,
+      completionProvider: {
+        resolveProvider: false,
+        triggerCharacters: [" ", ","],
       },
-    };
-    return result;
-  },
-);
+      hoverProvider: true,
+    },
+  };
+  return result;
+});
 
 connection.onInitialized(() => {
   connection.console.log("TonX86 Language Server initialized");
@@ -864,8 +854,7 @@ connection.onHover((params) => {
   // Check if it's an instruction
   const instruction = INSTRUCTIONS.find((i) => i.name === word);
   if (instruction) {
-    const flagsStr =
-      instruction.flags.length > 0 ? instruction.flags.join(", ") : "None";
+    const flagsStr = instruction.flags.length > 0 ? instruction.flags.join(", ") : "None";
     const hover: Hover = {
       contents: {
         kind: MarkupKind.Markdown,

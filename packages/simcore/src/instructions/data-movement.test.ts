@@ -221,11 +221,7 @@ describe("executeInstruction - 8-bit registers", () => {
 
   test("read/write register8 handle missing byteOffset", () => {
     const helpers = sim as unknown as {
-      readRegisterValue: (op: {
-        type: string;
-        value: number;
-        byteOffset?: number;
-      }) => number;
+      readRegisterValue: (op: { type: string; value: number; byteOffset?: number }) => number;
       writeRegisterValue: (
         op: { type: string; value: number; byteOffset?: number },
         value: number,
@@ -243,10 +239,7 @@ describe("executeInstruction - 8-bit registers", () => {
     expect(high).toBe(0x56);
 
     helpers.writeRegisterValue({ type: "register8", value: 1 }, 0xaa);
-    helpers.writeRegisterValue(
-      { type: "register8", value: 1, byteOffset: 8 },
-      0xbb,
-    );
+    helpers.writeRegisterValue({ type: "register8", value: 1, byteOffset: 8 }, 0xbb);
     expect(sim.getRegisters().ECX & 0xff).toBe(0xaa);
     expect((sim.getRegisters().ECX >> 8) & 0xff).toBe(0xbb);
   });

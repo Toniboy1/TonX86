@@ -5,6 +5,7 @@ Language Server Protocol (LSP) implementation for TonX86 assembly language.
 ## Features
 
 ### Diagnostics
+
 - **Syntax Error Detection**: Identifies unknown/invalid instructions
 - **Label Validation**: Warns when jump instructions reference undefined labels
 - **Real-time Validation**: Diagnostics update as you type
@@ -12,6 +13,7 @@ Language Server Protocol (LSP) implementation for TonX86 assembly language.
 - **Control Flow Analysis**: Detects unreachable code after HLT, JMP, and RET
 
 Example diagnostics:
+
 - `Unknown instruction 'INVALID'` — Error for unrecognized instructions
 - `Label 'undefined_label' is not defined` — Warning for missing labels
 - `JMP requires a label operand` — Error for missing operands
@@ -34,13 +36,17 @@ end:
 ```
 
 ### Hover Documentation
+
 Rich markdown documentation when hovering over:
+
 - **Instructions**: Syntax, description, cycles, flags affected, and examples
 - **Registers**: Register purpose and usage
 - **Flags**: Flag meaning and behavior
 
 ### Code Completion
+
 Auto-completion with documentation for:
+
 - All supported instructions (MOV, ADD, SUB, MUL, DIV, AND, OR, XOR, CMP, INC, DEC, JMP, JZ, JE, JNZ, JNE, HLT, and more)
 - All 8 registers (EAX, ECX, EDX, EBX, ESP, EBP, ESI, EDI)
 - Triggered on space and comma
@@ -56,6 +62,7 @@ VS Code Editor
 ```
 
 ### Protocol Features
+
 - `textDocument/didOpen` — Document opened
 - `textDocument/didChange` — Document changed (triggers validation)
 - `textDocument/completion` — Code completion

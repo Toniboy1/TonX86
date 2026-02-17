@@ -193,16 +193,10 @@ export function stripComment(line: string): string {
  * - ; tonx86-disable-next-line
  * - ; tonx86-ignore
  */
-export function shouldSuppressWarning(
-  lines: string[],
-  currentLineIndex: number,
-): boolean {
+export function shouldSuppressWarning(lines: string[], currentLineIndex: number): boolean {
   // Check current line for inline suppression
   const currentLine = lines[currentLineIndex];
-  if (
-    currentLine.includes("; tonx86-ignore") ||
-    currentLine.includes(";tonx86-ignore")
-  ) {
+  if (currentLine.includes("; tonx86-ignore") || currentLine.includes(";tonx86-ignore")) {
     return true;
   }
 
@@ -419,10 +413,7 @@ export function validateInstructions(
     }
 
     // IMUL: 1-3 operands
-    if (
-      instruction === "IMUL" &&
-      (operands.length < 1 || operands.length > 3)
-    ) {
+    if (instruction === "IMUL" && (operands.length < 1 || operands.length > 3)) {
       diagnostics.push({
         severity: DiagnosticSeverity.Error,
         range: {
@@ -436,10 +427,7 @@ export function validateInstructions(
     }
 
     // RAND: 1-2 operands
-    if (
-      instruction === "RAND" &&
-      (operands.length < 1 || operands.length > 2)
-    ) {
+    if (instruction === "RAND" && (operands.length < 1 || operands.length > 2)) {
       diagnostics.push({
         severity: DiagnosticSeverity.Error,
         range: {
@@ -541,11 +529,7 @@ export function validateControlFlow(
     }
 
     const tokens = cleanLine.split(/[\s,]+/);
-    if (
-      tokens.length > 0 &&
-      tokens[0].toUpperCase() === "RET" &&
-      currentLabel
-    ) {
+    if (tokens.length > 0 && tokens[0].toUpperCase() === "RET" && currentLabel) {
       functionLabels.add(currentLabel);
     }
   }
@@ -599,8 +583,7 @@ export function validateControlFlow(
         const prevTokens = prevClean.split(/[\s,]+/);
         if (
           prevTokens.length > 0 &&
-          (prevTokens[0].toUpperCase() === "HLT" ||
-            prevTokens[0].toUpperCase() === "RET")
+          (prevTokens[0].toUpperCase() === "HLT" || prevTokens[0].toUpperCase() === "RET")
         ) {
           break;
         }
@@ -620,11 +603,7 @@ export function validateControlFlow(
     }
 
     // Mark after terminating instructions
-    if (
-      instruction === "HLT" ||
-      instruction === "RET" ||
-      instruction === "JMP"
-    ) {
+    if (instruction === "HLT" || instruction === "RET" || instruction === "JMP") {
       unreachableAfterLine = i;
     }
   }
@@ -659,15 +638,7 @@ export function validateCallingConventions(
 
   const functions: FunctionInfo[] = [];
   const calleeSavedRegs = new Set(["EBX", "ESI", "EDI", "EBP"]);
-  const controlFlowInstructions = [
-    "JMP",
-    "JE",
-    "JZ",
-    "JNE",
-    "JNZ",
-    "RET",
-    "HLT",
-  ];
+  const controlFlowInstructions = ["JMP", "JE", "JZ", "JNE", "JNZ", "RET", "HLT"];
   const modifyingInstructions = [
     "ADD",
     "SUB",
@@ -772,11 +743,7 @@ export function validateCallingConventions(
       const colonIndex = trimmed.indexOf(":");
       if (colonIndex > 0) {
         const labelName = trimmed.substring(0, colonIndex).trim();
-        if (
-          labelName &&
-          !labelName.includes(" ") &&
-          functionLabels.has(labelName)
-        ) {
+        if (labelName && !labelName.includes(" ") && functionLabels.has(labelName)) {
           if (currentFunction) {
             currentFunction.endLine = lineIndex - 1;
             functions.push(currentFunction);
@@ -830,11 +797,7 @@ export function validateCallingConventions(
       if (tokens.length >= 3) {
         const dest = tokens[1].toUpperCase();
         const src = tokens[2].toUpperCase();
-        if (
-          dest === "EBP" &&
-          src === "ESP" &&
-          currentFunction.prologuePushEBPLine !== -1
-        ) {
+        if (dest === "EBP" && src === "ESP" && currentFunction.prologuePushEBPLine !== -1) {
           currentFunction.prologueMovEBPLine = lineIndex;
         }
         if (calleeSavedRegs.has(dest) && dest !== "EBP") {
@@ -864,11 +827,7 @@ export function validateCallingConventions(
 
   // Analyze functions
   for (const func of functions) {
-    if (
-      func.name === "main" ||
-      func.name === "start" ||
-      func.name === "_start"
-    ) {
+    if (func.name === "main" || func.name === "start" || func.name === "_start") {
       continue;
     }
 
@@ -976,9 +935,7 @@ export function validateCallingConventions(
 
       if (nextLineIndex < lines.length) {
         const nextClean = stripComment(lines[nextLineIndex].trim());
-        const nextTokens = nextClean
-          .split(/[\s,]+/)
-          .filter((t) => t.length > 0);
+        const nextTokens = nextClean.split(/[\s,]+/).filter((t) => t.length > 0);
         const nextInstruction = nextTokens[0].toUpperCase();
 
         if (nextInstruction === "ADD" && nextTokens.length >= 3) {
@@ -1005,16 +962,10 @@ export function validateCallingConventions(
     // Parameter passing detection
     if (instruction === "PUSH") {
       let foundCall = false;
-      for (
-        let i = lineIndex + 1;
-        i < Math.min(lineIndex + 10, lines.length);
-        i++
-      ) {
+      for (let i = lineIndex + 1; i < Math.min(lineIndex + 10, lines.length); i++) {
         const futureClean = stripComment(lines[i].trim());
         if (!futureClean) continue;
-        const futureTokens = futureClean
-          .split(/[\s,]+/)
-          .filter((t) => t.length > 0);
+        const futureTokens = futureClean.split(/[\s,]+/).filter((t) => t.length > 0);
         if (futureTokens[0].toUpperCase() === "CALL") {
           foundCall = true;
           break;
@@ -1045,26 +996,14 @@ export function validateCallingConventions(
 /**
  * Run all validation passes on a document and return all diagnostics.
  */
-export function validateDocumentText(
-  text: string,
-  validInstructionNames: string[],
-): Diagnostic[] {
+export function validateDocumentText(text: string, validInstructionNames: string[]): Diagnostic[] {
   const lines = text.split(/\r?\n/);
 
   // First pass
-  const {
-    labels,
-    equConstants,
-    diagnostics: labelDiags,
-  } = collectLabelsAndConstants(lines);
+  const { labels, equConstants, diagnostics: labelDiags } = collectLabelsAndConstants(lines);
 
   // Second pass
-  const instrDiags = validateInstructions(
-    lines,
-    validInstructionNames,
-    labels,
-    equConstants,
-  );
+  const instrDiags = validateInstructions(lines, validInstructionNames, labels, equConstants);
 
   // Third pass
   const cfDiags: Diagnostic[] = [];

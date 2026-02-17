@@ -180,12 +180,7 @@ describe("Parser - Assembler Directives", () => {
     });
 
     it("should replace constants in standalone data directives", () => {
-      const lines = [
-        "WIDTH EQU 32",
-        "HEIGHT EQU 16",
-        ".data",
-        "DD WIDTH, HEIGHT",
-      ];
+      const lines = ["WIDTH EQU 32", "HEIGHT EQU 16", ".data", "DD WIDTH, HEIGHT"];
       const result = parseAssembly(lines);
 
       expect(result.dataSegment.items[0].values).toEqual([32, 16]);
@@ -240,12 +235,7 @@ describe("Parser - Assembler Directives", () => {
     });
 
     it("should replace constants in label + instruction", () => {
-      const lines = [
-        "MAX EQU 100",
-        ".text",
-        "start: MOV EAX, MAX",
-        "loop: ADD EAX, MAX",
-      ];
+      const lines = ["MAX EQU 100", ".text", "start: MOV EAX, MAX", "loop: ADD EAX, MAX"];
       const result = parseAssembly(lines);
 
       expect(result.constants.get("MAX")).toBe(100);
@@ -287,9 +277,7 @@ describe("Parser - Assembler Directives", () => {
     it("should throw error for invalid directive in data section", () => {
       const lines = [".data", "MOV EAX, 1"]; // MOV is not allowed in .data
 
-      expect(() => parseAssembly(lines)).toThrow(
-        /Expected data directive.*in \.data section/,
-      );
+      expect(() => parseAssembly(lines)).toThrow(/Expected data directive.*in \.data section/);
     });
   });
 
@@ -314,9 +302,7 @@ describe("Parser - Assembler Directives", () => {
       const lines = [".data", "DB 0x48, 'e', 108, 0x6C"];
       const result = parseAssembly(lines);
 
-      expect(result.dataSegment.items[0].values).toEqual([
-        0x48, 101, 108, 0x6c,
-      ]);
+      expect(result.dataSegment.items[0].values).toEqual([0x48, 101, 108, 0x6c]);
     });
   });
 });

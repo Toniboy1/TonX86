@@ -106,8 +106,7 @@ start:
     const response = makeResponse("launch");
     const args: any = {
       program: programPath,
-      stopOnEntry:
-        options.stopOnEntry !== undefined ? options.stopOnEntry : true,
+      stopOnEntry: options.stopOnEntry !== undefined ? options.stopOnEntry : true,
       cpuSpeed: options.cpuSpeed,
       enableLogging: options.enableLogging,
       __restart: undefined,
@@ -214,9 +213,7 @@ start:
       (session as any).launchRequest(response, args);
 
       // Should send TerminatedEvent when no instructions
-      const terminatedEvents = sentEvents.filter(
-        (e: any) => e.event === "terminated",
-      );
+      const terminatedEvents = sentEvents.filter((e: any) => e.event === "terminated");
       expect(terminatedEvents.length).toBeGreaterThan(0);
     });
 
@@ -480,8 +477,7 @@ start:
       launchProgram(testProgramPath);
 
       // Make continueExecution throw
-      (session as any).continueExecution = () =>
-        Promise.reject(new Error("Execution failed"));
+      (session as any).continueExecution = () => Promise.reject(new Error("Execution failed"));
 
       const response = makeResponse("continue");
       response.body = { allThreadsContinued: false };
@@ -501,9 +497,7 @@ start:
 
       await (session as any).continueExecution();
 
-      const terminated = sentEvents.filter(
-        (e: any) => e.event === "terminated",
-      );
+      const terminated = sentEvents.filter((e: any) => e.event === "terminated");
       expect(terminated.length).toBeGreaterThan(0);
     });
 
@@ -522,8 +516,7 @@ start:
       await (session as any).continueExecution();
 
       const stopped = sentEvents.filter(
-        (e: any) =>
-          e.event === "stopped" && e.body && e.body.reason === "breakpoint",
+        (e: any) => e.event === "stopped" && e.body && e.body.reason === "breakpoint",
       );
       expect(stopped.length).toBe(1);
     });
@@ -534,9 +527,7 @@ start:
 
       await (session as any).continueExecution();
 
-      const terminated = sentEvents.filter(
-        (e: any) => e.event === "terminated",
-      );
+      const terminated = sentEvents.filter((e: any) => e.event === "terminated");
       expect(terminated.length).toBeGreaterThan(0);
     });
 
@@ -546,9 +537,7 @@ start:
 
       await (session as any).continueExecution();
 
-      const terminated = sentEvents.filter(
-        (e: any) => e.event === "terminated",
-      );
+      const terminated = sentEvents.filter((e: any) => e.event === "terminated");
       expect(terminated.length).toBeGreaterThan(0);
     });
 
@@ -558,9 +547,7 @@ start:
 
       await (session as any).continueExecution();
 
-      const terminated = sentEvents.filter(
-        (e: any) => e.event === "terminated",
-      );
+      const terminated = sentEvents.filter((e: any) => e.event === "terminated");
       expect(terminated.length).toBeGreaterThan(0);
     });
 
@@ -576,9 +563,7 @@ start:
 
       await (session as any).continueExecution();
 
-      const terminated = sentEvents.filter(
-        (e: any) => e.event === "terminated",
-      );
+      const terminated = sentEvents.filter((e: any) => e.event === "terminated");
       expect(terminated.length).toBeGreaterThan(0);
     });
 
@@ -625,9 +610,7 @@ start:
       await (session as any).continueExecution();
 
       // Should NOT stop on first iteration breakpoint, should terminate
-      const terminated = sentEvents.filter(
-        (e: any) => e.event === "terminated",
-      );
+      const terminated = sentEvents.filter((e: any) => e.event === "terminated");
       expect(terminated.length).toBeGreaterThan(0);
     });
   });
@@ -646,9 +629,7 @@ start:
 
       jest.advanceTimersByTime(100);
 
-      const stoppedEvents = sentEvents.filter(
-        (e: any) => e.event === "stopped",
-      );
+      const stoppedEvents = sentEvents.filter((e: any) => e.event === "stopped");
       expect(stoppedEvents.length).toBeGreaterThan(0);
       jest.useRealTimers();
     });
@@ -660,9 +641,7 @@ start:
       (session as any).nextRequest(response, args);
       jest.advanceTimersByTime(100);
 
-      const terminated = sentEvents.filter(
-        (e: any) => e.event === "terminated",
-      );
+      const terminated = sentEvents.filter((e: any) => e.event === "terminated");
       expect(terminated.length).toBeGreaterThan(0);
       jest.useRealTimers();
     });
@@ -682,9 +661,7 @@ start:
       (session as any).nextRequest(response, args);
       jest.advanceTimersByTime(100);
 
-      const terminated = sentEvents.filter(
-        (e: any) => e.event === "terminated",
-      );
+      const terminated = sentEvents.filter((e: any) => e.event === "terminated");
       expect(terminated.length).toBeGreaterThan(0);
       jest.useRealTimers();
     });
@@ -701,9 +678,7 @@ start:
       const args: DebugProtocol.NextArguments = { threadId: 1 };
       (session as any).nextRequest(response, args);
 
-      const terminated = sentEvents.filter(
-        (e: any) => e.event === "terminated",
-      );
+      const terminated = sentEvents.filter((e: any) => e.event === "terminated");
       expect(terminated.length).toBeGreaterThan(0);
       const errorOutput = sentEvents.filter(
         (e: any) => e.event === "output" && e.body.category === "stderr",
@@ -803,9 +778,7 @@ start:
       (session as any).stepInRequest(response, args);
       jest.advanceTimersByTime(100);
 
-      const terminated = sentEvents.filter(
-        (e: any) => e.event === "terminated",
-      );
+      const terminated = sentEvents.filter((e: any) => e.event === "terminated");
       expect(terminated.length).toBeGreaterThan(0);
       jest.useRealTimers();
     });
@@ -825,9 +798,7 @@ start:
       (session as any).stepInRequest(response, args);
       jest.advanceTimersByTime(100);
 
-      const terminated = sentEvents.filter(
-        (e: any) => e.event === "terminated",
-      );
+      const terminated = sentEvents.filter((e: any) => e.event === "terminated");
       expect(terminated.length).toBeGreaterThan(0);
       jest.useRealTimers();
     });
@@ -845,9 +816,7 @@ start:
       (session as any).stepInRequest(response, args);
       jest.advanceTimersByTime(100);
 
-      const terminated = sentEvents.filter(
-        (e: any) => e.event === "terminated",
-      );
+      const terminated = sentEvents.filter((e: any) => e.event === "terminated");
       expect(terminated.length).toBeGreaterThan(0);
       jest.useRealTimers();
     });
@@ -1105,9 +1074,7 @@ start:
       await (session as any).continueExecution();
 
       // Should break out of loop and terminate
-      const terminated = sentEvents.filter(
-        (e: any) => e.event === "terminated",
-      );
+      const terminated = sentEvents.filter((e: any) => e.event === "terminated");
       expect(terminated.length).toBeGreaterThan(0);
     });
 
@@ -1128,9 +1095,7 @@ loop:
       await (session as any).continueExecution();
 
       // Should have terminated after executing all iterations
-      const terminated = sentEvents.filter(
-        (e: any) => e.event === "terminated",
-      );
+      const terminated = sentEvents.filter((e: any) => e.event === "terminated");
       expect(terminated.length).toBeGreaterThan(0);
     });
   });

@@ -1,0 +1,32 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "workspaces": {
+    ".": {
+      "entry": ["scripts/*.js"]
+    },
+    "packages/simcore": {
+      "project": ["src/**/*.ts"],
+      "ignore": [
+        "src/**/*.test.ts",
+        "src/golden.test.ts",
+        "src/golden-example.test.ts",
+        "src/bench/**"
+      ]
+    },
+    "packages/debug-adapter": {
+      "project": ["src/**/*.ts"],
+      "ignore": ["src/**/*.test.ts"]
+    },
+    "packages/language-server": {
+      "project": ["src/**/*.ts"],
+      "ignore": ["src/**/*.test.ts"]
+    },
+    "packages/extension": {
+      "project": ["src/**/*.ts"],
+      "ignore": ["src/**/*.test.ts"]
+    },
+    "packages/docs": {
+      "ignore": ["**/*"]
+    }
+  }
+}

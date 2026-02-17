@@ -1,10 +1,5 @@
 import type { ExecutionContext } from "../types";
-import {
-  isZeroFlagSet,
-  isSignFlagSet,
-  isCarryFlagSet,
-  isOverflowFlagSet,
-} from "../flags";
+import { isZeroFlagSet, isSignFlagSet, isCarryFlagSet, isOverflowFlagSet } from "../flags";
 
 // ---------------------------------------------------------------------------
 // Jump helpers

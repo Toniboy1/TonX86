@@ -11,8 +11,7 @@ export function executeRand(ctx: ExecutionContext, operands: string[]): void {
 
   if (operands.length === 2) {
     const maxOp = ctx.parseOperand(operands[1]);
-    maxValue =
-      maxOp.type === "register" ? ctx.cpu.registers[maxOp.value] : maxOp.value;
+    maxValue = maxOp.type === "register" ? ctx.cpu.registers[maxOp.value] : maxOp.value;
   }
 
   if (maxValue <= 0) maxValue = 1;

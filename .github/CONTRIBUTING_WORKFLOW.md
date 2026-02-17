@@ -11,6 +11,7 @@ When you create a pull request, several automated checks run to ensure your cont
 The CI pipeline runs automatically on every push and pull request.
 
 **What It Does:**
+
 - ✅ **Build Verification** - Tests build on Node.js 18 & 20
 - ✅ **TypeScript Compilation** - All packages compile without errors
 - ✅ **Linting** - Code follows ESLint style guidelines
@@ -22,6 +23,7 @@ The CI pipeline runs automatically on every push and pull request.
 **Timeline:** Usually completes in 3-5 minutes.
 
 **Where To View:**
+
 - Check the "Checks" tab on your pull request
 - Click on "CI" to see detailed logs
 - Coverage report appears as a PR comment automatically
@@ -31,12 +33,14 @@ The CI pipeline runs automatically on every push and pull request.
 Our security scanner runs automatically 2x per week and on security-relevant changes.
 
 **What It Does:**
+
 - Analyzes code for security vulnerabilities
 - Detects common security patterns
 - Scans for injection vulnerabilities, XSS, etc.
 - Provides actionable security recommendations
 
 **Where To View:**
+
 - [Security Tab](https://github.com/Toniboy1/TonX86/security/code-scanning) in the repository
 
 ### 3. Coverage Reports
@@ -44,15 +48,18 @@ Our security scanner runs automatically 2x per week and on security-relevant cha
 Test coverage is tracked for all contributions.
 
 **Coverage Requirements:**
+
 - **Minimum Required:** 80% for branches, functions, lines, and statements
 - **Current Coverage:** See the [Codecov badge](https://codecov.io/gh/Toniboy1/TonX86) in the main README
 
 **How To View Coverage:**
+
 1. Wait for CI to complete on your PR
 2. Check the automated coverage comment on your PR
 3. Download HTML coverage report from [Actions](https://github.com/Toniboy1/TonX86/actions) artifacts
 
 **Running Coverage Locally:**
+
 ```bash
 cd packages/simcore
 npm test -- --coverage
@@ -69,12 +76,14 @@ npm test -- --coverage
 **Dependabot** runs weekly to keep dependencies up to date.
 
 **What It Does:**
+
 - Checks for outdated dependencies
 - Groups minor and patch updates
 - Creates automated pull requests
 - Reports security vulnerabilities
 
 **Your Role:**
+
 - Dependabot PRs are handled by maintainers
 - Contributors don't need to worry about dependency updates
 
@@ -83,26 +92,31 @@ npm test -- --coverage
 All contributions must meet these standards before merging:
 
 ### ✅ Compilation
+
 - All TypeScript must compile without errors
 - Run `npm run build` to verify
 
 ### ✅ Tests
+
 - All existing tests must pass
 - New features require new tests
 - Run `npm test` to verify
 
 ### ✅ Code Coverage
+
 - Maintain 80%+ coverage on new code
 - Run `npm test -- --coverage` to check
 
 ### ✅ Linting
+
 - Code must follow ESLint rules
 - Run `npm run lint` to verify
 - Run `npm run lint -- --fix` to auto-fix issues
 
 ### ✅ Documentation
+
 - Update relevant README files
-- Document public APIs  
+- Document public APIs
 - Add JSDoc comments for complex functions
 
 ## Running All Checks Locally
@@ -114,6 +128,7 @@ npm run check
 ```
 
 This runs:
+
 1. Build verification
 2. Linting
 3. Tests
@@ -124,15 +139,18 @@ This runs:
 The `main` branch is protected with the following rules:
 
 **Required Checks:**
+
 - CI must pass
 - No merge conflicts
 - Branch must be up to date
 
 **Required Reviews:**
+
 - External contributors: 1 maintainer approval required
 - Maintainers: Can merge their own PRs after checks pass
 
 **Additional Protections:**
+
 - All commits must be GPG/SSH signed ([Learn How](COMMIT_SIGNING.md))
 - Direct pushes to `main` are blocked for external contributors
 - Force pushes are not allowed
@@ -160,6 +178,7 @@ If any checks fail:
 4. **Ask for help** in the PR comments
 
 Common issues:
+
 - **Build fails:** Check TypeScript errors
 - **Tests fail:** Run `npm test` locally to debug
 - **Lint fails:** Run `npm run lint -- --fix`
@@ -168,6 +187,7 @@ Common issues:
 ## Timeline Expectations
 
 **Typical PR Timeline:**
+
 1. Submit PR → Checks run (3-5 minutes)
 2. Maintainer review (24-48 hours typically)
 3. Address feedback (as needed)
@@ -175,6 +195,7 @@ Common issues:
 5. Appears in next release
 
 **After Merge:**
+
 - Your contribution is part of the project! 🎉
 - Credit is preserved in git history
 - Appears in release notes

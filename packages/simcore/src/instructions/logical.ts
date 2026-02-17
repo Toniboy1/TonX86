@@ -8,12 +8,8 @@ export function executeAnd(ctx: ExecutionContext, operands: string[]): void {
 
   if (dest.type === "register") {
     const srcValue = ctx.resolveSourceValue(src);
-    ctx.cpu.registers[dest.value] =
-      ctx.cpu.registers[dest.value] & srcValue & 0xffffffff;
-    ctx.cpu.flags = computeLogicalFlags(
-      ctx.cpu.flags,
-      ctx.cpu.registers[dest.value],
-    );
+    ctx.cpu.registers[dest.value] = ctx.cpu.registers[dest.value] & srcValue & 0xffffffff;
+    ctx.cpu.flags = computeLogicalFlags(ctx.cpu.flags, ctx.cpu.registers[dest.value]);
   }
 }
 
@@ -24,12 +20,8 @@ export function executeOr(ctx: ExecutionContext, operands: string[]): void {
 
   if (dest.type === "register") {
     const srcValue = ctx.resolveSourceValue(src);
-    ctx.cpu.registers[dest.value] =
-      (ctx.cpu.registers[dest.value] | srcValue) & 0xffffffff;
-    ctx.cpu.flags = computeLogicalFlags(
-      ctx.cpu.flags,
-      ctx.cpu.registers[dest.value],
-    );
+    ctx.cpu.registers[dest.value] = (ctx.cpu.registers[dest.value] | srcValue) & 0xffffffff;
+    ctx.cpu.flags = computeLogicalFlags(ctx.cpu.flags, ctx.cpu.registers[dest.value]);
   }
 }
 
@@ -40,12 +32,8 @@ export function executeXor(ctx: ExecutionContext, operands: string[]): void {
 
   if (dest.type === "register") {
     const srcValue = ctx.resolveSourceValue(src);
-    ctx.cpu.registers[dest.value] =
-      (ctx.cpu.registers[dest.value] ^ srcValue) & 0xffffffff;
-    ctx.cpu.flags = computeLogicalFlags(
-      ctx.cpu.flags,
-      ctx.cpu.registers[dest.value],
-    );
+    ctx.cpu.registers[dest.value] = (ctx.cpu.registers[dest.value] ^ srcValue) & 0xffffffff;
+    ctx.cpu.flags = computeLogicalFlags(ctx.cpu.flags, ctx.cpu.registers[dest.value]);
   }
 }
 

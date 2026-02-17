@@ -48,9 +48,7 @@
       "description": "Move with zero extend (8-bit to 32-bit)",
       "cycles": 1,
       "flags": [],
-      "examples": [
-        "MOVZX EAX, ECX     ; Move low byte of ECX to EAX, zero-extend"
-      ]
+      "examples": ["MOVZX EAX, ECX     ; Move low byte of ECX to EAX, zero-extend"]
     },
     {
       "mnemonic": "MOVSX",
@@ -59,9 +57,7 @@
       "description": "Move with sign extend (8-bit to 32-bit)",
       "cycles": 1,
       "flags": [],
-      "examples": [
-        "MOVSX EAX, ECX     ; Move low byte of ECX to EAX, sign-extend"
-      ]
+      "examples": ["MOVSX EAX, ECX     ; Move low byte of ECX to EAX, sign-extend"]
     },
     {
       "mnemonic": "ADD",
@@ -109,10 +105,7 @@
       "description": "Bitwise OR two registers or register with immediate",
       "cycles": 1,
       "flags": ["Z", "S"],
-      "examples": [
-        "OR EAX, ECX        ; EAX = EAX | ECX",
-        "OR EAX, 0x0F       ; EAX = EAX | 0x0F"
-      ]
+      "examples": ["OR EAX, ECX        ; EAX = EAX | ECX", "OR EAX, 0x0F       ; EAX = EAX | 0x0F"]
     },
     {
       "mnemonic": "XOR",
@@ -121,10 +114,7 @@
       "description": "Bitwise XOR two registers or register with immediate",
       "cycles": 1,
       "flags": ["Z", "S"],
-      "examples": [
-        "XOR EAX, ECX       ; EAX = EAX ^ ECX",
-        "XOR EAX, EAX       ; Clear EAX to 0"
-      ]
+      "examples": ["XOR EAX, ECX       ; EAX = EAX ^ ECX", "XOR EAX, EAX       ; Clear EAX to 0"]
     },
     {
       "mnemonic": "NOT",
@@ -265,9 +255,7 @@
       "description": "Signed divide (EAX / src -> quotient in EAX, remainder in EDX)",
       "cycles": 1,
       "flags": ["Z", "S"],
-      "examples": [
-        "IDIV ECX           ; EAX = EAX / ECX (signed), EDX = remainder"
-      ]
+      "examples": ["IDIV ECX           ; EAX = EAX / ECX (signed), EDX = remainder"]
     },
     {
       "mnemonic": "MOD",
@@ -276,10 +264,7 @@
       "description": "Modulo operation (dest = dest % src)",
       "cycles": 1,
       "flags": ["Z", "S"],
-      "examples": [
-        "MOD EAX, 64        ; EAX = EAX % 64",
-        "MOD ECX, EBX       ; ECX = ECX % EBX"
-      ]
+      "examples": ["MOD EAX, 64        ; EAX = EAX % 64", "MOD ECX, EBX       ; ECX = ECX % EBX"]
     },
     {
       "mnemonic": "JMP",
@@ -764,9 +749,7 @@
       "description": "Byte swap - reverse byte order (endianness conversion)",
       "cycles": 1,
       "flags": [],
-      "examples": [
-        "BSWAP EAX           ; Reverse byte order: 0x12345678 -> 0x78563412"
-      ]
+      "examples": ["BSWAP EAX           ; Reverse byte order: 0x12345678 -> 0x78563412"]
     },
     {
       "mnemonic": "LODSB",
@@ -829,9 +812,7 @@
       "description": "Scan string byte: compare AL with byte at [EDI], set flags, increment EDI",
       "cycles": 1,
       "flags": ["Z", "C", "O", "S"],
-      "examples": [
-        "SCASB               ; Compare AL with [EDI]; set flags; EDI++"
-      ]
+      "examples": ["SCASB               ; Compare AL with [EDI]; set flags; EDI++"]
     },
     {
       "mnemonic": "SCAS",
@@ -840,9 +821,7 @@
       "description": "Scan string byte (alias for SCASB): compare AL with byte at [EDI], set flags, increment EDI",
       "cycles": 1,
       "flags": ["Z", "C", "O", "S"],
-      "examples": [
-        "SCAS                ; Compare AL with [EDI]; set flags; EDI++"
-      ]
+      "examples": ["SCAS                ; Compare AL with [EDI]; set flags; EDI++"]
     },
     {
       "mnemonic": "CMPSB",
@@ -851,9 +830,7 @@
       "description": "Compare string bytes: compare [ESI] with [EDI], set flags, increment both",
       "cycles": 1,
       "flags": ["Z", "C", "O", "S"],
-      "examples": [
-        "CMPSB               ; Compare [ESI] with [EDI]; set flags; ESI++; EDI++"
-      ]
+      "examples": ["CMPSB               ; Compare [ESI] with [EDI]; set flags; ESI++; EDI++"]
     },
     {
       "mnemonic": "CMPS",
@@ -862,9 +839,7 @@
       "description": "Compare string bytes (alias for CMPSB): compare [ESI] with [EDI], set flags, increment both",
       "cycles": 1,
       "flags": ["Z", "C", "O", "S"],
-      "examples": [
-        "CMPS                ; Compare [ESI] with [EDI]; set flags; ESI++; EDI++"
-      ]
+      "examples": ["CMPS                ; Compare [ESI] with [EDI]; set flags; ESI++; EDI++"]
     },
     {
       "mnemonic": "INT3",

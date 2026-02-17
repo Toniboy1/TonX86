@@ -3,9 +3,7 @@ import { Simulator } from "../simulator/index";
 describe("executeInstruction - unknown instruction", () => {
   test("throws for unrecognized mnemonic", () => {
     const sim = new Simulator();
-    expect(() => sim.executeInstruction("BOGUS", ["EAX"])).toThrow(
-      "Unknown instruction: BOGUS",
-    );
+    expect(() => sim.executeInstruction("BOGUS", ["EAX"])).toThrow("Unknown instruction: BOGUS");
   });
 });
 
@@ -89,17 +87,17 @@ describe("executeInstruction - Compatibility Mode", () => {
 
     test("Strict-x86 MOV rejects memory-to-memory and IO immediates", () => {
       const strictSim = new Simulator(8, 8, "strict-x86");
-      expect(() =>
-        strictSim.executeInstruction("MOV", ["[100]", "[200]"]),
-      ).toThrow("Memory-to-memory MOV not allowed");
+      expect(() => strictSim.executeInstruction("MOV", ["[100]", "[200]"])).toThrow(
+        "Memory-to-memory MOV not allowed",
+      );
 
-      expect(() =>
-        strictSim.executeInstruction("MOV", ["[100]", "0xF000"]),
-      ).toThrow("Memory-to-memory MOV not allowed");
+      expect(() => strictSim.executeInstruction("MOV", ["[100]", "0xF000"])).toThrow(
+        "Memory-to-memory MOV not allowed",
+      );
 
-      expect(() =>
-        strictSim.executeInstruction("MOV", ["[100]", "0x10100"]),
-      ).toThrow("Memory-to-memory MOV not allowed");
+      expect(() => strictSim.executeInstruction("MOV", ["[100]", "0x10100"])).toThrow(
+        "Memory-to-memory MOV not allowed",
+      );
 
       strictSim.executeInstruction("MOV", ["[120]", "0x200"]);
       strictSim.executeInstruction("MOV", ["EAX", "[120]"]);

@@ -3,12 +3,14 @@
 LSP server for TonX86 assembly language support.
 
 ## Features
+
 - **Diagnostics**: Unknown mnemonics, invalid operands, undefined labels
 - **Hover**: Instruction documentation with cycles and flags
 - **Completion**: Mnemonics, registers (EAX-EDI, AL-BH), labels
 - **Go to Definition**: Jump to label declarations
 
 ## Supported Instructions
+
 **Data Movement**: MOV, XCHG, LEA, MOVZX, MOVSX
 **Arithmetic**: ADD, SUB, INC, DEC, MUL, IMUL, DIV, IDIV, MOD, CMP, NEG
 **Logical**: AND, OR, XOR, NOT, TEST
@@ -19,10 +21,12 @@ LSP server for TonX86 assembly language support.
 **Special**: RAND
 
 ## Registers
+
 **32-bit**: EAX, ECX, EDX, EBX, ESP, EBP, ESI, EDI
 **8-bit**: AL, AH, CL, CH, DL, DH, BL, BH
 
 ## Syntax Rules
+
 - Comments: `;` to end of line
 - Labels: `name:` at start of line
 - Instructions: `MNEMONIC operand1, operand2`
@@ -31,9 +35,11 @@ LSP server for TonX86 assembly language support.
 - Memory I/O: 0xF000-0xFFFF (LCD), 0x10100-0x10102 (Keyboard)
 
 ## Data Source
+
 `packages/docs/isa.json` contains instruction definitions
 
 ## Validation
+
 - Check mnemonic against valid instruction set
 - Verify operand count matches instruction requirements
 - Validate register names (32-bit and 8-bit)

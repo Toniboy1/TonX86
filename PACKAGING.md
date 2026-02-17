@@ -26,6 +26,7 @@ npm run package
 ```
 
 This command:
+
 1. Builds all workspace packages (simcore, debug-adapter, language-server, extension)
 2. Runs type checks with TypeScript
 3. Bundles code with esbuild (production mode, minified)
@@ -35,11 +36,13 @@ This command:
 ### Install VSIX Locally
 
 **Option 1: VS Code UI**
+
 1. Open Extensions view (Ctrl+Shift+X / Cmd+Shift+X)
 2. Click `...` menu → "Install from VSIX..."
 3. Select `packages/extension/tonx86-<version>.vsix`
 
 **Option 2: Command Line**
+
 ```bash
 code --install-extension packages/extension/tonx86-<version>.vsix
 ```
@@ -60,12 +63,14 @@ npm run watch
 ```
 
 Watch mode runs parallel processes:
-- Type checking: `tsc --noEmit`  
+
+- Type checking: `tsc --noEmit`
 - Bundling: `esbuild --watch`
 
 ## Package Contents
 
 **Included (~22KB compressed):**
+
 - Bundled extension code (`dist/extension.js`) - ~13KB
 - Bundled debug adapter (`dist/debugAdapter.js`) - ~47KB
 - Syntax highlighting (`syntaxes/tonx86.tmLanguage.json`)
@@ -73,6 +78,7 @@ Watch mode runs parallel processes:
 - LICENSE and package.json
 
 **Excluded (via `.vscodeignore`):**
+
 - TypeScript source files (`src/**`)
 - Build scripts (`*.js` build configs)
 - Configuration files (`tsconfig.json`, `.eslintrc.json`)
@@ -82,17 +88,20 @@ Watch mode runs parallel processes:
 ## Troubleshooting
 
 ### Type Errors
+
 ```bash
 npm run check-types  # Show type errors without building
 ```
 
 ### Extension Not Loading
+
 1. Verify successful build: `npm run build`
 2. Check debug adapter files were copied
 3. Verify VS Code compatibility (requires ^1.84.0)
 4. Check Developer Tools console (Help → Toggle Developer Tools)
 
 ### Analyze Bundle Contents
+
 ```bash
 cd packages/extension
 npx vsce ls --tree

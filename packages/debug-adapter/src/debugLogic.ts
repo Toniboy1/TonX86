@@ -114,10 +114,7 @@ export function detectLCDDimensions(
  * @param instructions - Array of parsed assembly instructions
  * @returns Line number of the next instruction, or 1 if not found
  */
-export function getNextInstructionLine(
-  eip: number,
-  instructions: Instruction[],
-): number {
+export function getNextInstructionLine(eip: number, instructions: Instruction[]): number {
   if (eip >= 0 && eip < instructions.length) {
     return instructions[eip].line;
   }
@@ -167,10 +164,7 @@ export function validateCPUSpeed(speed: number | undefined): number {
  * @param instructions - Array of parsed assembly instructions
  * @returns True if the line has an instruction
  */
-export function isExecutableLine(
-  line: number,
-  instructions: Instruction[],
-): boolean {
+export function isExecutableLine(line: number, instructions: Instruction[]): boolean {
   return instructions.some((instr) => instr.line === line);
 }
 
@@ -181,10 +175,7 @@ export function isExecutableLine(
  * @param instructions - Array of parsed assembly instructions
  * @returns The instruction index (EIP), or -1 if not found
  */
-export function findInstructionByLine(
-  line: number,
-  instructions: Instruction[],
-): number {
+export function findInstructionByLine(line: number, instructions: Instruction[]): number {
   return instructions.findIndex((instr) => instr.line === line);
 }
 

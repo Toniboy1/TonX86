@@ -9,12 +9,14 @@ Educational x86-like assembly language environment for learning low-level progra
 ## ✨ Features
 
 ### 🐛 Full Debugging Support
+
 - Set breakpoints and step through code
 - Pause/continue execution at any time
 - View CPU state and memory in real-time
 - Variable speed execution (1-200%)
 
 ### 💻 Simulated Hardware
+
 - **8 General-Purpose Registers**: EAX, ECX, EDX, EBX, ESP, EBP, ESI, EDI
 - **CPU Flags**: Zero, Carry, Overflow, Sign
 - **64KB Memory**: Dual banks (Memory A & B) for data storage
@@ -22,6 +24,7 @@ Educational x86-like assembly language environment for learning low-level progra
 - **Keyboard Input**: Real-time key press/release capture
 
 ### 📝 Development Tools
+
 - **Syntax Highlighting**: Assembly-specific color coding
 - **IntelliSense**: Code completion for instructions and registers
 - **Diagnostics**: Real-time error detection
@@ -30,12 +33,14 @@ Educational x86-like assembly language environment for learning low-level progra
 ## 🎯 Getting Started
 
 ### Step 1: Install the Extension
+
 - Open VS Code
 - Go to Extensions (Ctrl+Shift+X / Cmd+Shift+X)
 - Search for "TonX86"
 - Click Install
 
 ### Step 2: Explore Examples
+
 The extension includes 30+ example programs to help you learn. Find them in the [examples folder on GitHub](https://github.com/Toniboy1/TonX86/tree/main/examples):
 
 - **[01-basic-instructions.asm](https://github.com/Toniboy1/TonX86/blob/main/examples/01-basic-instructions.asm)** - MOV, ADD, SUB operations
@@ -49,9 +54,11 @@ The extension includes 30+ example programs to help you learn. Find them in the 
 ...and 20 more examples covering interrupts, memory modes, bitwise operations, and more!
 
 ### Step 3: Write Your First Program
+
 Create a new `.asm` file and start coding. The Language Server provides syntax highlighting, IntelliSense, and diagnostics as you type.
 
 ### Step 4: Debug and Run
+
 Press F5 to start debugging. Use breakpoints, step through instructions, and watch your program execute in real-time!
 
 ## 🚀 Quick Start
@@ -90,44 +97,44 @@ Press `F5` or click **Run → Start Debugging**. VS Code will create a launch co
 
 ## 📖 Instruction Set
 
-| Instruction | Description | Example |
-|-------------|-------------|---------|
-| `MOV dest, src` | Move data | `MOV EAX, 10` |
-| `ADD dest, src` | Add | `ADD EAX, EBX` |
-| `SUB dest, src` | Subtract | `SUB EAX, 5` |
-| `AND/OR/XOR dest, src` | Bitwise operations | `AND EAX, 0xFF` |
-| `CMP op1, op2` | Compare | `CMP EAX, 0` |
-| `SHL/SHR/SAR dest, n` | Shift operations | `SHL EAX, 2` |
-| `ROL/ROR/RCL/RCR` | Rotate operations | `ROL EAX, 1` |
-| `JMP label` | Unconditional jump | `JMP loop_start` |
-| `JE/JNE/JG/JL/...` | Conditional jumps | `JE end` |
-| `LOOP/LOOPE/LOOPNE` | Loop with ECX counter | `LOOP my_loop` |
-| `CMOVxx dest, src` | Conditional move | `CMOVE EAX, EBX` |
-| `CALL/RET` | Subroutine call/return | `CALL my_func` |
-| `PUSH/POP` | Stack operations | `PUSH EAX` |
-| `LAHF/SAHF` | Load/store flags via AH | `LAHF` |
-| `XADD dest, src` | Exchange and add | `XADD EAX, EBX` |
-| `BSF/BSR dest, src` | Bit scan forward/reverse | `BSF EAX, EBX` |
-| `BSWAP reg` | Byte swap | `BSWAP EAX` |
-| `LODSB/STOSB/MOVSB` | String operations | `MOVSB` |
-| `SCASB/CMPSB` | String scan/compare | `SCASB` |
-| `INT imm8` | Software interrupt | `INT 0x10` |
-| `INT3` | Breakpoint | `INT3` |
-| `HLT` | Halt execution | `HLT` |
+| Instruction            | Description              | Example          |
+| ---------------------- | ------------------------ | ---------------- |
+| `MOV dest, src`        | Move data                | `MOV EAX, 10`    |
+| `ADD dest, src`        | Add                      | `ADD EAX, EBX`   |
+| `SUB dest, src`        | Subtract                 | `SUB EAX, 5`     |
+| `AND/OR/XOR dest, src` | Bitwise operations       | `AND EAX, 0xFF`  |
+| `CMP op1, op2`         | Compare                  | `CMP EAX, 0`     |
+| `SHL/SHR/SAR dest, n`  | Shift operations         | `SHL EAX, 2`     |
+| `ROL/ROR/RCL/RCR`      | Rotate operations        | `ROL EAX, 1`     |
+| `JMP label`            | Unconditional jump       | `JMP loop_start` |
+| `JE/JNE/JG/JL/...`     | Conditional jumps        | `JE end`         |
+| `LOOP/LOOPE/LOOPNE`    | Loop with ECX counter    | `LOOP my_loop`   |
+| `CMOVxx dest, src`     | Conditional move         | `CMOVE EAX, EBX` |
+| `CALL/RET`             | Subroutine call/return   | `CALL my_func`   |
+| `PUSH/POP`             | Stack operations         | `PUSH EAX`       |
+| `LAHF/SAHF`            | Load/store flags via AH  | `LAHF`           |
+| `XADD dest, src`       | Exchange and add         | `XADD EAX, EBX`  |
+| `BSF/BSR dest, src`    | Bit scan forward/reverse | `BSF EAX, EBX`   |
+| `BSWAP reg`            | Byte swap                | `BSWAP EAX`      |
+| `LODSB/STOSB/MOVSB`    | String operations        | `MOVSB`          |
+| `SCASB/CMPSB`          | String scan/compare      | `SCASB`          |
+| `INT imm8`             | Software interrupt       | `INT 0x10`       |
+| `INT3`                 | Breakpoint               | `INT3`           |
+| `HLT`                  | Halt execution           | `HLT`            |
 
 ### Assembler Directives
 
 Organize your code with assembler directives:
 
-| Directive | Description | Example |
-|-----------|-------------|---------|
-| `.text` | Code section (default) | `.text` |
-| `.data` | Data section | `.data` |
-| `DB` | Define Byte (8-bit) | `message: DB "Hello", 0x00` |
-| `DW` | Define Word (16-bit) | `count: DW 100` |
-| `DD` | Define Doubleword (32-bit) | `color: DD 0xFF000000` |
-| `ORG addr` | Set origin address | `ORG 0x2000` |
-| `NAME EQU value` | Define constant | `LCD_BASE EQU 0xF000` |
+| Directive        | Description                | Example                     |
+| ---------------- | -------------------------- | --------------------------- |
+| `.text`          | Code section (default)     | `.text`                     |
+| `.data`          | Data section               | `.data`                     |
+| `DB`             | Define Byte (8-bit)        | `message: DB "Hello", 0x00` |
+| `DW`             | Define Word (16-bit)       | `count: DW 100`             |
+| `DD`             | Define Doubleword (32-bit) | `color: DD 0xFF000000`      |
+| `ORG addr`       | Set origin address         | `ORG 0x2000`                |
+| `NAME EQU value` | Define constant            | `LCD_BASE EQU 0xF000`       |
 
 **Example with Data Section:**
 
@@ -175,15 +182,16 @@ keyboard_loop:
     MOV EAX, 0x10100      ; Read status (1=key available, 0=empty)
     CMP EAX, 0
     JE keyboard_loop     ; Wait for key
-    
+
     MOV EBX, 0x10101      ; Read key code (pops from queue)
     MOV ECX, 0x10102      ; Read key state (1=pressed, 0=released)
-    
+
     ; Process key press...
     JMP keyboard_loop
 ```
 
 **Key Codes:**
+
 - Letters: A-Z (65-90), a-z (97-122)
 - Numbers: 0-9 (48-57)
 - Arrows: Up (128), Down (129), Left (130), Right (131)
@@ -193,17 +201,17 @@ keyboard_loop:
 
 Configure TonX86 through VS Code settings:
 
-| Setting | Default | Description |
-|---------|---------|-------------|
-| `tonx86.lcd.enabled` | `true` | Enable LCD display |
-| `tonx86.lcd.width` | `16` | LCD width (2-256 pixels) |
-| `tonx86.lcd.height` | `16` | LCD height (2-256 pixels) |
-| `tonx86.lcd.pixelSize` | `5` | Pixel size in pixels (1-50) |
-| `tonx86.keyboard.enabled` | `true` | Enable keyboard input |
-| `tonx86.keyboard.memoryAddress` | `0x10100` | Keyboard buffer memory address |
-| `tonx86.cpu.speed` | `100` | CPU speed percentage (1-200%) |
-| `tonx86.debug.stopOnEntry` | `true` | Pause at first instruction when debugging |
-| `tonx86.debug.enableLogging` | `false` | Enable debug adapter logging |
+| Setting                         | Default   | Description                               |
+| ------------------------------- | --------- | ----------------------------------------- |
+| `tonx86.lcd.enabled`            | `true`    | Enable LCD display                        |
+| `tonx86.lcd.width`              | `16`      | LCD width (2-256 pixels)                  |
+| `tonx86.lcd.height`             | `16`      | LCD height (2-256 pixels)                 |
+| `tonx86.lcd.pixelSize`          | `5`       | Pixel size in pixels (1-50)               |
+| `tonx86.keyboard.enabled`       | `true`    | Enable keyboard input                     |
+| `tonx86.keyboard.memoryAddress` | `0x10100` | Keyboard buffer memory address            |
+| `tonx86.cpu.speed`              | `100`     | CPU speed percentage (1-200%)             |
+| `tonx86.debug.stopOnEntry`      | `true`    | Pause at first instruction when debugging |
+| `tonx86.debug.enableLogging`    | `false`   | Enable debug adapter logging              |
 
 ## 📋 Example Programs
 
@@ -232,10 +240,10 @@ main:
     MOV EAX, 0x10100      ; Check keyboard status
     CMP EAX, 1
     JNE main             ; Wait for key
-    
+
     MOV EBX, 0x10101      ; Get key code
     MOV ECX, 0x10102      ; Get key state
-    
+
     CMP ECX, 1           ; Key pressed?
     JE key_press
     MOV 0xF000, 0        ; Key released - turn off
@@ -249,6 +257,7 @@ key_press:
 ## 🎓 Educational Use
 
 Perfect for:
+
 - **Computer Science Courses**: Learn CPU architecture and assembly
 - **Self-Study**: Practice low-level programming
 - **Teaching**: Demonstrate how computers work at the hardware level
@@ -257,6 +266,7 @@ Perfect for:
 ## 🤝 Contributing
 
 Contributions are welcome! Visit the [GitHub repository](https://github.com/Toniboy1/TonX86) to:
+
 - Report bugs
 - Request features
 - Submit pull requests

@@ -66,19 +66,19 @@ describe("executeInstruction - Logical (AND/OR/XOR/NOT/NEG/TEST)", () => {
   test("AND with non-register dest is a no-op", () => {
     sim.executeInstruction("MOV", ["EAX", "0xFF"]);
     sim.executeInstruction("AND", ["10", "5"]);
-    expect(sim.getRegisters().EAX).toBe(0xFF);
+    expect(sim.getRegisters().EAX).toBe(0xff);
   });
 
   test("OR with non-register dest is a no-op", () => {
     sim.executeInstruction("MOV", ["EAX", "0xFF"]);
     sim.executeInstruction("OR", ["10", "5"]);
-    expect(sim.getRegisters().EAX).toBe(0xFF);
+    expect(sim.getRegisters().EAX).toBe(0xff);
   });
 
   test("XOR with non-register dest is a no-op", () => {
     sim.executeInstruction("MOV", ["EAX", "0xFF"]);
     sim.executeInstruction("XOR", ["10", "5"]);
-    expect(sim.getRegisters().EAX).toBe(0xFF);
+    expect(sim.getRegisters().EAX).toBe(0xff);
   });
 
   test("NOT with non-register dest is a no-op", () => {

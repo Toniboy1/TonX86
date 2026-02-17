@@ -21,6 +21,7 @@ Thank you for your interest in contributing to TonX86! This guide will help you 
 **All commits must be signed with GPG or SSH keys** to ensure authenticity and display a "Verified" badge on GitHub.
 
 **Quick setup:**
+
 ```bash
 # Generate GPG key
 gpg --full-generate-key
@@ -53,6 +54,7 @@ packages/
 ### Making Changes
 
 1. Create a new branch from `main`:
+
    ```bash
    git checkout -b feature/your-feature-name
    ```
@@ -95,9 +97,10 @@ See [VERSION.md](VERSION.md) for complete guidelines.
 ### Documentation
 
 Update relevant documentation:
+
 - **README.md** - Features, configuration, examples
 - **packages/docs/ISA.md** - Instruction set changes
-- **.github/prompts/*.md** - AI context for major changes
+- **.github/prompts/\*.md** - AI context for major changes
 
 ## Submitting Changes
 
@@ -119,18 +122,21 @@ Update relevant documentation:
 ## Areas for Contribution
 
 ### Good First Issues
+
 - Documentation improvements
 - Example assembly programs
 - Test coverage improvements
 - Bug fixes
 
 ### Feature Development
+
 - New instructions (e.g., string operations)
 - Enhanced debugging features
 - Additional I/O devices
 - Performance optimizations
 
 ### Infrastructure
+
 - CI/CD improvements
 - Testing framework enhancements
 - Build process optimization
@@ -138,6 +144,7 @@ Update relevant documentation:
 ## Quality Standards
 
 All contributions must:
+
 - ✅ Pass TypeScript compilation
 - ✅ Pass all tests (911 tests across 4 packages)
 - ✅ All 37 examples pass (`npm run test:examples`)

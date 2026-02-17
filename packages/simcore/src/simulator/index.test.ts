@@ -724,9 +724,7 @@ describe("Simulator - CALL/RET via step()", () => {
   });
 
   test("Jump throws when target label is missing", () => {
-    const instructions = [
-      { line: 1, mnemonic: "JE", operands: ["missing"], raw: "JE missing" },
-    ];
+    const instructions = [{ line: 1, mnemonic: "JE", operands: ["missing"], raw: "JE missing" }];
     sim.loadInstructions(instructions, new Map());
     expect(() => sim.step()).toThrow('Jump target "missing" not found');
   });
@@ -1054,9 +1052,7 @@ describe("Simulator - Data Loading", () => {
 
   describe("loadData method", () => {
     it("should load byte data (DB) into memory", () => {
-      sim.loadData([
-        { address: 0x2000, size: 1, values: [0x48, 0x65, 0x6c, 0x6c, 0x6f] },
-      ]);
+      sim.loadData([{ address: 0x2000, size: 1, values: [0x48, 0x65, 0x6c, 0x6c, 0x6f] }]);
 
       const memory = sim.getMemoryA(0x2000, 5);
       expect(Array.from(memory)).toEqual([0x48, 0x65, 0x6c, 0x6c, 0x6f]);
@@ -1088,9 +1084,7 @@ describe("Simulator - Data Loading", () => {
 
       expect(Array.from(sim.getMemoryA(0x2000, 2))).toEqual([0x01, 0x02]);
       expect(Array.from(sim.getMemoryA(0x3000, 2))).toEqual([0x34, 0x12]);
-      expect(Array.from(sim.getMemoryA(0x4000, 4))).toEqual([
-        0xef, 0xbe, 0xad, 0xde,
-      ]);
+      expect(Array.from(sim.getMemoryA(0x4000, 4))).toEqual([0xef, 0xbe, 0xad, 0xde]);
     });
 
     it("should handle sequential data items", () => {
@@ -1187,7 +1181,7 @@ describe("Simulator - Data Loading", () => {
     });
 
     it("should load DD (4-byte) data items", () => {
-      sim.loadData([{ address: 0x2000, size: 4, values: [0x12345678, 0xDEADBEEF] }]);
+      sim.loadData([{ address: 0x2000, size: 4, values: [0x12345678, 0xdeadbeef] }]);
 
       const memory = sim.getMemoryA(0x2000, 8);
       // Little-endian: 0x12345678 → 0x78, 0x56, 0x34, 0x12
@@ -1196,10 +1190,10 @@ describe("Simulator - Data Loading", () => {
       expect(memory[2]).toBe(0x34);
       expect(memory[3]).toBe(0x12);
       // Second value: 0xDEADBEEF → 0xEF, 0xBE, 0xAD, 0xDE
-      expect(memory[4]).toBe(0xEF);
-      expect(memory[5]).toBe(0xBE);
-      expect(memory[6]).toBe(0xAD);
-      expect(memory[7]).toBe(0xDE);
+      expect(memory[4]).toBe(0xef);
+      expect(memory[5]).toBe(0xbe);
+      expect(memory[6]).toBe(0xad);
+      expect(memory[7]).toBe(0xde);
     });
 
     it("should load DW (2-byte) data items", () => {

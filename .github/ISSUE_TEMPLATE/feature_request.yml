@@ -7,7 +7,7 @@ body:
     attributes:
       value: |
         Thanks for suggesting a new feature! Please provide details below.
-  
+
   - type: dropdown
     id: category
     attributes:
@@ -25,7 +25,7 @@ body:
         - Other
     validations:
       required: true
-  
+
   - type: textarea
     id: problem
     attributes:
@@ -34,7 +34,7 @@ body:
       placeholder: I'm always frustrated when...
     validations:
       required: true
-  
+
   - type: textarea
     id: solution
     attributes:
@@ -43,13 +43,13 @@ body:
       placeholder: A clear and concise description of what you want to happen
     validations:
       required: true
-  
+
   - type: textarea
     id: alternatives
     attributes:
       label: Alternatives Considered
       description: Describe any alternative solutions or features you've considered
-  
+
   - type: textarea
     id: use-case
     attributes:
@@ -58,14 +58,14 @@ body:
       placeholder: |
         This would allow users to...
         Example: When writing a program that...
-  
+
   - type: textarea
     id: example
     attributes:
       label: Code Example (if applicable)
       description: Provide an example of how this feature would work
       render: asm
-  
+
   - type: checkboxes
     id: breaking
     attributes:
@@ -73,7 +73,7 @@ body:
       description: Would this be a breaking change?
       options:
         - label: This would require breaking changes to existing programs
-  
+
   - type: textarea
     id: additional
     attributes:

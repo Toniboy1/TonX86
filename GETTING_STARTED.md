@@ -67,6 +67,7 @@ ADD EAX, 3      ; Add 3 to EAX
 Press **F5** or click the **Run and Debug** button.
 
 The debugger will:
+
 - ✅ Assemble your code
 - ✅ Start execution
 - ✅ Stop at the first instruction
@@ -83,16 +84,16 @@ The debugger will:
 
 The `examples/` folder contains 30+ complete programs showcasing all features:
 
-| Example | What It Teaches |
-|---------|-----------------|
-| [01-basic-instructions.asm](../examples/01-basic-instructions.asm) | MOV, ADD, SUB basics |
-| [02-jumps.asm](../examples/02-jumps.asm) | Conditional jumps (JE, JNE, JL, etc.) |
-| [03-call-ret.asm](../examples/03-call-ret.asm) | Function calls and returns |
-| [04-stack.asm](../examples/04-stack.asm) | PUSH/POP stack operations |
-| [08-lcd.asm](../examples/08-lcd.asm) | Drawing on LCD display |
-| [14-keyboard.asm](../examples/14-keyboard.asm) | Reading keyboard input |
-| [20-flags.asm](../examples/20-flags.asm) | CPU flags (ZF, CF, OF, SF) |
-| [21-snake.asm](../examples/21-snake.asm) | **Game:** Snake on 64×64 LCD |
+| Example                                                            | What It Teaches                       |
+| ------------------------------------------------------------------ | ------------------------------------- |
+| [01-basic-instructions.asm](../examples/01-basic-instructions.asm) | MOV, ADD, SUB basics                  |
+| [02-jumps.asm](../examples/02-jumps.asm)                           | Conditional jumps (JE, JNE, JL, etc.) |
+| [03-call-ret.asm](../examples/03-call-ret.asm)                     | Function calls and returns            |
+| [04-stack.asm](../examples/04-stack.asm)                           | PUSH/POP stack operations             |
+| [08-lcd.asm](../examples/08-lcd.asm)                               | Drawing on LCD display                |
+| [14-keyboard.asm](../examples/14-keyboard.asm)                     | Reading keyboard input                |
+| [20-flags.asm](../examples/20-flags.asm)                           | CPU flags (ZF, CF, OF, SF)            |
+| [21-snake.asm](../examples/21-snake.asm)                           | **Game:** Snake on 64×64 LCD          |
 
 **Try this:** Open `examples/21-snake.asm`, press F5, and play! Use arrow keys to move.
 
@@ -153,13 +154,13 @@ Access settings via **Preferences → Settings → Search "tonx86"**
 
 ### Useful Settings
 
-| Setting | Purpose | Default |
-|---------|---------|---------|
-| `tonx86.lcd.width` | LCD display width in pixels | 16 |
-| `tonx86.lcd.height` | LCD display height in pixels | 16 |
-| `tonx86.cpu.speed` | CPU speed (1-200%, 100%=normal) | 100 |
-| `tonx86.debug.stopOnEntry` | Pause at first instruction | true |
-| `tonx86.compatibility.mode` | `educational` or `strict-x86` | educational |
+| Setting                     | Purpose                         | Default     |
+| --------------------------- | ------------------------------- | ----------- |
+| `tonx86.lcd.width`          | LCD display width in pixels     | 16          |
+| `tonx86.lcd.height`         | LCD display height in pixels    | 16          |
+| `tonx86.cpu.speed`          | CPU speed (1-200%, 100%=normal) | 100         |
+| `tonx86.debug.stopOnEntry`  | Pause at first instruction      | true        |
+| `tonx86.compatibility.mode` | `educational` or `strict-x86`   | educational |
 
 ## 🔍 Instruction Reference
 
@@ -167,31 +168,36 @@ See [packages/docs/ISA.md](packages/docs/ISA.md) for complete instruction set.
 
 **Quick reference:**
 
-| Instruction | Purpose | Example |
-|-------------|---------|---------|
-| `MOV` | Move data | `MOV EAX, 5` |
-| `ADD`, `SUB` | Arithmetic | `ADD EAX, EBX` |
-| `CMP` | Compare | `CMP EAX, 0` |
-| `JE`, `JNE` | Conditional jump | `JE label` |
-| `JMP` | Unconditional jump | `JMP label` |
-| `CALL`, `RET` | Function calls | `CALL func` |
-| `PUSH`, `POP` | Stack operations | `PUSH EAX` |
-| `AND`, `OR`, `XOR` | Bitwise ops | `AND EAX, 0xFF` |
-| `MOV [addr], val` | Write to memory | `MOV [0xF000], 1` |
+| Instruction        | Purpose            | Example           |
+| ------------------ | ------------------ | ----------------- |
+| `MOV`              | Move data          | `MOV EAX, 5`      |
+| `ADD`, `SUB`       | Arithmetic         | `ADD EAX, EBX`    |
+| `CMP`              | Compare            | `CMP EAX, 0`      |
+| `JE`, `JNE`        | Conditional jump   | `JE label`        |
+| `JMP`              | Unconditional jump | `JMP label`       |
+| `CALL`, `RET`      | Function calls     | `CALL func`       |
+| `PUSH`, `POP`      | Stack operations   | `PUSH EAX`        |
+| `AND`, `OR`, `XOR` | Bitwise ops        | `AND EAX, 0xFF`   |
+| `MOV [addr], val`  | Write to memory    | `MOV [0xF000], 1` |
 
 ## ❓ FAQs
 
 ### Q: How do I stop the program?
+
 **A:** Set a breakpoint at the end or press the **Stop** button (Shift+F5).
 
 ### Q: Memory address `0xF000` does what?
+
 **A:** That's the LCD display memory. Writing 1 turns pixels on, 0 turns them off.
 
 ### Q: How do I read input?
+
 **A:** Use address `0x10100` for keyboard status and `0x10101` for key codes.
 
 ### Q: Can I use constants/labels?
+
 **A:** Yes! Define them at the start:
+
 ```asm
 MY_CONSTANT EQU 42
 MY_LABEL:
@@ -199,20 +205,26 @@ MY_LABEL:
 ```
 
 ### Q: What's "educational mode"?
+
 **A:** Simplified x86 behavior perfect for learning. Switch to `strict-x86` mode for realistic x86 rules.
 
 ## 🐛 Troubleshooting
 
 ### Debugger exits immediately (no instructions executed)
+
 This usually means build artifacts are missing:
+
 ```bash
 npm run build        # Build all packages (required before debugging)
 ```
+
 Then press **F5** again. If you're developing from source, make sure
 `npm install && npm run build` completed without errors.
 
 ### `eslint: command not found` (macOS)
+
 Dev-dependencies were not installed. Fix:
+
 ```bash
 unset NODE_ENV
 npm install --include=dev
@@ -220,32 +232,39 @@ npm run check:deps   # Verify tools are available
 ```
 
 ### "Syntax error" when debugging
+
 - Check for typos in instruction names
 - Ensure proper operand formatting (e.g., `ADD EAX, 5` not `ADD EAX 5`)
 - See [ISA.md](packages/docs/ISA.md) for instruction syntax
 
 ### Breakpoints not working
+
 - Ensure file is saved
 - Try reassembling: Run → "TonX86: Assemble"
 
 ### LCD not displaying
+
 Check settings:
+
 - `tonx86.lcd.enabled` = `true`
 - Memory addresses: `0xF000` - `0xFFFF`
 
 ## 🎓 Learning Paths
 
 ### Beginner: Learn Assembly Basics
+
 1. Run examples 01-03
 2. Create simple arithmetic programs
 3. Move to conditional jumps (example 02)
 
 ### Intermediate: Control Flow & Functions
+
 1. Study examples 03-04 (CALL/RET, STACK)
 2. Write recursive functions
 3. Try example 20 (flags)
 
 ### Advanced: I/O & Games
+
 1. Study LCD (example 08)
 2. Study keyboard (example 14)
 3. Build a game like Snake (example 21)

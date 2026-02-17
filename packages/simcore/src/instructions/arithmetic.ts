@@ -1,9 +1,5 @@
 import type { ExecutionContext } from "../types";
-import {
-  computeArithFlags,
-  computeLogicalFlags,
-  computeMultiplyFlags,
-} from "../flags";
+import { computeArithFlags, computeLogicalFlags, computeMultiplyFlags } from "../flags";
 
 export function executeAdd(ctx: ExecutionContext, operands: string[]): void {
   if (operands.length !== 2) return;
@@ -15,13 +11,7 @@ export function executeAdd(ctx: ExecutionContext, operands: string[]): void {
     const destVal = ctx.cpu.registers[dest.value];
     const result = (destVal + srcValue) & 0xffffffff;
     ctx.cpu.registers[dest.value] = result;
-    ctx.cpu.flags = computeArithFlags(
-      ctx.cpu.flags,
-      result,
-      destVal,
-      srcValue,
-      false,
-    );
+    ctx.cpu.flags = computeArithFlags(ctx.cpu.flags, result, destVal, srcValue, false);
   }
 }
 
@@ -35,13 +25,7 @@ export function executeSub(ctx: ExecutionContext, operands: string[]): void {
     const destVal = ctx.cpu.registers[dest.value];
     const result = (destVal - srcValue) & 0xffffffff;
     ctx.cpu.registers[dest.value] = result;
-    ctx.cpu.flags = computeArithFlags(
-      ctx.cpu.flags,
-      result,
-      destVal,
-      srcValue,
-      true,
-    );
+    ctx.cpu.flags = computeArithFlags(ctx.cpu.flags, result, destVal, srcValue, true);
   }
 }
 
@@ -85,12 +69,7 @@ export function executeMul(ctx: ExecutionContext, operands: string[]): void {
   const upper = ((result / 0x100000000) & 0xffffffff) >>> 0;
   ctx.cpu.registers[0] = lower; // EAX
   ctx.cpu.registers[2] = upper; // EDX
-  ctx.cpu.flags = computeMultiplyFlags(
-    ctx.cpu.flags,
-    lower,
-    upper,
-    ctx.compatibilityMode,
-  );
+  ctx.cpu.flags = computeMultiplyFlags(ctx.cpu.flags, lower, upper, ctx.compatibilityMode);
 }
 
 export function executeImul(ctx: ExecutionContext, operands: string[]): void {
@@ -104,12 +83,7 @@ export function executeImul(ctx: ExecutionContext, operands: string[]): void {
     const upper = ((result / 0x100000000) | 0) >>> 0;
     ctx.cpu.registers[0] = lower;
     ctx.cpu.registers[2] = upper; // EDX
-    ctx.cpu.flags = computeMultiplyFlags(
-      ctx.cpu.flags,
-      lower,
-      upper,
-      ctx.compatibilityMode,
-    );
+    ctx.cpu.flags = computeMultiplyFlags(ctx.cpu.flags, lower, upper, ctx.compatibilityMode);
   } else if (operands.length === 2) {
     const dest = ctx.parseOperand(operands[0]);
     const src = ctx.parseOperand(operands[1]);
@@ -120,12 +94,7 @@ export function executeImul(ctx: ExecutionContext, operands: string[]): void {
     const result = (result64 & 0xffffffff) >>> 0;
     ctx.cpu.registers[dest.value] = result;
     const upper = ((result64 / 0x100000000) | 0) >>> 0;
-    ctx.cpu.flags = computeMultiplyFlags(
-      ctx.cpu.flags,
-      result,
-      upper,
-      ctx.compatibilityMode,
-    );
+    ctx.cpu.flags = computeMultiplyFlags(ctx.cpu.flags, result, upper, ctx.compatibilityMode);
   } else if (operands.length === 3) {
     const dest = ctx.parseOperand(operands[0]);
     const src = ctx.parseOperand(operands[1]);
@@ -137,12 +106,7 @@ export function executeImul(ctx: ExecutionContext, operands: string[]): void {
     const result = (result64 & 0xffffffff) >>> 0;
     ctx.cpu.registers[dest.value] = result;
     const upper = ((result64 / 0x100000000) | 0) >>> 0;
-    ctx.cpu.flags = computeMultiplyFlags(
-      ctx.cpu.flags,
-      result,
-      upper,
-      ctx.compatibilityMode,
-    );
+    ctx.cpu.flags = computeMultiplyFlags(ctx.cpu.flags, result, upper, ctx.compatibilityMode);
   }
 }
 
@@ -209,10 +173,7 @@ export function executeMod(ctx: ExecutionContext, operands: string[]): void {
     const modValue = srcValue >>> 0;
     ctx.cpu.registers[dest.value] = (destValue % modValue) >>> 0;
   }
-  ctx.cpu.flags = computeLogicalFlags(
-    ctx.cpu.flags,
-    ctx.cpu.registers[dest.value],
-  );
+  ctx.cpu.flags = computeLogicalFlags(ctx.cpu.flags, ctx.cpu.registers[dest.value]);
 }
 
 export function executeCmp(ctx: ExecutionContext, operands: string[]): void {
@@ -224,13 +185,7 @@ export function executeCmp(ctx: ExecutionContext, operands: string[]): void {
     const destValue = ctx.cpu.registers[dest.value];
     const srcValue = ctx.resolveSourceValue(src);
     const result = (destValue - srcValue) & 0xffffffff;
-    ctx.cpu.flags = computeArithFlags(
-      ctx.cpu.flags,
-      result,
-      destValue,
-      srcValue,
-      true,
-    );
+    ctx.cpu.flags = computeArithFlags(ctx.cpu.flags, result, destValue, srcValue, true);
   }
 }
 

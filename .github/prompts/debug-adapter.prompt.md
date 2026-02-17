@@ -11,6 +11,7 @@ The Debug Adapter coordinates debugging sessions between VS Code and the simcore
 **Debug Adapter owns**: Breakpoints, current line tracking, execution control (continue/pause/step), speed control
 
 ## DAP Protocol Implementation
+
 - `initialize` - Capability negotiation
 - `launch` - Load .asm file, parse instructions/labels/constants, create simulator, load into simcore
 - `configurationDone` - Ready for execution
@@ -26,10 +27,12 @@ The Debug Adapter coordinates debugging sessions between VS Code and the simcore
 - `variables` - Return EAX-EDI (and 8-bit aliases AL-BH) in hex format
 
 ## Custom Requests
+
 - `getLCDState` - Return pixel array from simulator (up to 64x64)
 - `keyboardEvent` - Forward {keyCode, pressed} to simulator
 
 ## Execution Model (v0.5.0)
+
 1. Parse assembly into Instruction[] with labels Map<string, index> and constants
 2. Load into simcore: `simulator.loadInstructions(instructions, labels)`
 3. Execute via `simulator.step()` which:
@@ -42,6 +45,7 @@ The Debug Adapter coordinates debugging sessions between VS Code and the simcore
 6. Check halted state after each step
 
 ## CPU Speed Control
+
 - Read `cpuSpeed` (1-200%) from launch args (injected by extension from settings)
 - Speed implementation:
   - **≤ 50%**: Yield every 100 instructions, sleep 5ms
@@ -53,20 +57,24 @@ The Debug Adapter coordinates debugging sessions between VS Code and the simcore
 - Configured via `tonx86.cpu.speed` extension setting
 
 ## Optional Logging
+
 - Read `enableLogging` from launch args (injected by extension from settings)
 - When true: Create `tonx86-debug.log` in program directory
 - When false: No file I/O (performance optimized)
 - Configured via `tonx86.debug.enableLogging` extension setting
 
 ## Stopped Events
+
 - `entry` - Initial stop at first instruction
 - `step` - After next/stepIn/stepOut
 - `breakpoint` - Hit breakpoint
 - Terminate - HLT instruction or error
 
 ## Memory-Mapped I/O
+
 - **LCD**: 0xF000-0xFFFF (64x64 max = 4096 pixels)
 - **Keyboard**: 0x10100 (status), 0x10101 (keycode), 0x10102 (keystate)
 
 ## Supported Instructions
+
 All instructions from ISA: MOV, XCHG, LEA, MOVZX, MOVSX, ADD, SUB, INC, DEC, MUL, IMUL, DIV, IDIV, MOD, CMP, NEG, AND, OR, XOR, NOT, TEST, SHL, SHR, SAR, ROL, ROR, JMP, JE/JZ, JNE/JNZ, JG, JGE, JL, JLE, JS, JNS, JA, JAE, JB, JBE, PUSH, POP, CALL, RET, INT, IRET, RAND, HLT

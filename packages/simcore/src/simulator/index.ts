@@ -24,12 +24,7 @@ import type {
   ExecutionContext,
 } from "../types";
 import { REGISTER_MAP, REGISTER8_MAP } from "../types";
-import {
-  isZeroFlagSet,
-  isSignFlagSet,
-  isCarryFlagSet,
-  isOverflowFlagSet,
-} from "../flags/index";
+import { isZeroFlagSet, isSignFlagSet, isCarryFlagSet, isOverflowFlagSet } from "../flags/index";
 import { executeInstruction } from "../instructions/index";
 
 /**
@@ -158,11 +153,7 @@ export class Simulator {
     const rawOperand = operand.trim();
 
     // Preserve case for character literals (e.g., 'e')
-    if (
-      rawOperand.startsWith("'") &&
-      rawOperand.endsWith("'") &&
-      rawOperand.length === 3
-    ) {
+    if (rawOperand.startsWith("'") && rawOperand.endsWith("'") && rawOperand.length === 3) {
       return { type: "immediate", value: rawOperand.charCodeAt(1) };
     }
 
@@ -286,8 +277,7 @@ export class Simulator {
     if (operand.type === "register8") {
       const shift = operand.byteOffset ?? 0;
       const mask = ~(0xff << shift);
-      const updated =
-        (this.cpu.registers[operand.value] & mask) | ((value & 0xff) << shift);
+      const updated = (this.cpu.registers[operand.value] & mask) | ((value & 0xff) << shift);
       this.cpu.registers[operand.value] = updated >>> 0;
       return;
     }
@@ -312,10 +302,7 @@ export class Simulator {
       } else {
         addr = (this.cpu.registers[src.base!] + (src.offset || 0)) & 0xffff;
       }
-      if (
-        (addr >= 0xf000 && addr <= 0xffff) ||
-        (addr >= 0x10100 && addr <= 0x101ff)
-      ) {
+      if ((addr >= 0xf000 && addr <= 0xffff) || (addr >= 0x10100 && addr <= 0x101ff)) {
         return this.readIO(addr);
       }
       return this.readMemory32(addr);
@@ -360,10 +347,7 @@ export class Simulator {
   // Program loading
   // ---------------------------------------------------------------------------
 
-  loadInstructions(
-    instructions: Instruction[],
-    labels: Map<string, number>,
-  ): void {
+  loadInstructions(instructions: Instruction[], labels: Map<string, number>): void {
     this.instructions = instructions;
     this.labels = labels;
     this.eip = 0;

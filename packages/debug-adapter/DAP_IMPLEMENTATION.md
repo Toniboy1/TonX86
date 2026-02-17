@@ -15,6 +15,7 @@ The debug adapter supports all standard stepping operations:
 - **Step Out**: Move to the next instruction (same as Next, as there are no function calls in flat assembly)
 
 All stepping operations properly handle:
+
 - Regular instructions (MOV, ADD, SUB, etc.)
 - Jump instructions (JMP, JE, JZ, JNE, JNZ)
 - Labels and label resolution
@@ -53,6 +54,7 @@ The debug adapter supports setting and managing breakpoints:
 ### Assembly Parser
 
 The debug adapter includes a robust assembly parser that:
+
 - Parses instructions with mnemonics and operands
 - Handles labels (lines ending with `:`)
 - Skips empty lines and comments (lines starting with `;`)
@@ -62,6 +64,7 @@ The debug adapter includes a robust assembly parser that:
 ### Control Flow (v0.5.0+)
 
 **Architecture:** Control flow is now owned by simcore, not the debug adapter. The debug adapter delegates execution to `simulator.step()` which:
+
 - Tracks instruction pointer (EIP) as an index into the instruction array
 - Handles unconditional jumps (JMP)
 - Handles conditional jumps (JE, JZ, JNE, JNZ, JG, JL, etc.) based on CPU flags
@@ -76,6 +79,7 @@ The debug adapter includes a robust assembly parser that:
 ### Breakpoint Handling
 
 Breakpoints are checked:
+
 1. After each instruction is executed
 2. After the instruction pointer is moved
 3. Only on valid instruction lines
@@ -86,6 +90,7 @@ Breakpoints are checked:
 The debug adapter includes comprehensive unit tests covering:
 
 ### Assembly Parser Tests (8 tests)
+
 - ✅ Parse simple MOV instruction
 - ✅ Skip empty lines and comments
 - ✅ Parse labels correctly
@@ -96,6 +101,7 @@ The debug adapter includes comprehensive unit tests covering:
 - ✅ Preserve line numbers correctly
 
 ### Control Flow Tests (5 tests)
+
 - ✅ Validate breakpoints on instruction lines
 - ✅ Move to next instruction for non-jump
 - ✅ Handle unconditional jump
@@ -103,6 +109,7 @@ The debug adapter includes comprehensive unit tests covering:
 - ✅ Not jump when condition not met
 
 Run tests with:
+
 ```bash
 cd packages/debug-adapter
 npm test
@@ -111,6 +118,7 @@ npm test
 ## Example Usage
 
 See `examples/test-dap.js` for a DAP protocol test utility that exercises:
+
 - Basic stepping through instructions
 - Arithmetic operations and flag setting
 - Conditional jumps (JE, JNE)
@@ -145,6 +153,7 @@ TonX86DebugSession
 ## Integration
 
 The debug adapter integrates with:
+
 - **@tonx86/simcore**: CPU simulator for instruction execution
 - **vscode-debugadapter**: DAP protocol implementation
 - **vscode-debugprotocol**: DAP protocol types
@@ -152,6 +161,7 @@ The debug adapter integrates with:
 ## Configuration
 
 Launch configuration example (from `.vscode/launch.json`):
+
 ```json
 {
   "type": "tonx86",
@@ -163,10 +173,12 @@ Launch configuration example (from `.vscode/launch.json`):
 ```
 
 Parameters:
+
 - `program`: Path to the assembly file to debug (required)
 - `stopOnEntry`: Not recommended in launch.json - use extension setting `tonx86.debug.stopOnEntry` instead
 
 Additional configuration is managed through VS Code extension settings (always applied):
+
 - `tonx86.cpu.speed`: CPU execution speed (1-200%, default: 100)
 - `tonx86.debug.enableLogging`: Enable file-based logging for debugging (default: false)
 - `tonx86.debug.stopOnEntry`: Stop at first instruction when debugging starts (default: true)
@@ -188,6 +200,7 @@ Platform: macOS ✅ | Windows ✅
 ## Future Enhancements
 
 Potential improvements beyond the current scope:
+
 - Conditional breakpoints (currently not supported)
 - Data breakpoints (watch expressions)
 - Step back / reverse execution

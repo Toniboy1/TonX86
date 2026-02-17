@@ -49,13 +49,7 @@ export function executeCmps(ctx: ExecutionContext): void {
   const srcValue = ctx.readMemory32(srcAddr) & 0xff;
   const dstValue = ctx.readMemory32(dstAddr) & 0xff;
   const result = (srcValue - dstValue) & 0xffffffff;
-  ctx.cpu.flags = computeArithFlags(
-    ctx.cpu.flags,
-    result,
-    srcValue,
-    dstValue,
-    true,
-  );
+  ctx.cpu.flags = computeArithFlags(ctx.cpu.flags, result, srcValue, dstValue, true);
   // Increment ESI and EDI
   ctx.cpu.registers[6] = (ctx.cpu.registers[6] + 1) & 0xffffffff;
   ctx.cpu.registers[7] = (ctx.cpu.registers[7] + 1) & 0xffffffff;

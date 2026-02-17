@@ -7,8 +7,7 @@ import {
 } from "vscode-debugadapter";
 import { DebugProtocol } from "vscode-debugprotocol";
 
-interface TonX86LaunchRequestArguments
-  extends DebugProtocol.LaunchRequestArguments {
+interface TonX86LaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
   program?: string;
   cpuSpeed?: number;
   stopOnEntry?: boolean;
@@ -52,9 +51,7 @@ export class TonX86DebugSession extends DebugSession {
     console.error("[TonX86] Debug adapter constructor called");
   }
 
-  protected initializeRequest(
-    response: DebugProtocol.InitializeResponse,
-  ): void {
+  protected initializeRequest(response: DebugProtocol.InitializeResponse): void {
     console.error("[TonX86] Initialize request received");
     response.body = {
       supportsConfigurationDoneRequest: true,
@@ -70,17 +67,13 @@ export class TonX86DebugSession extends DebugSession {
     response: DebugProtocol.LaunchResponse,
     args: DebugProtocol.LaunchRequestArguments,
   ): void {
-    console.error(
-      "[TonX86] Launch request received with args:",
-      JSON.stringify(args),
-    );
+    console.error("[TonX86] Launch request received with args:", JSON.stringify(args));
 
     // Extract program path from args
     const launchArgs = args as TonX86LaunchRequestArguments;
     this.programPath = launchArgs.program || "";
     this.cpuSpeed = validateCPUSpeed(launchArgs.cpuSpeed);
-    this.stopOnEntry =
-      launchArgs.stopOnEntry !== undefined ? launchArgs.stopOnEntry : true;
+    this.stopOnEntry = launchArgs.stopOnEntry !== undefined ? launchArgs.stopOnEntry : true;
     const enableLogging = launchArgs.enableLogging || false;
     console.error("[TonX86] stopOnEntry value:", this.stopOnEntry);
     console.error(`[TonX86] CPU speed set to ${this.cpuSpeed}%`);
@@ -112,11 +105,7 @@ export class TonX86DebugSession extends DebugSession {
           path: this.programPath,
           lines: lines,
         };
-        console.error(
-          "[TonX86] Loaded source file with",
-          lines.length,
-          "lines",
-        );
+        console.error("[TonX86] Loaded source file with", lines.length, "lines");
 
         // Parse assembly instructions
         const parseResult = parseAssembly(lines);
@@ -126,25 +115,18 @@ export class TonX86DebugSession extends DebugSession {
         const dataSegment = parseResult.dataSegment;
         console.error("[TonX86] Parsed", instructions.length, "instructions:");
         instructions.forEach((instr) => {
-          console.error(
-            `  Line ${instr.line}: ${instr.mnemonic} ${instr.operands.join(", ")}`,
-          );
+          console.error(`  Line ${instr.line}: ${instr.mnemonic} ${instr.operands.join(", ")}`);
         });
 
         // Detect required LCD dimensions from code and EQU constants
-        const [lcdWidth, lcdHeight] = detectLCDDimensions(
-          instructions,
-          this.constants,
-        );
+        const [lcdWidth, lcdHeight] = detectLCDDimensions(instructions, this.constants);
         this.simulator = new Simulator(lcdWidth, lcdHeight);
         console.error(`[TonX86] Detected LCD size: ${lcdWidth}x${lcdHeight}`);
 
         // Load data into memory before loading instructions
         if (dataSegment.items.length > 0) {
           this.simulator.loadData(dataSegment.items);
-          console.error(
-            `[TonX86] Loaded ${dataSegment.items.length} data items into memory`,
-          );
+          console.error(`[TonX86] Loaded ${dataSegment.items.length} data items into memory`);
         }
 
         // Load instructions and labels into simulator
@@ -155,10 +137,7 @@ export class TonX86DebugSession extends DebugSession {
           .map(([name, index]) => `${name} -> ${index}`)
           .join(", ");
         this.sendEvent(
-          new OutputEvent(
-            `Labels: ${labelList.length > 0 ? labelList : "(none)"}\n`,
-            "stdout",
-          ),
+          new OutputEvent(`Labels: ${labelList.length > 0 ? labelList : "(none)"}\n`, "stdout"),
         );
 
         // Start at first instruction
@@ -193,19 +172,14 @@ export class TonX86DebugSession extends DebugSession {
     );
 
     if (this.simulator.getInstructions().length === 0) {
-      console.error(
-        "[TonX86] No instructions to debug, program will terminate",
-      );
+      console.error("[TonX86] No instructions to debug, program will terminate");
       this.sendEvent(new TerminatedEvent());
       return;
     }
 
     // Stop at first instruction if stopOnEntry is true, otherwise auto-start
     if (this.stopOnEntry) {
-      console.error(
-        "[TonX86] Stopping at first instruction at line",
-        this.currentLine,
-      );
+      console.error("[TonX86] Stopping at first instruction at line", this.currentLine);
       setTimeout(() => {
         this.sendEvent(new StoppedEvent("entry", 1));
       }, 100);
@@ -233,16 +207,12 @@ export class TonX86DebugSession extends DebugSession {
    */
   private async continueExecution(): Promise<void> {
     const eip = this.simulator.getEIP();
-    logToFile(
-      `continueExecution called, EIP=${eip}, breakpoints=${Array.from(this.breakpoints)}`,
-    );
+    logToFile(`continueExecution called, EIP=${eip}, breakpoints=${Array.from(this.breakpoints)}`);
 
     let firstIteration = true; // Skip breakpoint check on first instruction
 
     // Output to Debug Console
-    this.sendEvent(
-      new OutputEvent(`\n=== Continuing execution ===\n`, "console"),
-    );
+    this.sendEvent(new OutputEvent(`\n=== Continuing execution ===\n`, "console"));
 
     // Yield interval: yield to event loop every N instructions
     // This allows incoming DAP messages (keyboard events, pause requests, etc.)
@@ -297,10 +267,7 @@ export class TonX86DebugSession extends DebugSession {
         this.currentLine = currentInstr.line;
         logToFile(`Hit breakpoint at line ${this.currentLine}`);
         this.sendEvent(
-          new OutputEvent(
-            `\n*** Breakpoint hit at line ${this.currentLine} ***\n`,
-            "console",
-          ),
+          new OutputEvent(`\n*** Breakpoint hit at line ${this.currentLine} ***\n`, "console"),
         );
         // Send stopped event at breakpoint
         this.sendEvent(new StoppedEvent("breakpoint", 1));
@@ -319,15 +286,9 @@ export class TonX86DebugSession extends DebugSession {
         // Check if program halted
         const state = this.simulator.getState();
         if (state.halted) {
-          console.error(
-            "[TonX86] Program halted at HLT instruction at line",
-            executedLine,
-          );
+          console.error("[TonX86] Program halted at HLT instruction at line", executedLine);
           this.sendEvent(
-            new OutputEvent(
-              `\n=== Program halted at line ${executedLine} ===\n`,
-              "console",
-            ),
+            new OutputEvent(`\n=== Program halted at line ${executedLine} ===\n`, "console"),
           );
 
           // Terminate the debug session
@@ -351,10 +312,7 @@ export class TonX86DebugSession extends DebugSession {
     response: DebugProtocol.SourceResponse,
     args: DebugProtocol.SourceArguments,
   ): void {
-    console.error(
-      "[TonX86] Source request for sourceReference:",
-      args.sourceReference,
-    );
+    console.error("[TonX86] Source request for sourceReference:", args.sourceReference);
 
     if (this.sourceInfo) {
       response.body = {
@@ -381,10 +339,7 @@ export class TonX86DebugSession extends DebugSession {
     const validInstructionLines = new Set(
       this.simulator.getInstructions().map((instr) => instr.line),
     );
-    console.error(
-      "[TonX86] Valid instruction lines:",
-      Array.from(validInstructionLines),
-    );
+    console.error("[TonX86] Valid instruction lines:", Array.from(validInstructionLines));
 
     // Update breakpoint set - only allow breakpoints on instruction lines
     this.breakpoints.clear();
@@ -476,10 +431,7 @@ export class TonX86DebugSession extends DebugSession {
     response: DebugProtocol.VariablesResponse,
     args: DebugProtocol.VariablesArguments,
   ): void {
-    console.error(
-      "[TonX86] Variables request for ref:",
-      args.variablesReference,
-    );
+    console.error("[TonX86] Variables request for ref:", args.variablesReference);
 
     // Get actual register values from simulator
     const registers = this.simulator.getRegisters();
@@ -618,10 +570,7 @@ export class TonX86DebugSession extends DebugSession {
       // Check if we hit HLT
       const state = this.simulator.getState();
       if (state.halted) {
-        console.error(
-          "[TonX86] Program halted at HLT instruction at line",
-          executedLine,
-        );
+        console.error("[TonX86] Program halted at HLT instruction at line", executedLine);
         setTimeout(() => {
           this.sendEvent(new TerminatedEvent());
         }, 50);
@@ -685,10 +634,7 @@ export class TonX86DebugSession extends DebugSession {
       // Check if program halted
       const state = this.simulator.getState();
       if (state.halted) {
-        console.error(
-          "[TonX86] Program halted at HLT instruction at line",
-          executedLine,
-        );
+        console.error("[TonX86] Program halted at HLT instruction at line", executedLine);
         setTimeout(() => {
           this.sendEvent(new TerminatedEvent());
         }, 50);
@@ -743,9 +689,7 @@ export class TonX86DebugSession extends DebugSession {
     this.sendResponse(response);
   }
 
-  protected configurationDoneRequest(
-    response: DebugProtocol.ConfigurationDoneResponse,
-  ): void {
+  protected configurationDoneRequest(response: DebugProtocol.ConfigurationDoneResponse): void {
     console.error("[TonX86] Configuration done");
     this.configurationDone = true;
     this.sendResponse(response);
@@ -790,10 +734,7 @@ export class TonX86DebugSession extends DebugSession {
       const DEFAULT_MEMORY_VIEW_SIZE = 16;
       const argsObj = args || {};
       const start = typeof argsObj.start === "number" ? argsObj.start : 0;
-      const length =
-        typeof argsObj.length === "number"
-          ? argsObj.length
-          : DEFAULT_MEMORY_VIEW_SIZE;
+      const length = typeof argsObj.length === "number" ? argsObj.length : DEFAULT_MEMORY_VIEW_SIZE;
       const memoryA = this.simulator.getMemoryA(start, length);
       const memoryB = this.simulator.getMemoryB(start, length);
       response.body = {
@@ -804,9 +745,7 @@ export class TonX86DebugSession extends DebugSession {
     } else if (command === "keyboardEvent") {
       // Forward keyboard event to simulator
       if (!this.simulator) {
-        console.error(
-          "[TonX86] Keyboard event received but simulator not initialized",
-        );
+        console.error("[TonX86] Keyboard event received but simulator not initialized");
         response.success = false;
         response.message = "Simulator not initialized";
         this.sendResponse(response);
@@ -814,12 +753,9 @@ export class TonX86DebugSession extends DebugSession {
       }
       const argsObj = args || {};
       const keyCode = typeof argsObj.keyCode === "number" ? argsObj.keyCode : 0;
-      const pressed =
-        typeof argsObj.pressed === "boolean" ? argsObj.pressed : false;
+      const pressed = typeof argsObj.pressed === "boolean" ? argsObj.pressed : false;
       this.simulator.pushKeyboardEvent(keyCode, pressed);
-      console.error(
-        `[TonX86] Keyboard event: keyCode=${keyCode}, pressed=${pressed}`,
-      );
+      console.error(`[TonX86] Keyboard event: keyCode=${keyCode}, pressed=${pressed}`);
       this.sendResponse(response);
     } else {
       super.customRequest(command, response, args);
