@@ -187,6 +187,137 @@ describe("Debug Logic Business Functions", () => {
       expect(width).toBeGreaterThan(8);
       expect(height).toBeGreaterThan(8);
     });
+
+    it("should handle [REG+0xF000] bracket operand where inner does not start with 0XF", () => {
+      // [EAX+0xF000] contains 0XF and starts with [ but after cleaning
+      // addressStr = "EAX+0XF000" which does NOT start with "0XF"
+      const instructions: Instruction[] = [
+        {
+          line: 1,
+          mnemonic: "MOV",
+          operands: ["[EAX+0xF000]", "1"],
+          raw: "MOV [EAX+0xF000], 1",
+        },
+      ];
+      const constants = new Map<string, number>();
+
+      const [width, height] = detectLCDDimensions(instructions, constants);
+
+      // Should still detect LCD via hex reference check or numeric check
+      expect(width).toBeGreaterThan(8);
+      expect(height).toBeGreaterThan(8);
+    });
+
+    it("should handle non-bracket operand with hex LCD reference like 0xF100", () => {
+      // Operand "0xF100" is not in brackets, so first block skips.
+      // Third block matches via regex: 0X(F[0-9A-F]{3}) → 0xF100
+      const instructions: Instruction[] = [
+        {
+          line: 1,
+          mnemonic: "MOV",
+          operands: ["EAX", "0xF100"],
+          raw: "MOV EAX, 0xF100",
+        },
+      ];
+      const constants = new Map<string, number>();
+
+      const [width, height] = detectLCDDimensions(instructions, constants);
+
+      expect(width).toBe(64);
+      expect(height).toBe(64);
+    });
+
+    it("should handle operand where hex regex matches but address is out of LCD range", () => {
+      // Operand includes "0XF" but the full hex number is out of 0xF000-0xFFFF range
+      const instructions: Instruction[] = [
+        {
+          line: 1,
+          mnemonic: "CMP",
+          operands: ["EAX", "[0xE0F0]"],
+          raw: "CMP EAX, [0xE0F0]",
+        },
+      ];
+      const constants = new Map<string, number>();
+
+      const [width, height] = detectLCDDimensions(instructions, constants);
+
+      // 0xE0F0 contains "0XF" substring but is NOT in LCD range
+      expect(width).toBe(8);
+      expect(height).toBe(8);
+    });
+
+    it("should handle bracket operand with 0XF that cleans to 0XF but address out of range", () => {
+      const instructions: Instruction[] = [
+        {
+          line: 1,
+          mnemonic: "MOV",
+          operands: ["[0xEFFF]", "1"],
+          raw: "MOV [0xEFFF], 1",
+        },
+      ];
+      const constants = new Map<string, number>();
+
+      const [width, height] = detectLCDDimensions(instructions, constants);
+
+      // 0xEFFF is out of LCD range (< 0xF000)
+      expect(width).toBe(8);
+      expect(height).toBe(8);
+    });
+
+    it("should handle non-string operand gracefully", () => {
+      // typeof operand false path: when an operand is not a string
+      const instructions: Instruction[] = [
+        {
+          line: 1,
+          mnemonic: "NOP",
+          operands: [42 as unknown as string],
+          raw: "NOP",
+        },
+      ];
+      const constants = new Map<string, number>();
+
+      const [width, height] = detectLCDDimensions(instructions, constants);
+
+      expect(width).toBe(8);
+      expect(height).toBe(8);
+    });
+
+    it("should handle [0xFF] bracket operand where address is below LCD range", () => {
+      // [0xFF] starts with [, includes 0XF, addressStr starts with 0XF
+      // but parsed address = 255, which is way below 0xF000
+      const instructions: Instruction[] = [
+        {
+          line: 1,
+          mnemonic: "MOV",
+          operands: ["[0xFF]", "1"],
+          raw: "MOV [0xFF], 1",
+        },
+      ];
+      const constants = new Map<string, number>();
+
+      const [width, height] = detectLCDDimensions(instructions, constants);
+
+      expect(width).toBe(8);
+      expect(height).toBe(8);
+    });
+
+    it("should handle operand with 0XF substring but no full 4-digit hex match", () => {
+      // Operand includes 0XF but regex /0X(F[0-9A-F]{3})/ doesn't match
+      const instructions: Instruction[] = [
+        {
+          line: 1,
+          mnemonic: "CMP",
+          operands: ["EAX", "0xF"],
+          raw: "CMP EAX, 0xF",
+        },
+      ];
+      const constants = new Map<string, number>();
+
+      const [width, height] = detectLCDDimensions(instructions, constants);
+
+      expect(width).toBe(8);
+      expect(height).toBe(8);
+    });
   });
 
   describe("getNextInstructionLine", () => {

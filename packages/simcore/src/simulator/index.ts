@@ -389,7 +389,7 @@ export class Simulator {
           this.memory.writeA(address, value & 0xff);
           this.memory.writeA(address + 1, (value >> 8) & 0xff);
           address += 2;
-        } else if (item.size === 4) {
+        } else {
           this.writeMemory32(address, value);
           address += 4;
         }

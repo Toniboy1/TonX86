@@ -64,7 +64,8 @@ export function executeMov(ctx: ExecutionContext, operands: string[]): void {
     } else {
       ctx.writeMemory32(addr, srcValue);
     }
-  } else if (dest.type === "immediate") {
+  } else {
+    // Immediate value destination - treat as I/O address
     ctx.writeIO(dest.value, srcValue);
   }
 }

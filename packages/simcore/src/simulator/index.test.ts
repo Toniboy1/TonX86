@@ -1185,5 +1185,43 @@ describe("Simulator - Data Loading", () => {
       const memory = sim.getMemoryA(0x0000, 1);
       expect(memory[0]).toBe(0x42);
     });
+
+    it("should load DD (4-byte) data items", () => {
+      sim.loadData([{ address: 0x2000, size: 4, values: [0x12345678, 0xDEADBEEF] }]);
+
+      const memory = sim.getMemoryA(0x2000, 8);
+      // Little-endian: 0x12345678 → 0x78, 0x56, 0x34, 0x12
+      expect(memory[0]).toBe(0x78);
+      expect(memory[1]).toBe(0x56);
+      expect(memory[2]).toBe(0x34);
+      expect(memory[3]).toBe(0x12);
+      // Second value: 0xDEADBEEF → 0xEF, 0xBE, 0xAD, 0xDE
+      expect(memory[4]).toBe(0xEF);
+      expect(memory[5]).toBe(0xBE);
+      expect(memory[6]).toBe(0xAD);
+      expect(memory[7]).toBe(0xDE);
+    });
+
+    it("should load DW (2-byte) data items", () => {
+      sim.loadData([{ address: 0x3000, size: 2, values: [0x1234] }]);
+
+      const memory = sim.getMemoryA(0x3000, 2);
+      // Little-endian: 0x1234 → 0x34, 0x12
+      expect(memory[0]).toBe(0x34);
+      expect(memory[1]).toBe(0x12);
+    });
+  });
+
+  describe("parseOperand - invalid register in memory expressions", () => {
+    it("should handle [INVALID+offset] by falling through", () => {
+      // [NOTAREG+5] has plus pattern but base is not a valid register
+      // This should fall through and try to parse as something else
+      expect(() => sim.executeInstruction("MOV", ["EAX", "[NOTAREG+5]"])).toThrow();
+    });
+
+    it("should handle [INVALID-offset] by falling through", () => {
+      // [NOTAREG-5] has minus pattern but base is not a valid register
+      expect(() => sim.executeInstruction("MOV", ["EAX", "[NOTAREG-5]"])).toThrow();
+    });
   });
 });
