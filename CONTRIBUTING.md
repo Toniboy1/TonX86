@@ -61,9 +61,12 @@ packages/
 
 2. Make your changes following the code style
 3. Add tests for new functionality
-4. Ensure all tests pass: `npm test`
-5. Build successfully: `npm run build`
-6. Run the linter: `npm run lint`
+4. Run the full quality gate before pushing:
+
+   ```bash
+   npm run check    # format → lint → build → test → test:examples
+   npm run knip      # detect unused exports, types, and files
+   ```
 
 ### Code Style
 
@@ -72,6 +75,8 @@ packages/
 - Use meaningful variable and function names
 - Add JSDoc comments for public APIs
 - Keep functions focused and concise
+- Only `export` symbols that are consumed by other modules (enforced by knip)
+- Format with Prettier (`npm run format`) before committing
 
 ### Commit Messages
 
@@ -143,13 +148,22 @@ Update relevant documentation:
 
 ## Quality Standards
 
-All contributions must:
+All contributions must pass `npm run check` (exit 0) and `npm run knip` (zero findings).
 
-- ✅ Pass TypeScript compilation
-- ✅ Pass all tests (911 tests across 4 packages)
-- ✅ All 37 examples pass (`npm run test:examples`)
-- ✅ Maintain 80%+ code coverage
-- ✅ Pass ESLint checks
+| Command                 | Expected Result                              |
+| ----------------------- | -------------------------------------------- |
+| `npm run format:check`  | "All matched files use Prettier code style!" |
+| `npm run lint`          | 0 errors, 0 warnings                         |
+| `npm run build`         | 0 errors across all packages                 |
+| `npm test`              | 1,001+ tests passing (4 packages)            |
+| `npm run test:examples` | 38/38 examples pass                          |
+| `npm run knip`          | "Excellent, Knip found no issues."           |
+| `npm run check`         | Exit code 0 (runs all of the above)          |
+
+Additional requirements:
+
+- ✅ Maintain 80%+ code coverage on critical paths
+- ✅ No unused exports, types, or files (enforced by knip)
 - ✅ Include tests for new features
 - ✅ Update relevant documentation
 - ✅ Use signed commits

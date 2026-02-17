@@ -6,6 +6,56 @@
 import { Instruction } from "@tonx86/simcore";
 
 /**
+ * Result of scanning a single operand for LCD-related addresses.
+ */
+interface LCDScanResult {
+  maxAddress: number;
+  foundLCDAccess: boolean;
+}
+
+/**
+ * Scan a single operand string for LCD I/O address references.
+ */
+function scanOperandForLCD(operand: string): LCDScanResult {
+  let maxAddress = 0;
+  let foundLCDAccess = false;
+  const opUpper = operand.toUpperCase();
+
+  // Check for direct memory access [0xFxxx]
+  if (opUpper.startsWith("[") && opUpper.includes("0XF")) {
+    const addressStr = opUpper.slice(1, -1).replace(/[[\]]/g, "");
+    if (addressStr.startsWith("0XF")) {
+      const address = parseInt(addressStr, 16);
+      if (address >= 0xf000 && address <= 0xffff) {
+        maxAddress = Math.max(maxAddress, address);
+        foundLCDAccess = true;
+      }
+    }
+  }
+
+  // Check for LCD base as immediate operand (after EQU substitution: 61440 = 0xF000)
+  const numMatch = operand.match(/\b(\d+)\b/);
+  if (numMatch) {
+    const num = parseInt(numMatch[1], 10);
+    if (num >= 0xf000 && num <= 0xffff) {
+      foundLCDAccess = true;
+    }
+  }
+
+  // Check for hex LCD references
+  if (opUpper.includes("0XF")) {
+    const match = opUpper.match(/0X(F[0-9A-F]{3})/);
+    if (match) {
+      const address = parseInt(match[0], 16);
+      maxAddress = Math.max(maxAddress, address);
+      foundLCDAccess = true;
+    }
+  }
+
+  return { maxAddress, foundLCDAccess };
+}
+
+/**
  * Detect required LCD dimensions by scanning EQU constants and instructions.
  * Strategy:
  *   1. Check EQU constants for LCD_BASE (0xF000) and GRID_SIZE to determine dimensions
@@ -43,7 +93,6 @@ export function detectLCDDimensions(
   }
 
   if (hasLCDBase && gridSize > 0) {
-    // Use the grid size from constants
     return [gridSize, gridSize];
   }
 
@@ -54,38 +103,10 @@ export function detectLCDDimensions(
   for (const instr of instructions) {
     for (const operand of instr.operands) {
       if (typeof operand === "string") {
-        const opUpper = operand.toUpperCase();
-
-        // Check for direct memory access [0xFxxx]
-        if (opUpper.startsWith("[") && opUpper.includes("0XF")) {
-          const addressStr = opUpper.slice(1, -1).replace(/[[\]]/g, "");
-          if (addressStr.startsWith("0XF")) {
-            const address = parseInt(addressStr, 16);
-            if (address >= 0xf000 && address <= 0xffff) {
-              maxAddress = Math.max(maxAddress, address);
-              foundLCDAccess = true;
-            }
-          }
-        }
-
-        // Check for LCD base as immediate operand (after EQU substitution: 61440 = 0xF000)
-        const numMatch = operand.match(/\b(\d+)\b/);
-        if (numMatch) {
-          const num = parseInt(numMatch[1], 10);
-          if (num >= 0xf000 && num <= 0xffff) {
-            foundLCDAccess = true;
-          }
-        }
-
-        // Check for hex LCD references
-        if (opUpper.includes("0XF")) {
-          const match = opUpper.match(/0X(F[0-9A-F]{3})/);
-          if (match) {
-            // Regex guarantees address is 0xF000..0xFFFF
-            const address = parseInt(match[0], 16);
-            maxAddress = Math.max(maxAddress, address);
-            foundLCDAccess = true;
-          }
+        const result = scanOperandForLCD(operand);
+        if (result.foundLCDAccess) {
+          foundLCDAccess = true;
+          maxAddress = Math.max(maxAddress, result.maxAddress);
         }
       }
     }
@@ -93,17 +114,14 @@ export function detectLCDDimensions(
 
   if (foundLCDAccess) {
     const offset = maxAddress - 0xf000;
-    // Maximum offset is 4095 (0xFFFF - 0xF000)
     if (offset >= 256) {
-      return [64, 64]; // Large offset likely needs 64x64 display
+      return [64, 64];
     } else if (offset >= 64) {
       return [16, 16];
     }
-    // Default to 16x16 when LCD is used
     return [16, 16];
   }
 
-  // No LCD access detected, use 8x8
   return [8, 8];
 }
 

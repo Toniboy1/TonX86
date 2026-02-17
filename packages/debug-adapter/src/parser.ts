@@ -8,7 +8,7 @@ import { Instruction } from "@tonx86/simcore";
 /**
  * Data item in data section (db, dw, dd)
  */
-export interface DataItem {
+interface DataItem {
   address: number; // Memory address where data starts
   size: 1 | 2 | 4; // 1=byte, 2=word, 4=dword
   values: number[]; // Values to write
@@ -19,12 +19,12 @@ export interface DataItem {
 /**
  * Data segment containing data items
  */
-export interface DataSegment {
+interface DataSegment {
   items: DataItem[];
   startAddress: number; // Start address of data segment (from ORG)
 }
 
-export interface ParseResult {
+interface ParseResult {
   instructions: Instruction[];
   labels: Map<string, number>; // label name -> instruction index (for .text) or memory address (for .data)
   constants: Map<string, number>; // constant name -> value (from EQU)
@@ -55,6 +55,51 @@ function parseValue(valueStr: string): number {
 
   // Decimal
   return parseInt(trimmed, 10);
+}
+
+/**
+ * Parse comma-separated data values (DB/DW/DD), handling string literals and constant substitution.
+ */
+function parseDataValues(valuesStr: string, constants: Map<string, number>): number[] {
+  const values: number[] = [];
+  const valueTokens = valuesStr.split(",");
+
+  for (const token of valueTokens) {
+    const tokenTrimmed = token.trim();
+    if (tokenTrimmed.startsWith('"') && tokenTrimmed.endsWith('"')) {
+      const str = tokenTrimmed.slice(1, -1);
+      for (let j = 0; j < str.length; j++) {
+        values.push(str.charCodeAt(j));
+      }
+    } else {
+      let processed = tokenTrimmed;
+      constants.forEach((value, name) => {
+        const regex = new RegExp(`\\b${name}\\b`, "g");
+        processed = processed.replace(regex, value.toString());
+      });
+      values.push(parseValue(processed));
+    }
+  }
+  return values;
+}
+
+/**
+ * Substitute constants in an operand string and split into individual operands.
+ */
+function substituteAndSplitOperands(
+  operandString: string,
+  constants: Map<string, number>,
+): string[] {
+  const withoutComment = operandString.split(";")[0];
+  let processed = withoutComment;
+  constants.forEach((value, name) => {
+    const regex = new RegExp(`\\b${name}\\b`, "g");
+    processed = processed.replace(regex, value.toString());
+  });
+  return processed
+    .split(",")
+    .map((op) => op.trim())
+    .filter((op) => op.length > 0);
 }
 
 /**
@@ -126,42 +171,19 @@ export function parseAssembly(lines: string[]): ParseResult {
       // Check if rest is a data directive
       const dataMatch = rest.match(/^(DB|DW|DD)\s+(.+)$/i);
       if (dataMatch && currentSection === "data") {
-        // Process the data directive with label
         const directive = dataMatch[1].toUpperCase();
         const valuesStr = dataMatch[2].split(";")[0].trim();
         const size = directive === "DB" ? 1 : directive === "DW" ? 2 : 4;
-        const values: number[] = [];
-        const valueTokens = valuesStr.split(",");
+        const values = parseDataValues(valuesStr, constants);
 
-        for (const token of valueTokens) {
-          const tokenTrimmed = token.trim();
-
-          // String literal: "Hello"
-          if (tokenTrimmed.startsWith('"') && tokenTrimmed.endsWith('"')) {
-            const str = tokenTrimmed.slice(1, -1);
-            for (let j = 0; j < str.length; j++) {
-              values.push(str.charCodeAt(j));
-            }
-          } else {
-            let processed = tokenTrimmed;
-            constants.forEach((value, name) => {
-              const regex = new RegExp(`\\b${name}\\b`, "g");
-              processed = processed.replace(regex, value.toString());
-            });
-            values.push(parseValue(processed));
-          }
-        }
-
-        const dataItem: DataItem = {
+        dataItems.push({
           address: currentDataAddress,
           size: size as 1 | 2 | 4,
           values,
           label: labelName,
           line: i + 1,
-        };
-
+        });
         labels.set(labelName, currentDataAddress);
-        dataItems.push(dataItem);
         currentDataAddress += values.length * size;
         continue;
       }
@@ -169,32 +191,15 @@ export function parseAssembly(lines: string[]): ParseResult {
       // Otherwise, handle as a regular label + instruction
       if (currentSection === "text") {
         labels.set(labelName, instructions.length);
-        // Parse the instruction part (rest is guaranteed non-empty by labelWithCode regex)
         const parts = rest.split(/\s+/).filter((p) => p.length > 0);
         const mnemonic = parts[0].toUpperCase();
-        const operandString = parts.slice(1).join(" ");
-        const operandStringWithoutComment = operandString.split(";")[0];
-        let processedOperands = operandStringWithoutComment;
-        constants.forEach((value, name) => {
-          const regex = new RegExp(`\\b${name}\\b`, "g");
-          processedOperands = processedOperands.replace(regex, value.toString());
-        });
-        const operands = processedOperands
-          .split(",")
-          .map((op) => op.trim())
-          .filter((op) => op.length > 0);
-        instructions.push({
-          line: i + 1,
-          mnemonic,
-          operands,
-          raw: trimmed,
-        });
-        continue;
-      } else {
-        // In data section, save label for next line
-        pendingLabel = labelName;
+        const operands = substituteAndSplitOperands(parts.slice(1).join(" "), constants);
+        instructions.push({ line: i + 1, mnemonic, operands, raw: trimmed });
         continue;
       }
+      // In data section, save label for next line
+      pendingLabel = labelName;
+      continue;
     }
 
     if (trimmed.endsWith(":")) {
@@ -214,53 +219,21 @@ export function parseAssembly(lines: string[]): ParseResult {
     const dataMatch = trimmed.match(/^(DB|DW|DD)\s+(.+)$/i);
     if (dataMatch) {
       const directive = dataMatch[1].toUpperCase();
-      const valuesStr = dataMatch[2].split(";")[0].trim(); // Remove inline comments
-
-      // Parse size
+      const valuesStr = dataMatch[2].split(";")[0].trim();
       const size = directive === "DB" ? 1 : directive === "DW" ? 2 : 4;
+      const values = parseDataValues(valuesStr, constants);
 
-      // Parse values (comma-separated)
-      const values: number[] = [];
-      const valueTokens = valuesStr.split(",");
-
-      for (const token of valueTokens) {
-        const tokenTrimmed = token.trim();
-
-        // String literal: "Hello"
-        if (tokenTrimmed.startsWith('"') && tokenTrimmed.endsWith('"')) {
-          const str = tokenTrimmed.slice(1, -1); // Remove quotes
-          for (let j = 0; j < str.length; j++) {
-            values.push(str.charCodeAt(j));
-          }
-        } else {
-          // Replace constants before parsing
-          let processed = tokenTrimmed;
-          constants.forEach((value, name) => {
-            const regex = new RegExp(`\\b${name}\\b`, "g");
-            processed = processed.replace(regex, value.toString());
-          });
-          values.push(parseValue(processed));
-        }
-      }
-
-      // Create data item
-      const dataItem: DataItem = {
+      dataItems.push({
         address: currentDataAddress,
         size: size as 1 | 2 | 4,
         values,
         label: pendingLabel,
         line: i + 1,
-      };
-
-      // If there was a pending label, map it to this address
+      });
       if (pendingLabel) {
         labels.set(pendingLabel, currentDataAddress);
         pendingLabel = undefined;
       }
-
-      dataItems.push(dataItem);
-
-      // Advance address by total size
       currentDataAddress += values.length * size;
       continue;
     }
@@ -274,23 +247,8 @@ export function parseAssembly(lines: string[]): ParseResult {
 
     // Parse instruction: MNEMONIC operand1, operand2, ...
     const parts = trimmed.split(/\s+/);
-
     const mnemonic = parts[0].toUpperCase();
-    const operandString = parts.slice(1).join(" ");
-    // Strip comments before parsing operands (comments start with ;)
-    const operandStringWithoutComment = operandString.split(";")[0];
-
-    // Replace constants in operand string
-    let processedOperands = operandStringWithoutComment;
-    constants.forEach((value, name) => {
-      const regex = new RegExp(`\\b${name}\\b`, "g");
-      processedOperands = processedOperands.replace(regex, value.toString());
-    });
-
-    const operands = processedOperands
-      .split(",")
-      .map((op) => op.trim())
-      .filter((op) => op.length > 0);
+    const operands = substituteAndSplitOperands(parts.slice(1).join(" "), constants);
 
     instructions.push({
       line: i + 1, // 1-indexed

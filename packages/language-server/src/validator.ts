@@ -8,18 +8,6 @@
 
 import { Diagnostic, DiagnosticSeverity } from "vscode-languageserver/node";
 
-// Re-export the instruction/register/flag definitions from server
-// so tests can use them. We define them here to avoid circular deps.
-
-export interface InstructionDef {
-  name: string;
-  description: string;
-  syntax: string;
-  cycles: number;
-  flags: string[];
-  example: string;
-}
-
 /**
  * All valid 32-bit and 8-bit register names
  */
@@ -149,7 +137,7 @@ export const REQUIRES_ZERO_OPERANDS = [
 /**
  * Assembler directives (non-instructions)
  */
-export const ASSEMBLER_DIRECTIVES = [".TEXT", ".DATA", "DB", "DW", "DD", "ORG"];
+const ASSEMBLER_DIRECTIVES = [".TEXT", ".DATA", "DB", "DW", "DD", "ORG"];
 
 /**
  * Jump/call instructions that take label targets
@@ -217,7 +205,7 @@ export function shouldSuppressWarning(lines: string[], currentLineIndex: number)
 /**
  * Result of the first pass: labels, EQU constants, and duplicate-label diagnostics.
  */
-export interface FirstPassResult {
+interface FirstPassResult {
   labels: Set<string>;
   equConstants: Set<string>;
   diagnostics: Diagnostic[];
@@ -284,6 +272,62 @@ export function collectLabelsAndConstants(lines: string[]): FirstPassResult {
 }
 
 /**
+ * Check operand counts and return an error message if wrong, or null if OK.
+ */
+function checkOperandCount(instruction: string, operandCount: number): string | null {
+  if (REQUIRES_TWO_OPERANDS.includes(instruction) && operandCount !== 2) {
+    return `${instruction} requires exactly 2 operands, found ${operandCount}`;
+  }
+  if (REQUIRES_ONE_OPERAND.includes(instruction) && operandCount !== 1) {
+    return `${instruction} requires exactly 1 operand, found ${operandCount}`;
+  }
+  if (REQUIRES_ZERO_OPERANDS.includes(instruction) && operandCount > 0) {
+    return `${instruction} does not take operands, found ${operandCount}`;
+  }
+  if (instruction === "IMUL" && (operandCount < 1 || operandCount > 3)) {
+    return `IMUL requires 1 to 3 operands, found ${operandCount}`;
+  }
+  if (instruction === "RAND" && (operandCount < 1 || operandCount > 2)) {
+    return `RAND requires 1 or 2 operands, found ${operandCount}`;
+  }
+  return null;
+}
+
+/** Regex matching operand prefixes that are clearly not registers */
+const NON_REGISTER_PATTERN = /^[[\-']|^0[xXbB]|^\d+$/;
+
+/**
+ * Check whether an operand looks like an invalid register name.
+ */
+function isInvalidRegister(
+  operand: string,
+  labels: Set<string>,
+  equConstants: Set<string>,
+): boolean {
+  if (NON_REGISTER_PATTERN.test(operand)) return false;
+  const upper = operand.toUpperCase();
+  return (
+    /^E?[A-Z]{2,3}$/.test(upper) &&
+    !VALID_REGISTERS.includes(upper) &&
+    !labels.has(operand) &&
+    !equConstants.has(operand)
+  );
+}
+
+/**
+ * Check whether a label target is undefined.
+ */
+function isUndefinedLabel(label: string, labels: Set<string>, equConstants: Set<string>): boolean {
+  return (
+    !label.startsWith("0x") &&
+    !label.startsWith("0X") &&
+    !VALID_REGISTERS.includes(label.toUpperCase()) &&
+    !labels.has(label) &&
+    !equConstants.has(label)
+  );
+}
+
+/**
  * Validate instructions in the document.
  * Returns diagnostics for unknown instructions, wrong operand counts,
  * invalid registers, and undefined label targets.
@@ -316,8 +360,7 @@ export function validateInstructions(
 
     // Skip EQU directives
     if (/\bEQU\b/i.test(cleanLine)) {
-      const equMatch = /^(\w+:?)\s+EQU\s+(.+)/i.exec(cleanLine);
-      if (!equMatch) {
+      if (!/^(\w+:?)\s+EQU\s+(.+)/i.exec(cleanLine)) {
         diagnostics.push({
           severity: DiagnosticSeverity.Error,
           range: {
@@ -332,30 +375,20 @@ export function validateInstructions(
     }
 
     // Skip ORG directive
-    if (/^ORG\s/i.test(cleanLine)) {
-      return;
-    }
+    if (/^ORG\s/i.test(cleanLine)) return;
 
     // Skip data directives (DB, DW, DD)
-    if (/^(DB|DW|DD)\s/i.test(cleanLine)) {
-      return;
-    }
+    if (/^(DB|DW|DD)\s/i.test(cleanLine)) return;
 
     // Handle labels with directives on same line (e.g., "message: DB 'Hi'")
-    // Must be checked BEFORE tokenization to avoid treating "label:" as instruction
-    if (/^\w+:\s+(DB|DW|DD|ORG|EQU)\s/i.test(cleanLine)) {
-      return;
-    }
+    if (/^\w+:\s+(DB|DW|DD|ORG|EQU)\s/i.test(cleanLine)) return;
 
     // Tokenize
     const tokens = cleanLine.split(/[\s,]+/).filter((t) => t.length > 0);
-
     const instruction = tokens[0].toUpperCase();
 
     // Check valid instruction (skip if it's a directive)
-    if (ASSEMBLER_DIRECTIVES.includes(instruction)) {
-      return; // Already handled above
-    }
+    if (ASSEMBLER_DIRECTIVES.includes(instruction)) return;
 
     if (!validInstructionNames.includes(instruction)) {
       diagnostics.push({
@@ -373,98 +406,23 @@ export function validateInstructions(
     const operands = tokens.slice(1);
 
     // Validate operand counts
-    if (REQUIRES_TWO_OPERANDS.includes(instruction) && operands.length !== 2) {
+    const operandError = checkOperandCount(instruction, operands.length);
+    if (operandError) {
       diagnostics.push({
         severity: DiagnosticSeverity.Error,
         range: {
           start: { line: lineIndex, character: 0 },
           end: { line: lineIndex, character: trimmed.length },
         },
-        message: `${instruction} requires exactly 2 operands, found ${operands.length}`,
-        source: "tonx86",
-      });
-      return;
-    }
-
-    if (REQUIRES_ONE_OPERAND.includes(instruction) && operands.length !== 1) {
-      diagnostics.push({
-        severity: DiagnosticSeverity.Error,
-        range: {
-          start: { line: lineIndex, character: 0 },
-          end: { line: lineIndex, character: trimmed.length },
-        },
-        message: `${instruction} requires exactly 1 operand, found ${operands.length}`,
-        source: "tonx86",
-      });
-      return;
-    }
-
-    if (REQUIRES_ZERO_OPERANDS.includes(instruction) && operands.length > 0) {
-      diagnostics.push({
-        severity: DiagnosticSeverity.Error,
-        range: {
-          start: { line: lineIndex, character: 0 },
-          end: { line: lineIndex, character: trimmed.length },
-        },
-        message: `${instruction} does not take operands, found ${operands.length}`,
-        source: "tonx86",
-      });
-      return;
-    }
-
-    // IMUL: 1-3 operands
-    if (instruction === "IMUL" && (operands.length < 1 || operands.length > 3)) {
-      diagnostics.push({
-        severity: DiagnosticSeverity.Error,
-        range: {
-          start: { line: lineIndex, character: 0 },
-          end: { line: lineIndex, character: trimmed.length },
-        },
-        message: `IMUL requires 1 to 3 operands, found ${operands.length}`,
-        source: "tonx86",
-      });
-      return;
-    }
-
-    // RAND: 1-2 operands
-    if (instruction === "RAND" && (operands.length < 1 || operands.length > 2)) {
-      diagnostics.push({
-        severity: DiagnosticSeverity.Error,
-        range: {
-          start: { line: lineIndex, character: 0 },
-          end: { line: lineIndex, character: trimmed.length },
-        },
-        message: `RAND requires 1 or 2 operands, found ${operands.length}`,
+        message: operandError,
         source: "tonx86",
       });
       return;
     }
 
     // Validate register names in operands
-    operands.forEach((operand) => {
-      // Skip memory addresses, numbers, labels, character literals
-      if (
-        operand.startsWith("[") ||
-        operand.startsWith("0x") ||
-        operand.startsWith("0X") ||
-        operand.startsWith("0b") ||
-        operand.startsWith("0B") ||
-        /^\d+$/.test(operand) ||
-        operand.startsWith("-") ||
-        operand.startsWith("'")
-      ) {
-        return;
-      }
-
-      const upperOperand = operand.toUpperCase();
-
-      // Check if it looks like a register but isn't valid
-      if (
-        /^E?[A-Z]{2,3}$/.test(upperOperand) &&
-        !VALID_REGISTERS.includes(upperOperand) &&
-        !labels.has(operand) &&
-        !equConstants.has(operand)
-      ) {
+    for (const operand of operands) {
+      if (isInvalidRegister(operand, labels, equConstants)) {
         diagnostics.push({
           severity: DiagnosticSeverity.Error,
           range: {
@@ -475,20 +433,12 @@ export function validateInstructions(
           source: "tonx86",
         });
       }
-    });
+    }
 
     // Check for jump/call with undefined labels
-    // Note: operands.length is always >= 1 here because LABEL_INSTRUCTIONS
-    // are all in REQUIRES_ONE_OPERAND, which returns early above if count != 1
     if (LABEL_INSTRUCTIONS.includes(instruction)) {
       const label = operands[0];
-      if (
-        !label.startsWith("0x") &&
-        !label.startsWith("0X") &&
-        !VALID_REGISTERS.includes(label.toUpperCase()) &&
-        !labels.has(label) &&
-        !equConstants.has(label)
-      ) {
+      if (isUndefinedLabel(label, labels, equConstants)) {
         diagnostics.push({
           severity: DiagnosticSeverity.Warning,
           range: {
@@ -610,78 +560,70 @@ export function validateControlFlow(
 }
 
 /**
- * Validate calling conventions:
- * - Prologue/epilogue checks
- * - Balanced PUSH/POP
- * - Callee-saved register preservation
- * - cdecl pattern detection
+ * Calling convention analysis types and constants.
  */
-export function validateCallingConventions(
-  lines: string[],
-  labels: Set<string>,
-  diagnostics: Diagnostic[],
-): void {
-  interface FunctionInfo {
-    name: string;
-    startLine: number;
-    endLine: number;
-    prologuePushEBPLine: number;
-    prologueMovEBPLine: number;
-    epiloguePopEBPLine: number;
-    pushCount: number;
-    popCount: number;
-    callInstructions: number[];
-    retInstructions: number[];
-    modifiesCalleeSavedRegs: Set<string>;
-    savesCalleeSavedRegs: Set<string>;
-  }
+interface FunctionInfo {
+  name: string;
+  startLine: number;
+  endLine: number;
+  prologuePushEBPLine: number;
+  prologueMovEBPLine: number;
+  epiloguePopEBPLine: number;
+  pushCount: number;
+  popCount: number;
+  callInstructions: number[];
+  retInstructions: number[];
+  modifiesCalleeSavedRegs: Set<string>;
+  savesCalleeSavedRegs: Set<string>;
+}
 
-  const functions: FunctionInfo[] = [];
-  const calleeSavedRegs = new Set(["EBX", "ESI", "EDI", "EBP"]);
-  const controlFlowInstructions = ["JMP", "JE", "JZ", "JNE", "JNZ", "RET", "HLT"];
-  const modifyingInstructions = [
-    "ADD",
-    "SUB",
-    "INC",
-    "DEC",
-    "AND",
-    "OR",
-    "XOR",
-    "SHL",
-    "SHR",
-    "MOV",
-    "MUL",
-    "DIV",
-    "IMUL",
-    "IDIV",
-    "MOD",
-    "NEG",
-    "NOT",
-    "RAND",
-    "RCL",
-    "RCR",
-    "XADD",
-    "BSF",
-    "BSR",
-    "BSWAP",
-    "CMOVE",
-    "CMOVZ",
-    "CMOVNE",
-    "CMOVNZ",
-    "CMOVL",
-    "CMOVLE",
-    "CMOVG",
-    "CMOVGE",
-    "CMOVA",
-    "CMOVAE",
-    "CMOVB",
-    "CMOVBE",
-    "CMOVS",
-    "CMOVNS",
-    "SAHF",
-  ];
+const CALLEE_SAVED_REGS = new Set(["EBX", "ESI", "EDI", "EBP"]);
+const CONTROL_FLOW_INSTRUCTIONS = ["JMP", "JE", "JZ", "JNE", "JNZ", "RET", "HLT"];
+const MODIFYING_INSTRUCTIONS = [
+  "ADD",
+  "SUB",
+  "INC",
+  "DEC",
+  "AND",
+  "OR",
+  "XOR",
+  "SHL",
+  "SHR",
+  "MOV",
+  "MUL",
+  "DIV",
+  "IMUL",
+  "IDIV",
+  "MOD",
+  "NEG",
+  "NOT",
+  "RAND",
+  "RCL",
+  "RCR",
+  "XADD",
+  "BSF",
+  "BSR",
+  "BSWAP",
+  "CMOVE",
+  "CMOVZ",
+  "CMOVNE",
+  "CMOVNZ",
+  "CMOVL",
+  "CMOVLE",
+  "CMOVG",
+  "CMOVGE",
+  "CMOVA",
+  "CMOVAE",
+  "CMOVB",
+  "CMOVBE",
+  "CMOVS",
+  "CMOVNS",
+  "SAHF",
+];
+const ENTRY_POINT_NAMES = new Set(["main", "start", "_start"]);
 
-  // Collect EQU names
+/** Collect all EQU constant names from lines. */
+function collectEquNames(lines: string[]): Set<string> {
   const equNames = new Set<string>();
   for (let i = 0; i < lines.length; i++) {
     const clean = stripComment(lines[i].trim());
@@ -690,10 +632,16 @@ export function validateCallingConventions(
       if (m) equNames.add(m[1]);
     }
   }
+  return equNames;
+}
 
-  // Identify function labels: CALL targets + well-known entry points
+/** Identify function labels: CALL targets + well-known entry points. */
+function identifyFunctionLabels(
+  lines: string[],
+  labels: Set<string>,
+  equNames: Set<string>,
+): Set<string> {
   const functionLabels = new Set<string>();
-  const entryPointNames = new Set(["main", "start", "_start"]);
 
   for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
     const trimmed = lines[lineIndex].trim();
@@ -710,7 +658,7 @@ export function validateCallingConventions(
           labelName &&
           !labelName.includes(" ") &&
           !equNames.has(labelName) &&
-          entryPointNames.has(labelName.toLowerCase())
+          ENTRY_POINT_NAMES.has(labelName.toLowerCase())
         ) {
           functionLabels.add(labelName);
         }
@@ -727,8 +675,75 @@ export function validateCallingConventions(
       }
     }
   }
+  return functionLabels;
+}
 
-  // Parse functions
+/** Create a new empty FunctionInfo for a given label. */
+function newFunctionInfo(name: string, startLine: number): FunctionInfo {
+  return {
+    name,
+    startLine,
+    endLine: -1,
+    prologuePushEBPLine: -1,
+    prologueMovEBPLine: -1,
+    epiloguePopEBPLine: -1,
+    pushCount: 0,
+    popCount: 0,
+    callInstructions: [],
+    retInstructions: [],
+    modifiesCalleeSavedRegs: new Set(),
+    savesCalleeSavedRegs: new Set(),
+  };
+}
+
+/** Update function info based on an instruction line. */
+function updateFunctionForInstruction(
+  func: FunctionInfo,
+  instruction: string,
+  tokens: string[],
+  lineIndex: number,
+  firstInstructionAfterLabel: boolean,
+): void {
+  if (instruction === "PUSH") {
+    func.pushCount++;
+    if (tokens.length > 1) {
+      const reg = tokens[1].toUpperCase();
+      if (reg === "EBP" && firstInstructionAfterLabel) {
+        func.prologuePushEBPLine = lineIndex;
+      }
+      if (CALLEE_SAVED_REGS.has(reg)) {
+        func.savesCalleeSavedRegs.add(reg);
+      }
+    }
+  } else if (instruction === "POP") {
+    func.popCount++;
+    if (tokens.length > 1 && tokens[1].toUpperCase() === "EBP") {
+      func.epiloguePopEBPLine = lineIndex;
+    }
+  } else if (instruction === "MOV" && tokens.length >= 3) {
+    const dest = tokens[1].toUpperCase();
+    const src = tokens[2].toUpperCase();
+    if (dest === "EBP" && src === "ESP" && func.prologuePushEBPLine !== -1) {
+      func.prologueMovEBPLine = lineIndex;
+    }
+    if (CALLEE_SAVED_REGS.has(dest) && dest !== "EBP") {
+      func.modifiesCalleeSavedRegs.add(dest);
+    }
+  } else if (instruction === "CALL") {
+    func.callInstructions.push(lineIndex);
+  } else if (instruction === "RET") {
+    func.retInstructions.push(lineIndex);
+  } else if (MODIFYING_INSTRUCTIONS.includes(instruction) && tokens.length > 1) {
+    const dest = tokens[1].toUpperCase();
+    if (CALLEE_SAVED_REGS.has(dest) && dest !== "EBP") {
+      func.modifiesCalleeSavedRegs.add(dest);
+    }
+  }
+}
+
+/** Parse lines into FunctionInfo array. */
+function parseFunctions(lines: string[], functionLabels: Set<string>): FunctionInfo[] {
+  const functions: FunctionInfo[] = [];
   let currentFunction: FunctionInfo | null = null;
   let firstInstructionAfterLabel = true;
 
@@ -748,20 +763,7 @@ export function validateCallingConventions(
             currentFunction.endLine = lineIndex - 1;
             functions.push(currentFunction);
           }
-          currentFunction = {
-            name: labelName,
-            startLine: lineIndex,
-            endLine: -1,
-            prologuePushEBPLine: -1,
-            prologueMovEBPLine: -1,
-            epiloguePopEBPLine: -1,
-            pushCount: 0,
-            popCount: 0,
-            callInstructions: [],
-            retInstructions: [],
-            modifiesCalleeSavedRegs: new Set(),
-            savesCalleeSavedRegs: new Set(),
-          };
+          currentFunction = newFunctionInfo(labelName, lineIndex);
           firstInstructionAfterLabel = true;
         }
       }
@@ -771,52 +773,14 @@ export function validateCallingConventions(
     if (!currentFunction) continue;
 
     const tokens = fnClean.split(/[\s,]+/).filter((t) => t.length > 0);
-
     const instruction = tokens[0].toUpperCase();
-
-    if (instruction === "PUSH") {
-      currentFunction.pushCount++;
-      if (tokens.length > 1) {
-        const reg = tokens[1].toUpperCase();
-        if (reg === "EBP" && firstInstructionAfterLabel) {
-          currentFunction.prologuePushEBPLine = lineIndex;
-        }
-        if (calleeSavedRegs.has(reg)) {
-          currentFunction.savesCalleeSavedRegs.add(reg);
-        }
-      }
-    } else if (instruction === "POP") {
-      currentFunction.popCount++;
-      if (tokens.length > 1) {
-        const reg = tokens[1].toUpperCase();
-        if (reg === "EBP") {
-          currentFunction.epiloguePopEBPLine = lineIndex;
-        }
-      }
-    } else if (instruction === "MOV") {
-      if (tokens.length >= 3) {
-        const dest = tokens[1].toUpperCase();
-        const src = tokens[2].toUpperCase();
-        if (dest === "EBP" && src === "ESP" && currentFunction.prologuePushEBPLine !== -1) {
-          currentFunction.prologueMovEBPLine = lineIndex;
-        }
-        if (calleeSavedRegs.has(dest) && dest !== "EBP") {
-          currentFunction.modifiesCalleeSavedRegs.add(dest);
-        }
-      }
-    } else if (instruction === "CALL") {
-      currentFunction.callInstructions.push(lineIndex);
-    } else if (instruction === "RET") {
-      currentFunction.retInstructions.push(lineIndex);
-    } else if (modifyingInstructions.includes(instruction)) {
-      if (tokens.length > 1) {
-        const dest = tokens[1].toUpperCase();
-        if (calleeSavedRegs.has(dest) && dest !== "EBP") {
-          currentFunction.modifiesCalleeSavedRegs.add(dest);
-        }
-      }
-    }
-
+    updateFunctionForInstruction(
+      currentFunction,
+      instruction,
+      tokens,
+      lineIndex,
+      firstInstructionAfterLabel,
+    );
     firstInstructionAfterLabel = false;
   }
 
@@ -824,12 +788,17 @@ export function validateCallingConventions(
     currentFunction.endLine = lines.length - 1;
     functions.push(currentFunction);
   }
+  return functions;
+}
 
-  // Analyze functions
+/** Emit diagnostics for function prologue/epilogue and register usage. */
+function analyzeFunctionBodies(
+  functions: FunctionInfo[],
+  lines: string[],
+  diagnostics: Diagnostic[],
+): void {
   for (const func of functions) {
-    if (func.name === "main" || func.name === "start" || func.name === "_start") {
-      continue;
-    }
+    if (ENTRY_POINT_NAMES.has(func.name.toLowerCase())) continue;
 
     if (func.callInstructions.length > 0 || func.retInstructions.length > 0) {
       if (func.prologuePushEBPLine === -1) {
@@ -837,10 +806,7 @@ export function validateCallingConventions(
           severity: DiagnosticSeverity.Information,
           range: {
             start: { line: func.startLine, character: 0 },
-            end: {
-              line: func.startLine,
-              character: lines[func.startLine].length,
-            },
+            end: { line: func.startLine, character: lines[func.startLine].length },
           },
           message: `Function '${func.name}' should start with 'PUSH EBP' (standard prologue)`,
           source: "tonx86-convention",
@@ -867,10 +833,7 @@ export function validateCallingConventions(
           severity: DiagnosticSeverity.Warning,
           range: {
             start: { line: func.startLine, character: 0 },
-            end: {
-              line: func.endLine,
-              character: lines[func.endLine].length,
-            },
+            end: { line: func.endLine, character: lines[func.endLine].length },
           },
           message: `Function '${func.name}' has 'PUSH EBP' but missing 'POP EBP' (unbalanced stack)`,
           source: "tonx86-convention",
@@ -883,10 +846,7 @@ export function validateCallingConventions(
         severity: DiagnosticSeverity.Warning,
         range: {
           start: { line: func.startLine, character: 0 },
-          end: {
-            line: func.endLine,
-            character: lines[func.endLine].length,
-          },
+          end: { line: func.endLine, character: lines[func.endLine].length },
         },
         message: `Function '${func.name}' has ${func.pushCount} PUSH but ${func.popCount} POP (unbalanced stack)`,
         source: "tonx86-convention",
@@ -899,10 +859,7 @@ export function validateCallingConventions(
           severity: DiagnosticSeverity.Warning,
           range: {
             start: { line: func.startLine, character: 0 },
-            end: {
-              line: func.endLine,
-              character: lines[func.endLine].length,
-            },
+            end: { line: func.endLine, character: lines[func.endLine].length },
           },
           message: `Function '${func.name}' modifies callee-saved register ${reg} but doesn't save/restore it`,
           source: "tonx86-convention",
@@ -910,16 +867,16 @@ export function validateCallingConventions(
       }
     }
   }
+}
 
-  // CALL-site analysis
+/** Emit diagnostics for CALL-site patterns (cdecl, parameter passing). */
+function analyzeCallSites(lines: string[], diagnostics: Diagnostic[]): void {
   for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
     const trimmed = lines[lineIndex].trim();
     if (!trimmed || trimmed.startsWith(";")) continue;
 
     const siteClean = stripComment(trimmed);
-
     const tokens = siteClean.split(/[\s,]+/).filter((t) => t.length > 0);
-
     const instruction = tokens[0].toUpperCase();
 
     // cdecl stack cleanup detection
@@ -972,7 +929,7 @@ export function validateCallingConventions(
         }
         if (
           futureClean.endsWith(":") ||
-          controlFlowInstructions.includes(futureTokens[0].toUpperCase())
+          CONTROL_FLOW_INSTRUCTIONS.includes(futureTokens[0].toUpperCase())
         ) {
           break;
         }
@@ -991,6 +948,25 @@ export function validateCallingConventions(
       }
     }
   }
+}
+
+/**
+ * Validate calling conventions:
+ * - Prologue/epilogue checks
+ * - Balanced PUSH/POP
+ * - Callee-saved register preservation
+ * - cdecl pattern detection
+ */
+export function validateCallingConventions(
+  lines: string[],
+  labels: Set<string>,
+  diagnostics: Diagnostic[],
+): void {
+  const equNames = collectEquNames(lines);
+  const functionLabels = identifyFunctionLabels(lines, labels, equNames);
+  const functions = parseFunctions(lines, functionLabels);
+  analyzeFunctionBodies(functions, lines, diagnostics);
+  analyzeCallSites(lines, diagnostics);
 }
 
 /**

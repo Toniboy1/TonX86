@@ -221,9 +221,8 @@ class MemoryProvider implements vscode.TreeDataProvider<MemoryRange> {
  */
 /**
  * LCD View Provider class
- * Exported for testing purposes
  */
-export class LCDViewProvider implements vscode.WebviewViewProvider {
+class LCDViewProvider implements vscode.WebviewViewProvider {
   public static readonly viewType = "tonx86.lcd";
   public static readonly panelViewType = "tonx86.lcd.panel";
   private lcdConfig: LCDConfig;

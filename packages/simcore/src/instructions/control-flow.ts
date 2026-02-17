@@ -8,7 +8,7 @@ import { isZeroFlagSet, isSignFlagSet, isCarryFlagSet, isOverflowFlagSet } from 
 /**
  * Helper function to perform an unconditional jump to a label
  */
-export function performJump(ctx: ExecutionContext, targetLabel: string): void {
+function performJump(ctx: ExecutionContext, targetLabel: string): void {
   const targetIndex = ctx.resolveLabel(targetLabel);
   if (targetIndex !== undefined) {
     ctx.setEIP(targetIndex);
@@ -21,7 +21,7 @@ export function performJump(ctx: ExecutionContext, targetLabel: string): void {
  * Helper function to perform a conditional jump
  * Validates label exists first, then checks condition
  */
-export function performConditionalJump(
+function performConditionalJump(
   ctx: ExecutionContext,
   targetLabel: string,
   condition: boolean,

@@ -117,7 +117,7 @@ npm test
 
 ## Example Usage
 
-See `examples/test-dap.js` for a DAP protocol test utility that exercises:
+The debug adapter test suite (`debugAdapter.test.ts`) exercises:
 
 - Basic stepping through instructions
 - Arithmetic operations and flag setting

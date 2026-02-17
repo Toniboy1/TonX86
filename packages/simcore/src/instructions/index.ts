@@ -57,360 +57,165 @@ import {
 import { executeInt, executeInt3, executeIret } from "./interrupts";
 import { executeRand } from "./misc";
 
+type InstructionHandler = (ctx: ExecutionContext, mnemonic: string, operands: string[]) => void;
+
+/**
+ * Dispatch map from mnemonic to handler.
+ * Using a map instead of a switch statement keeps cyclomatic complexity O(1).
+ */
+const INSTRUCTION_MAP: Record<string, InstructionHandler> = {
+  // ── Data movement ────────────────────────────────────────
+  MOV: (ctx, _, ops) => executeMov(ctx, ops),
+  XCHG: (ctx, _, ops) => executeXchg(ctx, ops),
+  LEA: (ctx, _, ops) => executeLea(ctx, ops),
+  MOVZX: (ctx, _, ops) => executeMovzx(ctx, ops),
+  MOVSX: (ctx, _, ops) => executeMovsx(ctx, ops),
+
+  // ── Arithmetic ───────────────────────────────────────────
+  ADD: (ctx, _, ops) => executeAdd(ctx, ops),
+  SUB: (ctx, _, ops) => executeSub(ctx, ops),
+  INC: (ctx, _, ops) => executeInc(ctx, ops),
+  DEC: (ctx, _, ops) => executeDec(ctx, ops),
+  MUL: (ctx, _, ops) => executeMul(ctx, ops),
+  IMUL: (ctx, _, ops) => executeImul(ctx, ops),
+  DIV: (ctx, _, ops) => executeDiv(ctx, ops),
+  IDIV: (ctx, _, ops) => executeIdiv(ctx, ops),
+  MOD: (ctx, _, ops) => executeMod(ctx, ops),
+  CMP: (ctx, _, ops) => executeCmp(ctx, ops),
+  NEG: (ctx, _, ops) => executeNeg(ctx, ops),
+
+  // ── Logical ──────────────────────────────────────────────
+  AND: (ctx, _, ops) => executeAnd(ctx, ops),
+  OR: (ctx, _, ops) => executeOr(ctx, ops),
+  XOR: (ctx, _, ops) => executeXor(ctx, ops),
+  NOT: (ctx, _, ops) => executeNot(ctx, ops),
+  TEST: (ctx, _, ops) => executeTest(ctx, ops),
+
+  // ── Shift / Rotate ───────────────────────────────────────
+  SHL: (ctx, _, ops) => executeShl(ctx, ops),
+  SHR: (ctx, _, ops) => executeShr(ctx, ops),
+  SAR: (ctx, _, ops) => executeSar(ctx, ops),
+  ROL: (ctx, _, ops) => executeRol(ctx, ops),
+  ROR: (ctx, _, ops) => executeRor(ctx, ops),
+  RCL: (ctx, _, ops) => executeRcl(ctx, ops),
+  RCR: (ctx, _, ops) => executeRcr(ctx, ops),
+
+  // ── No-op ────────────────────────────────────────────────
+  NOP: () => {},
+
+  // ── Control flow ─────────────────────────────────────────
+  JMP: (ctx, _, ops) => executeJmp(ctx, ops),
+  JE: (ctx, _, ops) => executeJe(ctx, ops),
+  JZ: (ctx, _, ops) => executeJe(ctx, ops),
+  JNE: (ctx, _, ops) => executeJne(ctx, ops),
+  JNZ: (ctx, _, ops) => executeJne(ctx, ops),
+  JG: (ctx, _, ops) => executeJg(ctx, ops),
+  JGE: (ctx, _, ops) => executeJge(ctx, ops),
+  JL: (ctx, _, ops) => executeJl(ctx, ops),
+  JLE: (ctx, _, ops) => executeJle(ctx, ops),
+  JS: (ctx, _, ops) => executeJs(ctx, ops),
+  JNS: (ctx, _, ops) => executeJns(ctx, ops),
+  JA: (ctx, _, ops) => executeJa(ctx, ops),
+  JAE: (ctx, _, ops) => executeJae(ctx, ops),
+  JB: (ctx, _, ops) => executeJb(ctx, ops),
+  JBE: (ctx, _, ops) => executeJbe(ctx, ops),
+
+  // ── Loop variants (mnemonic passed through) ──────────────
+  LOOP: (ctx, m) => executeLoop(ctx, m),
+  LOOPE: (ctx, m) => executeLoop(ctx, m),
+  LOOPZ: (ctx, m) => executeLoop(ctx, m),
+  LOOPNE: (ctx, m) => executeLoop(ctx, m),
+  LOOPNZ: (ctx, m) => executeLoop(ctx, m),
+
+  // ── Conditional moves ────────────────────────────────────
+  CMOVE: (ctx, _, ops) => executeCmov(ctx, ops, () => isZeroFlagSet(ctx.cpu.flags)),
+  CMOVZ: (ctx, _, ops) => executeCmov(ctx, ops, () => isZeroFlagSet(ctx.cpu.flags)),
+  CMOVNE: (ctx, _, ops) => executeCmov(ctx, ops, () => !isZeroFlagSet(ctx.cpu.flags)),
+  CMOVNZ: (ctx, _, ops) => executeCmov(ctx, ops, () => !isZeroFlagSet(ctx.cpu.flags)),
+  CMOVL: (ctx, _, ops) =>
+    executeCmov(ctx, ops, () => isSignFlagSet(ctx.cpu.flags) !== isOverflowFlagSet(ctx.cpu.flags)),
+  CMOVLE: (ctx, _, ops) =>
+    executeCmov(
+      ctx,
+      ops,
+      () =>
+        isSignFlagSet(ctx.cpu.flags) !== isOverflowFlagSet(ctx.cpu.flags) ||
+        isZeroFlagSet(ctx.cpu.flags),
+    ),
+  CMOVG: (ctx, _, ops) =>
+    executeCmov(
+      ctx,
+      ops,
+      () =>
+        isSignFlagSet(ctx.cpu.flags) === isOverflowFlagSet(ctx.cpu.flags) &&
+        !isZeroFlagSet(ctx.cpu.flags),
+    ),
+  CMOVGE: (ctx, _, ops) =>
+    executeCmov(ctx, ops, () => isSignFlagSet(ctx.cpu.flags) === isOverflowFlagSet(ctx.cpu.flags)),
+  CMOVA: (ctx, _, ops) =>
+    executeCmov(ctx, ops, () => !isCarryFlagSet(ctx.cpu.flags) && !isZeroFlagSet(ctx.cpu.flags)),
+  CMOVAE: (ctx, _, ops) => executeCmov(ctx, ops, () => !isCarryFlagSet(ctx.cpu.flags)),
+  CMOVB: (ctx, _, ops) => executeCmov(ctx, ops, () => isCarryFlagSet(ctx.cpu.flags)),
+  CMOVBE: (ctx, _, ops) =>
+    executeCmov(ctx, ops, () => isCarryFlagSet(ctx.cpu.flags) || isZeroFlagSet(ctx.cpu.flags)),
+  CMOVS: (ctx, _, ops) => executeCmov(ctx, ops, () => isSignFlagSet(ctx.cpu.flags)),
+  CMOVNS: (ctx, _, ops) => executeCmov(ctx, ops, () => !isSignFlagSet(ctx.cpu.flags)),
+
+  // ── Stack ────────────────────────────────────────────────
+  PUSH: (ctx, _, ops) => executePush(ctx, ops),
+  POP: (ctx, _, ops) => executePop(ctx, ops),
+  CALL: (ctx, _, ops) => executeCall(ctx, ops),
+  RET: (ctx) => executeRet(ctx),
+
+  // ── Bit operations ───────────────────────────────────────
+  LAHF: (ctx) => executeLahf(ctx),
+  SAHF: (ctx) => executeSahf(ctx),
+  XADD: (ctx, _, ops) => executeXadd(ctx, ops),
+  BSF: (ctx, _, ops) => executeBsf(ctx, ops),
+  BSR: (ctx, _, ops) => executeBsr(ctx, ops),
+  BSWAP: (ctx, _, ops) => executeBswap(ctx, ops),
+
+  // ── String operations ────────────────────────────────────
+  LODSB: (ctx) => executeLods(ctx),
+  LODS: (ctx) => executeLods(ctx),
+  STOSB: (ctx) => executeStos(ctx),
+  STOS: (ctx) => executeStos(ctx),
+  MOVSB: (ctx) => executeMovs(ctx),
+  MOVS: (ctx) => executeMovs(ctx),
+  SCASB: (ctx) => executeScas(ctx),
+  SCAS: (ctx) => executeScas(ctx),
+  CMPSB: (ctx) => executeCmps(ctx),
+  CMPS: (ctx) => executeCmps(ctx),
+
+  // ── Interrupts ───────────────────────────────────────────
+  INT: (ctx, _, ops) => executeInt(ctx, ops),
+  INT3: (ctx) => executeInt3(ctx),
+  IRET: (ctx) => executeIret(ctx),
+
+  // ── Misc ─────────────────────────────────────────────────
+  RAND: (ctx, _, ops) => executeRand(ctx, ops),
+
+  // ── Halt ─────────────────────────────────────────────────
+  HLT: (ctx) => {
+    ctx.cpu.halted = true;
+    ctx.cpu.running = false;
+  },
+};
+
 /**
  * Execute a single instruction given the execution context.
- * This function is the giant switch extracted from Simulator.executeInstruction.
+ * Uses a dispatch map for O(1) lookup instead of a switch statement.
  */
 export function executeInstruction(
   ctx: ExecutionContext,
   mnemonic: string,
   operands: string[],
 ): void {
-  mnemonic = mnemonic.toUpperCase();
-
-  switch (mnemonic) {
-    case "MOV":
-      executeMov(ctx, operands);
-      break;
-
-    case "XCHG":
-      executeXchg(ctx, operands);
-      break;
-
-    case "LEA":
-      executeLea(ctx, operands);
-      break;
-
-    case "MOVZX":
-      executeMovzx(ctx, operands);
-      break;
-
-    case "MOVSX":
-      executeMovsx(ctx, operands);
-      break;
-
-    case "ADD":
-      executeAdd(ctx, operands);
-      break;
-
-    case "SUB":
-      executeSub(ctx, operands);
-      break;
-
-    case "INC":
-      executeInc(ctx, operands);
-      break;
-
-    case "DEC":
-      executeDec(ctx, operands);
-      break;
-
-    case "MUL":
-      executeMul(ctx, operands);
-      break;
-
-    case "IMUL":
-      executeImul(ctx, operands);
-      break;
-
-    case "DIV":
-      executeDiv(ctx, operands);
-      break;
-
-    case "IDIV":
-      executeIdiv(ctx, operands);
-      break;
-
-    case "MOD":
-      executeMod(ctx, operands);
-      break;
-
-    case "CMP":
-      executeCmp(ctx, operands);
-      break;
-
-    case "AND":
-      executeAnd(ctx, operands);
-      break;
-
-    case "OR":
-      executeOr(ctx, operands);
-      break;
-
-    case "XOR":
-      executeXor(ctx, operands);
-      break;
-
-    case "NOT":
-      executeNot(ctx, operands);
-      break;
-
-    case "NEG":
-      executeNeg(ctx, operands);
-      break;
-
-    case "TEST":
-      executeTest(ctx, operands);
-      break;
-
-    case "SHL":
-      executeShl(ctx, operands);
-      break;
-
-    case "SHR":
-      executeShr(ctx, operands);
-      break;
-
-    case "SAR":
-      executeSar(ctx, operands);
-      break;
-
-    case "ROL":
-      executeRol(ctx, operands);
-      break;
-
-    case "ROR":
-      executeRor(ctx, operands);
-      break;
-
-    case "RCL":
-      executeRcl(ctx, operands);
-      break;
-
-    case "RCR":
-      executeRcr(ctx, operands);
-      break;
-
-    case "NOP":
-      break;
-
-    case "JMP":
-      executeJmp(ctx, operands);
-      break;
-
-    case "JE": // fall-through: JE is alias for JZ (Jump if Equal / Jump if Zero)
-    case "JZ":
-      executeJe(ctx, operands);
-      break;
-
-    case "JNE": // fall-through: JNE is alias for JNZ (Jump if Not Equal / Jump if Not Zero)
-    case "JNZ":
-      executeJne(ctx, operands);
-      break;
-
-    case "JG":
-      executeJg(ctx, operands);
-      break;
-
-    case "JGE":
-      executeJge(ctx, operands);
-      break;
-
-    case "JL":
-      executeJl(ctx, operands);
-      break;
-
-    case "JLE":
-      executeJle(ctx, operands);
-      break;
-
-    case "JS":
-      executeJs(ctx, operands);
-      break;
-
-    case "JNS":
-      executeJns(ctx, operands);
-      break;
-
-    case "JA":
-      executeJa(ctx, operands);
-      break;
-
-    case "JAE":
-      executeJae(ctx, operands);
-      break;
-
-    case "JB":
-      executeJb(ctx, operands);
-      break;
-
-    case "JBE":
-      executeJbe(ctx, operands);
-      break;
-
-    case "LOOP": // fall-through: all LOOP variants share one handler, mnemonic differentiates
-    case "LOOPE":
-    case "LOOPZ": // alias for LOOPE
-    case "LOOPNE":
-    case "LOOPNZ": // alias for LOOPNE
-      executeLoop(ctx, mnemonic);
-      break;
-
-    case "CMOVE": // fall-through: CMOVE is alias for CMOVZ (Move if Equal / Move if Zero)
-    case "CMOVZ":
-      executeCmov(ctx, operands, () => isZeroFlagSet(ctx.cpu.flags));
-      break;
-
-    case "CMOVNE": // fall-through: CMOVNE is alias for CMOVNZ (Move if Not Equal / Not Zero)
-    case "CMOVNZ":
-      executeCmov(ctx, operands, () => !isZeroFlagSet(ctx.cpu.flags));
-      break;
-
-    case "CMOVL":
-      executeCmov(
-        ctx,
-        operands,
-        () => isSignFlagSet(ctx.cpu.flags) !== isOverflowFlagSet(ctx.cpu.flags),
-      );
-      break;
-
-    case "CMOVLE":
-      executeCmov(
-        ctx,
-        operands,
-        () =>
-          isSignFlagSet(ctx.cpu.flags) !== isOverflowFlagSet(ctx.cpu.flags) ||
-          isZeroFlagSet(ctx.cpu.flags),
-      );
-      break;
-
-    case "CMOVG":
-      executeCmov(
-        ctx,
-        operands,
-        () =>
-          isSignFlagSet(ctx.cpu.flags) === isOverflowFlagSet(ctx.cpu.flags) &&
-          !isZeroFlagSet(ctx.cpu.flags),
-      );
-      break;
-
-    case "CMOVGE":
-      executeCmov(
-        ctx,
-        operands,
-        () => isSignFlagSet(ctx.cpu.flags) === isOverflowFlagSet(ctx.cpu.flags),
-      );
-      break;
-
-    case "CMOVA":
-      executeCmov(
-        ctx,
-        operands,
-        () => !isCarryFlagSet(ctx.cpu.flags) && !isZeroFlagSet(ctx.cpu.flags),
-      );
-      break;
-
-    case "CMOVAE":
-      executeCmov(ctx, operands, () => !isCarryFlagSet(ctx.cpu.flags));
-      break;
-
-    case "CMOVB":
-      executeCmov(ctx, operands, () => isCarryFlagSet(ctx.cpu.flags));
-      break;
-
-    case "CMOVBE":
-      executeCmov(
-        ctx,
-        operands,
-        () => isCarryFlagSet(ctx.cpu.flags) || isZeroFlagSet(ctx.cpu.flags),
-      );
-      break;
-
-    case "CMOVS":
-      executeCmov(ctx, operands, () => isSignFlagSet(ctx.cpu.flags));
-      break;
-
-    case "CMOVNS":
-      executeCmov(ctx, operands, () => !isSignFlagSet(ctx.cpu.flags));
-      break;
-
-    case "PUSH":
-      executePush(ctx, operands);
-      break;
-
-    case "POP":
-      executePop(ctx, operands);
-      break;
-
-    case "CALL":
-      executeCall(ctx, operands);
-      break;
-
-    case "RET":
-      executeRet(ctx);
-      break;
-
-    case "LAHF":
-      executeLahf(ctx);
-      break;
-
-    case "SAHF":
-      executeSahf(ctx);
-      break;
-
-    case "XADD":
-      executeXadd(ctx, operands);
-      break;
-
-    case "BSF":
-      executeBsf(ctx, operands);
-      break;
-
-    case "BSR":
-      executeBsr(ctx, operands);
-      break;
-
-    case "BSWAP":
-      executeBswap(ctx, operands);
-      break;
-
-    case "LODSB": // fall-through: LODSB is alias for LODS (Load String Byte)
-    case "LODS":
-      executeLods(ctx);
-      break;
-
-    case "STOSB": // fall-through: STOSB is alias for STOS (Store String Byte)
-    case "STOS":
-      executeStos(ctx);
-      break;
-
-    case "MOVSB": // fall-through: MOVSB is alias for MOVS (Move String Byte)
-    case "MOVS":
-      executeMovs(ctx);
-      break;
-
-    case "SCASB": // fall-through: SCASB is alias for SCAS (Scan String Byte)
-    case "SCAS":
-      executeScas(ctx);
-      break;
-
-    case "CMPSB": // fall-through: CMPSB is alias for CMPS (Compare String Byte)
-    case "CMPS":
-      executeCmps(ctx);
-      break;
-
-    case "INT":
-      executeInt(ctx, operands);
-      break;
-
-    case "INT3":
-      executeInt3(ctx);
-      break;
-
-    case "IRET":
-      executeIret(ctx);
-      break;
-
-    case "RAND":
-      executeRand(ctx, operands);
-      break;
-
-    case "HLT":
-      ctx.cpu.halted = true;
-      ctx.cpu.running = false;
-      break;
-
-    default:
-      throw new Error(`Unknown instruction: ${mnemonic}`);
+  const upper = mnemonic.toUpperCase();
+  const handler = INSTRUCTION_MAP[upper];
+  if (handler) {
+    handler(ctx, upper, operands);
+    return;
   }
+  throw new Error(`Unknown instruction: ${mnemonic}`);
 }

@@ -1,4 +1,48 @@
-import type { ExecutionContext, RegisterOperand } from "../types";
+import type { ExecutionContext, ParsedOperand, RegisterOperand } from "../types";
+
+/** Resolve the effective address for a memory-type operand */
+function resolveMemoryAddress(ctx: ExecutionContext, op: ParsedOperand): number {
+  if (op.base === -1) {
+    return op.offset || 0;
+  }
+  return (ctx.cpu.registers[op.base!] + (op.offset || 0)) & 0xffff;
+}
+
+/** Check whether an address falls in the I/O-mapped region */
+function isIOAddress(addr: number): boolean {
+  return (addr >= 0xf000 && addr <= 0xffff) || (addr >= 0x10100 && addr <= 0x101ff);
+}
+
+/** Read the value described by a parsed operand */
+function readSourceValue(ctx: ExecutionContext, src: ParsedOperand): number {
+  if (src.type === "register" || src.type === "register8") {
+    return ctx.readRegisterValue(src as RegisterOperand);
+  }
+  if (src.type === "memory") {
+    const addr = resolveMemoryAddress(ctx, src);
+    return isIOAddress(addr) ? ctx.readIO(addr) : ctx.readMemory32(addr);
+  }
+  return src.value;
+}
+
+/** Write a value into a parsed destination operand */
+function writeDestValue(ctx: ExecutionContext, dest: ParsedOperand, value: number): void {
+  if (dest.type === "register" || dest.type === "register8") {
+    ctx.writeRegisterValue(dest as RegisterOperand, value);
+    return;
+  }
+  if (dest.type === "memory") {
+    const addr = resolveMemoryAddress(ctx, dest);
+    if (isIOAddress(addr)) {
+      ctx.writeIO(addr, value);
+    } else {
+      ctx.writeMemory32(addr, value);
+    }
+    return;
+  }
+  // Immediate value destination - treat as I/O address
+  ctx.writeIO(dest.value, value);
+}
 
 export function executeMov(ctx: ExecutionContext, operands: string[]): void {
   if (operands.length !== 2) return;
@@ -21,47 +65,7 @@ export function executeMov(ctx: ExecutionContext, operands: string[]): void {
     }
   }
 
-  // Get source value
-  let srcValue: number;
-  if (src.type === "register" || src.type === "register8") {
-    srcValue = ctx.readRegisterValue(src as RegisterOperand);
-  } else if (src.type === "memory") {
-    let addr: number;
-    if (src.base === -1) {
-      addr = src.offset || 0;
-    } else {
-      addr = (ctx.cpu.registers[src.base!] + (src.offset || 0)) & 0xffff;
-    }
-
-    if ((addr >= 0xf000 && addr <= 0xffff) || (addr >= 0x10100 && addr <= 0x101ff)) {
-      srcValue = ctx.readIO(addr);
-    } else {
-      srcValue = ctx.readMemory32(addr);
-    }
-  } else {
-    srcValue = src.value;
-  }
-
-  // Handle destination
-  if (dest.type === "register" || dest.type === "register8") {
-    ctx.writeRegisterValue(dest as RegisterOperand, srcValue);
-  } else if (dest.type === "memory") {
-    let addr: number;
-    if (dest.base === -1) {
-      addr = dest.offset || 0;
-    } else {
-      addr = (ctx.cpu.registers[dest.base!] + (dest.offset || 0)) & 0xffff;
-    }
-
-    if ((addr >= 0xf000 && addr <= 0xffff) || (addr >= 0x10100 && addr <= 0x101ff)) {
-      ctx.writeIO(addr, srcValue);
-    } else {
-      ctx.writeMemory32(addr, srcValue);
-    }
-  } else {
-    // Immediate value destination - treat as I/O address
-    ctx.writeIO(dest.value, srcValue);
-  }
+  writeDestValue(ctx, dest, readSourceValue(ctx, src));
 }
 
 export function executeXchg(ctx: ExecutionContext, operands: string[]): void {
