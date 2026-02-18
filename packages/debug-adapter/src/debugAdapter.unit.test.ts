@@ -973,6 +973,66 @@ start:
         // super might throw
       }
     });
+
+    it("should handle getAudioState", () => {
+      const response = makeResponse("getAudioState");
+      (session as any).customRequest("getAudioState", response, {});
+
+      expect(sentResponses[0].body).toBeDefined();
+      expect(sentResponses[0].body.ctrl).toBeDefined();
+      expect(typeof sentResponses[0].body.ctrl).toBe("number");
+    });
+  });
+
+  // ==================== Audio Events ====================
+
+  describe("Audio Events", () => {
+    it("should emit audio event when audio is triggered", () => {
+      // Create a program that writes to audio registers
+      const audioProgram = `; Audio test program
+start:
+  MOV AL, 0x64       ; Set frequency low byte (100)
+  MOV [0x10202], AL
+  MOV AL, 0x01       ; Set frequency high byte (256 + 100 = 356 Hz)
+  MOV [0x10203], AL
+  MOV AL, 200        ; Set duration low byte (200 ms)
+  MOV [0x10204], AL
+  MOV AL, 0          ; Set duration high byte
+  MOV [0x10205], AL
+  MOV AL, 128        ; Set volume (mid volume)
+  MOV [0x10206], AL
+  MOV AL, 0          ; Set square wave
+  MOV [0x10201], AL
+  MOV AL, 1          ; Trigger audio (write 1 to CTRL)
+  MOV [0x10200], AL
+  HLT
+`;
+      const audioPath = path.join(tempDir, "audio.asm");
+      fs.writeFileSync(audioPath, audioProgram);
+
+      launchProgram(audioPath);
+
+      // Clear previous events
+      sentEvents = [];
+
+      // Continue execution to trigger audio
+      const continueResponse = makeResponse("continue");
+      (session as any).continueRequest(continueResponse, { threadId: 1 });
+
+      // Check for audio event in sent events
+      const audioEvents = sentEvents.filter(
+        (e) => e.body && e.body.category === "tonx86-audio",
+      );
+      expect(audioEvents.length).toBeGreaterThan(0);
+
+      // Parse the audio event
+      const audioEvent = JSON.parse(audioEvents[0].body.output);
+      expect(audioEvent.type).toBe("audioEvent");
+      expect(audioEvent.frequency).toBe(356); // 0x0164 = 356
+      expect(audioEvent.duration).toBe(200);
+      expect(audioEvent.waveform).toBe("square");
+      expect(typeof audioEvent.volume).toBe("number");
+    });
   });
 
   // ==================== emitConsoleOutput ====================
