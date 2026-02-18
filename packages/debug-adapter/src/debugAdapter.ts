@@ -15,7 +15,7 @@ interface TonX86LaunchRequestArguments extends DebugProtocol.LaunchRequestArgume
 }
 import * as fs from "fs";
 import * as path from "path";
-import { Simulator } from "@tonx86/simcore";
+import { Simulator, type AudioEvent } from "@tonx86/simcore";
 import { parseAssembly } from "./parser";
 import { detectLCDDimensions, validateCPUSpeed } from "./debugLogic";
 
@@ -131,6 +131,22 @@ export class TonX86DebugSession extends DebugSession {
 
         // Load instructions and labels into simulator
         this.simulator.loadInstructions(instructions, labels);
+
+        // Set up audio event callback
+        this.simulator.setAudioEventCallback((event: AudioEvent) => {
+          this.sendEvent(
+            new OutputEvent(
+              JSON.stringify({
+                type: "audioEvent",
+                frequency: event.frequency,
+                duration: event.duration,
+                waveform: event.waveform,
+                volume: event.volume,
+              }),
+              "tonx86-audio",
+            ),
+          );
+        });
 
         // Show labels in Debug Console to help with CALL/JMP debugging
         const labelList = Array.from(labels.entries())
@@ -756,6 +772,13 @@ export class TonX86DebugSession extends DebugSession {
       const pressed = typeof argsObj.pressed === "boolean" ? argsObj.pressed : false;
       this.simulator.pushKeyboardEvent(keyCode, pressed);
       console.error(`[TonX86] Keyboard event: keyCode=${keyCode}, pressed=${pressed}`);
+      this.sendResponse(response);
+    } else if (command === "getAudioState") {
+      // Get current audio device state
+      const audioState = this.simulator.getAudioState();
+      response.body = {
+        ctrl: audioState.ctrl,
+      };
       this.sendResponse(response);
     } else {
       super.customRequest(command, response, args);

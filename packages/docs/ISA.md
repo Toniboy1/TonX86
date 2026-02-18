@@ -706,6 +706,59 @@ MOV ECX, 0x10102    ; Read key state
 - Arrows: Up=128, Down=129, Left=130, Right=131
 - Special: Space=32, Enter=13, Esc=27, Tab=9, Backspace=8
 
+### Audio Device (0x10200-0x10206)
+
+**Read/Write** - PC Speaker style audio output
+
+- `0x10200` - AUDIO_CTRL (bit 0: 0=stop, 1=play)
+- `0x10201` - AUDIO_WAVE (0=square, 1=sine)
+- `0x10202` - AUDIO_FREQ_LO (frequency Hz, low byte)
+- `0x10203` - AUDIO_FREQ_HI (frequency Hz, high byte)
+- `0x10204` - AUDIO_DUR_LO (duration ms, low byte)
+- `0x10205` - AUDIO_DUR_HI (duration ms, high byte)
+- `0x10206` - AUDIO_VOLUME (0-255, normalized to 0.0-1.0)
+
+**Operation:**
+
+- Audio event triggers when AUDIO_CTRL transitions from 0 to 1
+- Frequency range: 0-65535 Hz (practical: 20-20000 Hz)
+- Duration range: 0-65535 ms
+- Volume: 0 (silent) to 255 (maximum)
+
+**Example - Play 440 Hz beep for 300 ms:**
+
+```asm
+MOV [0x10201], 0        ; Square wave
+MOV [0x10202], 0xB8     ; Low byte of 440 Hz (184)
+MOV [0x10203], 0x01     ; High byte of 440 Hz (1)
+MOV [0x10204], 0x2C     ; Low byte of 300 ms (44)
+MOV [0x10205], 0x01     ; High byte of 300 ms (1)
+MOV [0x10206], 200      ; Volume 200/255
+MOV [0x10200], 1        ; Play tone
+HLT
+```
+
+**Musical Notes Example:**
+
+```asm
+; Define note frequencies
+NOTE_A4: EQU 440
+NOTE_C5: EQU 523
+NOTE_E5: EQU 659
+
+; Play C5 note
+MOV [0x10201], 1        ; Sine wave
+MOV EAX, NOTE_C5
+MOV [0x10202], AL       ; Low byte
+SHR EAX, 8
+MOV [0x10203], AL       ; High byte
+MOV [0x10204], 0xF4     ; 500 ms (244)
+MOV [0x10205], 0x01     ; (1)
+MOV [0x10206], 150      ; Volume
+MOV [0x10200], 1        ; Play
+HLT
+```
+
 ## Example Programs
 
 ### Simple Addition

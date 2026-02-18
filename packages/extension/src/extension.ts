@@ -25,6 +25,14 @@ interface KeyboardConfig {
 }
 
 /**
+ * Audio Configuration interface
+ */
+interface AudioConfig {
+  enabled: boolean;
+  volume: number; // 0-100 percentage
+}
+
+/**
  * Debug Configuration Provider
  * Injects extension settings into debug configuration
  */
@@ -80,6 +88,20 @@ function getKeyboardConfig(): KeyboardConfig {
   const config = vscode.workspace.getConfiguration("tonx86.keyboard");
   const enabled = config.get<boolean>("enabled", true);
   return { enabled };
+}
+
+/**
+ * Validate and normalize audio configuration
+ */
+function getAudioConfig(): AudioConfig {
+  const config = vscode.workspace.getConfiguration("tonx86.audio");
+  const enabled = config.get<boolean>("enabled", true);
+  let volume = config.get<number>("volume", 50);
+
+  // Clamp volume to 0-100 range
+  volume = Math.max(0, Math.min(100, volume));
+
+  return { enabled, volume };
 }
 
 /**
@@ -227,6 +249,7 @@ class LCDViewProvider implements vscode.WebviewViewProvider {
   public static readonly panelViewType = "tonx86.lcd.panel";
   private lcdConfig: LCDConfig;
   private keyboardConfig: KeyboardConfig;
+  private audioConfig: AudioConfig;
   private lcdPanel: vscode.WebviewPanel | undefined;
   private webviewView: vscode.WebviewView | undefined;
   private onKeyboardEvent: ((keyCode: number, pressed: boolean) => void) | undefined;
@@ -234,6 +257,7 @@ class LCDViewProvider implements vscode.WebviewViewProvider {
   constructor() {
     this.lcdConfig = getLCDConfig();
     this.keyboardConfig = getKeyboardConfig();
+    this.audioConfig = getAudioConfig();
   }
 
   /**
@@ -262,6 +286,7 @@ class LCDViewProvider implements vscode.WebviewViewProvider {
     // Refresh config to ensure latest settings
     this.updateLCDConfig();
     this.keyboardConfig = getKeyboardConfig();
+    this.audioConfig = getAudioConfig();
 
     webviewView.webview.html = this.getHtmlForWebview();
   }
@@ -283,9 +308,50 @@ class LCDViewProvider implements vscode.WebviewViewProvider {
     }
   }
 
+  /**
+   * Play audio tone in the webview (browser context with AudioContext)
+   */
+  playAudio(
+    frequency: number,
+    duration: number,
+    waveform: "square" | "sine",
+    volume: number,
+  ): void {
+    if (!this.audioConfig.enabled) {
+      console.log("[TonX86] Audio disabled in settings, skipping playback");
+      return;
+    }
+
+    // Apply master volume multiplier (convert percentage to 0-1 range)
+    const masterVolume = this.audioConfig.volume / 100.0;
+    const adjustedVolume = volume * masterVolume;
+
+    console.log(
+      `[TonX86] Sending audio to webview: ${frequency}Hz, ${duration}ms, ${waveform}, vol:${volume} -> ${adjustedVolume} (master: ${masterVolume})`,
+    );
+
+    const message = { type: "playAudio", frequency, duration, waveform, volume: adjustedVolume };
+
+    // Send to main view
+    if (this.webviewView) {
+      this.webviewView.webview.postMessage(message);
+      console.log("[TonX86] Audio message sent to main webview");
+    } else {
+      console.warn("[TonX86] Main webview not available");
+    }
+
+    // Send to popped out panel
+    if (this.lcdPanel) {
+      this.lcdPanel.webview.postMessage(message);
+      console.log("[TonX86] Audio message sent to popped panel");
+    }
+  }
+
+  // eslint-disable-next-line max-lines-per-function
   private getHtmlForWebview(): string {
     const { width, height, pixelSize } = this.lcdConfig;
     const { enabled: keyboardEnabled } = this.keyboardConfig;
+    const { enabled: audioEnabled, volume: masterVolume } = this.audioConfig;
 
     return `
 			<!DOCTYPE html>
@@ -323,6 +389,7 @@ class LCDViewProvider implements vscode.WebviewViewProvider {
 				<div id="lcd" tabindex="0"></div>
 				<div class="info">Pixel Size: ${pixelSize}px</div>
 				<div class="keyboard-status">Keyboard: ${keyboardEnabled ? "Enabled (click LCD to focus)" : "Disabled"}</div>
+				<div class="keyboard-status" id="audio-status">Audio: ${audioEnabled ? `Enabled (Master Volume: ${masterVolume}%) - Click LCD to activate` : "Disabled"}</div>
 				<div id="debug" style="font-size: 0.7em; color: #999; margin-top: 5px; font-family: monospace;">Last key: none</div>
 				<script>
 					const vscode = acquireVsCodeApi();
@@ -416,7 +483,46 @@ class LCDViewProvider implements vscode.WebviewViewProvider {
 						document.addEventListener('keyup', (e) => sendKeyEvent(e, false), true);
 					}
 					
-					// Listen for pixel updates from extension
+					// Audio context for sound playback (Web Audio API)
+					let audioContext = null;
+					let audioUnlocked = false;
+					let nextSoundTime = 0; // Track when last sound finishes for sequential playback
+					
+					// Function to unlock audio (requires user interaction)
+					const unlockAudio = async () => {
+						if (audioUnlocked || !${audioEnabled}) return;
+						
+						try {
+							if (!audioContext) {
+								console.log('[TonX86 Webview] Creating AudioContext');
+								audioContext = new (window.AudioContext || window.webkitAudioContext)();
+							}
+							
+							if (audioContext.state === 'suspended') {
+								console.log('[TonX86 Webview] Resuming AudioContext');
+								await audioContext.resume();
+							}
+							
+							audioUnlocked = true;
+							console.log('[TonX86 Webview] Audio unlocked! State:', audioContext.state);
+							
+							// Update UI
+							const statusEl = document.getElementById('audio-status');
+							if (statusEl) {
+								statusEl.textContent = 'Audio: Enabled (Master Volume: ${masterVolume}%) - Ready';
+								statusEl.style.color = '#007acc';
+							}
+						} catch (error) {
+							console.error('[TonX86 Webview] Failed to unlock audio:', error);
+						}
+					};
+					
+					// Unlock audio on any user interaction
+					lcd.addEventListener('click', unlockAudio, { once: true });
+					document.addEventListener('click', unlockAudio, { once: true });
+					document.addEventListener('keydown', unlockAudio, { once: true });
+					
+					// Listen for pixel updates and audio events from extension
 					window.addEventListener('message', event => {
 						const message = event.data;
 						if (message.type === 'updatePixels') {
@@ -428,6 +534,68 @@ class LCDViewProvider implements vscode.WebviewViewProvider {
 									pixels[i].classList.remove('on');
 								}
 							}
+						} else if (message.type === 'playAudio') {
+							// Play audio using Web Audio API
+							console.log('[TonX86 Webview] Audio event received:', message);
+							
+							// Attempt to unlock audio if not already unlocked
+							if (!audioUnlocked) {
+								unlockAudio();
+							}
+							
+							try {
+								// Check if audio is enabled
+								if (!${audioEnabled}) {
+									console.log('[TonX86 Webview] Audio is disabled in settings');
+									return;
+								}
+								
+								// Ensure AudioContext exists
+								if (!audioContext) {
+									console.log('[TonX86 Webview] Initializing AudioContext');
+									audioContext = new (window.AudioContext || window.webkitAudioContext)();
+								}
+								
+								console.log('[TonX86 Webview] AudioContext state:', audioContext.state);
+								
+								// Try to resume if suspended
+								if (audioContext.state === 'suspended') {
+									console.log('[TonX86 Webview] AudioContext suspended - resuming');
+									audioContext.resume().then(() => {
+										console.log('[TonX86 Webview] AudioContext resumed');
+									});
+								}
+								
+								const oscillator = audioContext.createOscillator();
+								const gainNode = audioContext.createGain();
+								
+								// Set waveform
+								oscillator.type = message.waveform;
+								oscillator.frequency.value = message.frequency;
+								
+								// Set volume (0.0 to 1.0)
+								gainNode.gain.value = Math.max(0, Math.min(1, message.volume));
+								
+								// Connect nodes
+								oscillator.connect(gainNode);
+								gainNode.connect(audioContext.destination);
+								
+								// Schedule playback sequentially (queue sounds with small gaps)
+								const now = audioContext.currentTime;
+								const startTime = Math.max(now, nextSoundTime);
+								const duration = message.duration / 1000.0;
+								const gap = 0.05; // 50ms gap between sounds
+								
+								oscillator.start(startTime);
+								oscillator.stop(startTime + duration);
+								
+								// Update next available time slot
+								nextSoundTime = startTime + duration + gap;
+								
+								console.log('[TonX86 Webview] Scheduled tone:', message.frequency + 'Hz', message.duration + 'ms at', startTime.toFixed(3) + 's', 'vol:' + message.volume);
+							} catch (error) {
+								console.error('[TonX86 Webview] Audio playback error:', error);
+							}
 						}
 					});
 				</script>
@@ -438,6 +606,10 @@ class LCDViewProvider implements vscode.WebviewViewProvider {
 
   updateLCDConfig(): void {
     this.lcdConfig = getLCDConfig();
+  }
+
+  updateAudioConfig(): void {
+    this.audioConfig = getAudioConfig();
   }
 
   getLCDConfig(): LCDConfig {
@@ -453,6 +625,7 @@ class LCDViewProvider implements vscode.WebviewViewProvider {
     // Refresh config before creating pop-out to ensure latest settings
     this.updateLCDConfig();
     this.keyboardConfig = getKeyboardConfig();
+    this.audioConfig = getAudioConfig();
 
     this.lcdPanel = vscode.window.createWebviewPanel(
       LCDViewProvider.panelViewType,
@@ -698,6 +871,7 @@ let currentDebugSession: vscode.DebugSession | undefined;
 let client: LanguageClient;
 let outputChannel: vscode.OutputChannel;
 
+// eslint-disable-next-line max-lines-per-function
 export function activate(context: vscode.ExtensionContext): void {
   console.log("TonX86 extension is now active");
 
@@ -839,7 +1013,7 @@ export function activate(context: vscode.ExtensionContext): void {
     }
   }
 
-  // Mirror Debug Console output to Output panel
+  // Mirror Debug Console output to Output panel and handle audio events
   context.subscriptions.push(
     vscode.debug.registerDebugAdapterTrackerFactory("tonx86", {
       createDebugAdapterTracker(session: vscode.DebugSession) {
@@ -855,6 +1029,25 @@ export function activate(context: vscode.ExtensionContext): void {
               (message.body.category === "stdout" || message.body.category === "stderr")
             ) {
               outputChannel.append(message.body.output);
+            } else if (
+              message.type === "event" &&
+              message.event === "output" &&
+              message.body?.category === "tonx86-audio"
+            ) {
+              // Handle audio event - send to LCD webview (browser context)
+              try {
+                const audioEvent = JSON.parse(message.body.output);
+                if (audioEvent.type === "audioEvent") {
+                  lcdProvider.playAudio(
+                    audioEvent.frequency,
+                    audioEvent.duration,
+                    audioEvent.waveform,
+                    audioEvent.volume,
+                  );
+                }
+              } catch (error) {
+                console.error("[TonX86] Failed to parse audio event:", error);
+              }
             }
           },
         };
@@ -871,6 +1064,15 @@ export function activate(context: vscode.ExtensionContext): void {
         // Reload the webview
         vscode.window.showInformationMessage(
           "LCD configuration updated. Reload the LCD view to apply changes.",
+        );
+      }
+      if (event.affectsConfiguration("tonx86.audio")) {
+        console.log("Audio configuration changed");
+        lcdProvider.updateAudioConfig();
+        // Update is immediate, no reload needed
+        const audioConfig = getAudioConfig();
+        vscode.window.showInformationMessage(
+          `Audio configuration updated. Master volume: ${audioConfig.volume}%`,
         );
       }
     }),
@@ -940,6 +1142,7 @@ export function activate(context: vscode.ExtensionContext): void {
 
 export function deactivate(): Thenable<void> | undefined {
   console.log("TonX86 extension is now deactivated");
+
   if (!client) {
     return undefined;
   }
