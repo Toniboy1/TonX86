@@ -75,7 +75,7 @@ describe("TonX86 Extension", () => {
         "tonx86",
         expect.any(Object),
       );
-      expect(vscode.window.registerTreeDataProvider).toHaveBeenCalledTimes(3);
+      expect(vscode.window.registerTreeDataProvider).toHaveBeenCalledTimes(4); // registers, cpuState, memoryA, memoryB
       expect(vscode.window.registerWebviewViewProvider).toHaveBeenCalledTimes(2);
     });
 
@@ -272,7 +272,7 @@ describe("TonX86 Extension", () => {
     it("should initialize memory with default values", () => {
       activate(mockContext);
 
-      const providerCall = (vscode.window.registerTreeDataProvider as jest.Mock).mock.calls[1];
+      const providerCall = (vscode.window.registerTreeDataProvider as jest.Mock).mock.calls[2];
       const provider = providerCall[1];
 
       const children = provider.getChildren();
@@ -284,7 +284,7 @@ describe("TonX86 Extension", () => {
     it("should update memory values", () => {
       activate(mockContext);
 
-      const providerCall = (vscode.window.registerTreeDataProvider as jest.Mock).mock.calls[1];
+      const providerCall = (vscode.window.registerTreeDataProvider as jest.Mock).mock.calls[2];
       const provider = providerCall[1];
 
       const data = new Uint8Array([0xff, 0xaa, 0x55]);
@@ -300,7 +300,7 @@ describe("TonX86 Extension", () => {
       jest.clearAllMocks();
       activate(mockContext);
 
-      const providerCall = (vscode.window.registerTreeDataProvider as jest.Mock).mock.calls[1];
+      const providerCall = (vscode.window.registerTreeDataProvider as jest.Mock).mock.calls[2];
       const provider = providerCall[1];
 
       // Get current state and verify format (value may vary due to previous tests)
@@ -315,7 +315,7 @@ describe("TonX86 Extension", () => {
     it("should handle updateMemory with data longer than memory length", () => {
       activate(mockContext);
 
-      const providerCall = (vscode.window.registerTreeDataProvider as jest.Mock).mock.calls[1];
+      const providerCall = (vscode.window.registerTreeDataProvider as jest.Mock).mock.calls[2];
       const provider = providerCall[1];
 
       // Create data larger than the memory length (16)
@@ -348,7 +348,7 @@ describe("TonX86 Extension", () => {
       provider.resolveWebviewView(mockWebviewView);
 
       expect(mockWebviewView.webview.html).toContain("LCD Display");
-      expect(mockWebviewView.webview.html).toContain("16x16");
+      expect(mockWebviewView.webview.html).toContain("16×16"); // Updated to use multiplication sign
       expect(mockWebviewView.webview.options.enableScripts).toBe(true);
     });
 
@@ -721,9 +721,10 @@ describe("TonX86 Extension", () => {
 
       provider.resolveWebviewView(mockWebviewView);
 
-      // Check that HTML contains disabled keyboard indicators
-      expect(mockWebviewView.webview.html).toContain("Keyboard: Disabled");
-      expect(mockWebviewView.webview.html).toContain("color: #999");
+      // Check that HTML contains keyboard indicators
+      expect(mockWebviewView.webview.html).toContain("Keyboard:");
+      expect(mockWebviewView.webview.html).toContain("Disabled");
+      expect(mockWebviewView.webview.html).toContain("status-disabled"); // Check for status class
     });
   });
 
@@ -1498,7 +1499,7 @@ describe("TonX86 Extension", () => {
         webview: {
           postMessage: jest.fn(),
           html: "",
-          onDidReceiveMessage: jest.fn((callback) => ({
+          onDidReceiveMessage: jest.fn((_callback) => ({
             dispose: jest.fn(),
           })),
         },

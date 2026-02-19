@@ -100,3 +100,31 @@ All notable changes to this project will be documented in this file. See [standa
 
 - add marketplace README for extension overview page ([104106a](https://github.com/Toniboy1/TonX86/commit/104106a19e61069d4650c7ad0c2d6e768b0984f7))
 - update PR template with cleanup changes details ([4428c2b](https://github.com/Toniboy1/TonX86/commit/4428c2bf8b6c66272cb27fa9f7af82bb0b9ba45c))
+
+## [0.5.1](https://github.com/Toniboy1/TonX86/compare/v0.5.0...v0.5.1) (2026-02-19)
+
+### Debugger Features
+
+- **Rich Variables View in Debugger**  
+  The VS Code Variables pane (Registers scope) now shows much more than just CPU registers:
+  - **Registers**: All 8 general-purpose registers (EAX, ECX, EDX, EBX, ESP, EBP, ESI, EDI)
+  - **Flags**: Expandable group for CF, ZF, SF, OF, PF, AF
+  - **Stack Usage**: Bytes used and percentage
+  - **Call Depth**: Current call stack depth
+  - **Status**: Running/Halted
+  - **Keyboard**: Shows if a key is available
+  - **Audio**: Shows if audio is enabled
+  - **MemoryA/MemoryB**: Expandable, first 16 bytes as hex
+  - **Stack Top**: Expandable, top 8 stack values (address + value)
+  - **LCD**: Expandable, shows resolution and number of pixels on
+
+- **Best Place to View**  
+  All these details are available in the standard **Debugger Variables view** (Registers scope) while debugging.  
+  *Tip: Expand the “Registers” section in the VARIABLES panel during a debug session to see all live system/device state.*
+
+- **Extension Tab**  
+  The custom extension tab now only shows the ISA documentation for clarity. All live system/device info is in the Variables pane.
+
+---
+
+This update makes it much easier to inspect the full state of your TonX86 program and hardware while debugging!

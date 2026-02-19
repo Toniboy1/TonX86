@@ -443,17 +443,69 @@ export class TonX86DebugSession extends DebugSession {
     this.sendResponse(response);
   }
 
+  // Support for expandable variables
+  private _customVarRefs: Record<number, any[]> = {};
   protected variablesRequest(
     response: DebugProtocol.VariablesResponse,
     args: DebugProtocol.VariablesArguments,
   ): void {
-    console.error("[TonX86] Variables request for ref:", args.variablesReference);
-
-    // Get actual register values from simulator
-    const registers = this.simulator.getRegisters();
-
-    response.body = {
-      variables: [
+    // Expandable custom objects
+    if (
+      args.variablesReference &&
+      this._customVarRefs &&
+      this._customVarRefs[args.variablesReference]
+    ) {
+      response.body = { variables: this._customVarRefs[args.variablesReference] };
+      this.sendResponse(response);
+      return;
+    }
+    // Top-level variables (Registers scope)
+    if (args.variablesReference === 1) {
+      // ...recompute all the variables as in the previous implementation...
+      const registers = this.simulator.getRegisters();
+      const state = this.simulator.getState();
+      const stackUsed = 0xffff - registers.ESP;
+      const stackPercent = ((stackUsed / 0xffff) * 100).toFixed(1);
+      const callStackDepth = state.callStackDepth;
+      const status = state.halted ? "Halted" : "Running";
+      const keyboardStatus = this.simulator.getKeyboardStatus();
+      const audioState = this.simulator.getAudioState();
+      const memoryA = Array.from(this.simulator.getMemoryA(0, 16));
+      const memoryB = Array.from(this.simulator.getMemoryB(0, 16));
+      const stackTop = [];
+      for (let i = 0; i < 8; i++) {
+        const addr = (registers.ESP + i * 4) & 0xffff;
+        const bytes = this.simulator.getMemoryA(addr, 4);
+        let value = 0;
+        for (let j = 0; j < 4; j++) {
+          value |= bytes[j] << (8 * j);
+        }
+        stackTop.push({
+          name: `0x${addr.toString(16).padStart(4, "0")}`,
+          value: `0x${value.toString(16).padStart(8, "0")}`,
+          variablesReference: 0,
+        });
+      }
+      const flags = {
+        CF: state.flags & 0x1 ? 1 : 0,
+        ZF: state.flags & 0x40 ? 1 : 0,
+        SF: state.flags & 0x80 ? 1 : 0,
+        OF: state.flags & 0x800 ? 1 : 0,
+        PF: state.flags & 0x4 ? 1 : 0,
+        AF: state.flags & 0x10 ? 1 : 0,
+      };
+      const lcd = this.simulator.getLCDDisplay();
+      const lcdWidth = this.simulator["lcd"]?.getWidth?.() || 0;
+      const lcdHeight = this.simulator["lcd"]?.getHeight?.() || 0;
+      const lcdPixelsOn = lcd ? Array.from(lcd).filter((p) => p !== 0).length : 0;
+      let nextVarRef = 1000;
+      const makeVarRef = () => nextVarRef++;
+      const memoryARef = makeVarRef();
+      const memoryBRef = makeVarRef();
+      const flagsRef = makeVarRef();
+      const stackRef = makeVarRef();
+      const lcdRef = makeVarRef();
+      const variables = [
         {
           name: "EAX",
           value: `0x${registers.EAX.toString(16).padStart(8, "0")}`,
@@ -494,8 +546,56 @@ export class TonX86DebugSession extends DebugSession {
           value: `0x${registers.EDI.toString(16).padStart(8, "0")}`,
           variablesReference: 0,
         },
-      ],
-    };
+        { name: "Flags", value: "(expand)", variablesReference: flagsRef },
+        {
+          name: "Stack Usage",
+          value: `${stackUsed} bytes (${stackPercent}%)`,
+          variablesReference: 0,
+        },
+        { name: "Call Depth", value: callStackDepth.toString(), variablesReference: 0 },
+        { name: "Status", value: status, variablesReference: 0 },
+        {
+          name: "Keyboard",
+          value: keyboardStatus.status === 1 ? "Key available" : "No input",
+          variablesReference: 0,
+        },
+        {
+          name: "Audio",
+          value: (audioState.ctrl & 0x01) !== 0 ? "Enabled" : "Disabled",
+          variablesReference: 0,
+        },
+        { name: "MemoryA", value: "(expand)", variablesReference: memoryARef },
+        { name: "MemoryB", value: "(expand)", variablesReference: memoryBRef },
+        { name: "Stack Top", value: "(expand)", variablesReference: stackRef },
+        { name: "LCD", value: "(expand)", variablesReference: lcdRef },
+      ];
+      if (!this._customVarRefs) this._customVarRefs = {};
+      this._customVarRefs[memoryARef] = memoryA.map((v, i) => ({
+        name: `0x${i.toString(16).padStart(2, "0")}`,
+        value: `0x${v.toString(16).padStart(2, "0")}`,
+        variablesReference: 0,
+      }));
+      this._customVarRefs[memoryBRef] = memoryB.map((v, i) => ({
+        name: `0x${i.toString(16).padStart(2, "0")}`,
+        value: `0x${v.toString(16).padStart(2, "0")}`,
+        variablesReference: 0,
+      }));
+      this._customVarRefs[flagsRef] = Object.entries(flags).map(([k, v]) => ({
+        name: k,
+        value: v.toString(),
+        variablesReference: 0,
+      }));
+      this._customVarRefs[stackRef] = stackTop;
+      this._customVarRefs[lcdRef] = [
+        { name: "Resolution", value: `${lcdWidth}x${lcdHeight}`, variablesReference: 0 },
+        { name: "Pixels On", value: lcdPixelsOn.toString(), variablesReference: 0 },
+      ];
+      response.body = { variables };
+      this.sendResponse(response);
+      return;
+    }
+    // Fallback: return empty
+    response.body = { variables: [] };
     this.sendResponse(response);
   }
 
@@ -756,6 +856,21 @@ export class TonX86DebugSession extends DebugSession {
       response.body = {
         memoryA: Array.from(memoryA),
         memoryB: Array.from(memoryB),
+      };
+      this.sendResponse(response);
+    } else if (command === "getSystemState") {
+      // Get comprehensive system state for monitoring view
+      const state = this.simulator.getState();
+      const keyboardStatus = this.simulator.getKeyboardStatus();
+      const audioState = this.simulator.getAudioState();
+      response.body = {
+        halted: state.halted,
+        running: state.running,
+        callStackDepth: state.callStackDepth,
+        keyboardStatus: keyboardStatus.status,
+        keyboardKeyCode: keyboardStatus.keyCode,
+        keyboardKeyState: keyboardStatus.keyState,
+        audioControl: audioState.ctrl,
       };
       this.sendResponse(response);
     } else if (command === "keyboardEvent") {
