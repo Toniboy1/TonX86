@@ -118,33 +118,44 @@
       "tonx86-explorer": [
         {
           "icon": "",
+          "id": "tonx86.docs",
+          "name": "Instruction Set Reference",
+          "type": "webview"
+        },
+        {
+          "icon": "",
+          "id": "tonx86.cpuState",
+          "name": "CPU State",
+          "type": "tree",
+          "when": "inDebugMode"
+        },
+        {
+          "icon": "",
           "id": "tonx86.registers",
-          "name": "Registers",
-          "type": "tree"
-        },
-        {
-          "icon": "",
-          "id": "tonx86.memoryA",
-          "name": "Memory A",
-          "type": "tree"
-        },
-        {
-          "icon": "",
-          "id": "tonx86.memoryB",
-          "name": "Memory B",
-          "type": "tree"
+          "name": "General Purpose Registers",
+          "type": "tree",
+          "when": "inDebugMode"
         },
         {
           "icon": "",
           "id": "tonx86.lcd",
-          "name": "LCD Display",
-          "type": "webview"
+          "name": "LCD Display (16x16)",
+          "type": "webview",
+          "when": "inDebugMode"
         },
         {
           "icon": "",
-          "id": "tonx86.docs",
-          "name": "ISA Docs",
-          "type": "webview"
+          "id": "tonx86.memoryA",
+          "name": "Memory Bank A",
+          "type": "tree",
+          "when": "inDebugMode"
+        },
+        {
+          "icon": "",
+          "id": "tonx86.memoryB",
+          "name": "Memory Bank B",
+          "type": "tree",
+          "when": "inDebugMode"
         }
       ]
     },

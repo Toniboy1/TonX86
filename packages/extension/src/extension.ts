@@ -185,6 +185,98 @@ class RegistersProvider implements vscode.TreeDataProvider<RegisterItem> {
 }
 
 /**
+ * CPU State Item for display
+ */
+interface CPUStateItem {
+  name: string;
+  value: string | number;
+  description?: string;
+}
+
+/**
+ * Tree Data Provider for CPU State (Flags, IP, SP, etc.)
+ */
+class CPUStateProvider implements vscode.TreeDataProvider<CPUStateItem> {
+  private _onDidChangeTreeData = new vscode.EventEmitter<CPUStateItem | undefined>();
+  readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
+
+  private cpuState: CPUStateItem[] = [
+    { name: "IP", value: "0x00000000", description: "Instruction Pointer" },
+    { name: "SP", value: "0xFFFF", description: "Stack Pointer" },
+    { name: "Stack Usage", value: "0 bytes", description: "Stack memory used" },
+    { name: "Call Depth", value: "0", description: "Call stack depth" },
+    { name: "Status", value: "Running", description: "Execution status" },
+    { name: "Keyboard", value: "No input", description: "Keyboard status" },
+    { name: "Audio", value: "Disabled", description: "Audio device status" },
+    { name: "CF", value: "0", description: "Carry Flag" },
+    { name: "ZF", value: "0", description: "Zero Flag" },
+    { name: "SF", value: "0", description: "Sign Flag" },
+    { name: "OF", value: "0", description: "Overflow Flag" },
+    { name: "PF", value: "0", description: "Parity Flag" },
+    { name: "AF", value: "0", description: "Auxiliary Flag" },
+  ];
+
+  getTreeItem(element: CPUStateItem): vscode.TreeItem {
+    const label = `${element.name}: ${element.value}`;
+    const item = new vscode.TreeItem(label);
+    item.collapsibleState = vscode.TreeItemCollapsibleState.None;
+    item.tooltip = element.description || element.name;
+    item.description = element.description;
+    return item;
+  }
+
+  getChildren(): CPUStateItem[] {
+    return this.cpuState;
+  }
+
+  updateCPUState(data: {
+    ip?: number;
+    sp?: number;
+    flags?: { CF: number; ZF: number; SF: number; OF: number; PF: number; AF: number };
+    callStackDepth?: number;
+    halted?: boolean;
+    keyboardStatus?: number;
+    audioControl?: number;
+  }): void {
+    if (data.ip !== undefined) {
+      this.cpuState[0].value = `0x${data.ip.toString(16).padStart(8, "0")}`;
+    }
+    if (data.sp !== undefined) {
+      const sp = data.sp;
+      this.cpuState[1].value = `0x${sp.toString(16).padStart(4, "0")}`;
+      // Calculate stack usage (stack grows downward from 0xFFFF)
+      const stackUsed = 0xffff - sp;
+      const stackPercent = ((stackUsed / 0xffff) * 100).toFixed(1);
+      this.cpuState[2].value = `${stackUsed} bytes (${stackPercent}%)`;
+    }
+    if (data.callStackDepth !== undefined) {
+      this.cpuState[3].value = data.callStackDepth.toString();
+    }
+    if (data.halted !== undefined) {
+      this.cpuState[4].value = data.halted ? "Halted" : "Running";
+    }
+    if (data.keyboardStatus !== undefined) {
+      // Keyboard status: 0 = no key, 1 = key available
+      this.cpuState[5].value = data.keyboardStatus === 1 ? "Key available" : "No input";
+    }
+    if (data.audioControl !== undefined) {
+      // Audio control register: bit 0 = enable
+      const enabled = (data.audioControl & 0x01) !== 0;
+      this.cpuState[6].value = enabled ? "Enabled" : "Disabled";
+    }
+    if (data.flags) {
+      this.cpuState[7].value = data.flags.CF.toString();
+      this.cpuState[8].value = data.flags.ZF.toString();
+      this.cpuState[9].value = data.flags.SF.toString();
+      this.cpuState[10].value = data.flags.OF.toString();
+      this.cpuState[11].value = data.flags.PF.toString();
+      this.cpuState[12].value = data.flags.AF.toString();
+    }
+    this._onDidChangeTreeData.fire(undefined);
+  }
+}
+
+/**
  * Memory range for display
  */
 interface MemoryRange {
@@ -362,35 +454,203 @@ class LCDViewProvider implements vscode.WebviewViewProvider {
 				<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'">
 				<title>TonX86 LCD Display</title>
 				<style>
-					body { font-family: monospace; padding: 10px; }
-					#lcd { 
-						display: grid; 
+					* {
+						margin: 0;
+						padding: 0;
+						box-sizing: border-box;
+					}
+					
+					body {
+						font-family: var(--vscode-font-family);
+						font-size: var(--vscode-font-size);
+						color: var(--vscode-foreground);
+						background: var(--vscode-editor-background);
+						padding: 12px;
+						user-select: none;
+					}
+					
+					.container {
+						display: flex;
+						flex-direction: column;
+						gap: 12px;
+					}
+					
+					.header {
+						display: flex;
+						align-items: center;
+						gap: 8px;
+						padding-bottom: 8px;
+						border-bottom: 1px solid var(--vscode-widget-border);
+					}
+					
+					.title {
+						font-size: 11px;
+						font-weight: 600;
+						color: var(--vscode-titleBar-activeForeground);
+						letter-spacing: 0.5px;
+						text-transform: uppercase;
+					}
+					
+					.badge {
+						display: inline-block;
+						padding: 2px 6px;
+						font-size: 10px;
+						font-weight: 500;
+						border-radius: 2px;
+						background: var(--vscode-badge-background);
+						color: var(--vscode-badge-foreground);
+					}
+					
+					#lcd-container {
+						display: flex;
+						justify-content: center;
+						padding: 16px;
+						background: var(--vscode-editor-background);
+						border: 1px solid var(--vscode-panel-border);
+						border-radius: 4px;
+					}
+					
+					#lcd {
+						display: grid;
 						grid-template-columns: repeat(${width}, ${pixelSize}px);
 						grid-template-rows: repeat(${height}, ${pixelSize}px);
 						gap: 1px;
-						border: 2px solid #333; 
-						padding: 10px; 
-						background: #f0f0f0;
-						width: fit-content;
+						padding: 8px;
+						background: var(--vscode-input-background);
+						border: 2px solid var(--vscode-input-border);
+						border-radius: 2px;
 						outline: none;
+						transition: border-color 0.15s ease;
 					}
+					
 					#lcd:focus {
-						border-color: #007acc;
-						box-shadow: 0 0 5px rgba(0, 122, 204, 0.5);
+						border-color: var(--vscode-focusBorder);
+						box-shadow: 0 0 0 1px var(--vscode-focusBorder);
 					}
-					.pixel { width: ${pixelSize}px; height: ${pixelSize}px; background: #ddd; cursor: pointer; }
-					.pixel.on { background: #333; }
-					.info { font-size: 0.9em; color: #666; margin-top: 10px; }
-					.keyboard-status { font-size: 0.8em; color: ${keyboardEnabled ? "#007acc" : "#999"}; margin-top: 5px; }
+					
+					.pixel {
+						width: ${pixelSize}px;
+						height: ${pixelSize}px;
+						background: var(--vscode-editor-inactiveSelectionBackground);
+						transition: background-color 0.1s ease;
+					}
+					
+					.pixel.on {
+						background: var(--vscode-editor-foreground);
+					}
+					
+					.info-panel {
+						display: flex;
+						flex-direction: column;
+						gap: 6px;
+						padding: 8px 12px;
+						background: var(--vscode-sideBar-background);
+						border: 1px solid var(--vscode-panel-border);
+						border-radius: 4px;
+						font-size: 11px;
+					}
+					
+					.info-row {
+						display: flex;
+						align-items: center;
+						gap: 8px;
+					}
+					
+					.info-label {
+						color: var(--vscode-descriptionForeground);
+						font-weight: 500;
+						min-width: 70px;
+					}
+					
+					.info-value {
+						color: var(--vscode-foreground);
+						font-family: var(--vscode-editor-font-family);
+					}
+					
+					.status-indicator {
+						display: inline-block;
+						width: 6px;
+						height: 6px;
+						border-radius: 50%;
+						margin-right: 4px;
+					}
+					
+					.status-enabled {
+						background: var(--vscode-testing-iconPassed);
+					}
+					
+					.status-disabled {
+						background: var(--vscode-testing-iconFailed);
+					}
+					
+					.hint {
+						font-size: 10px;
+						color: var(--vscode-descriptionForeground);
+						font-style: italic;
+						padding: 6px 12px;
+						background: var(--vscode-textCodeBlock-background);
+						border-left: 2px solid var(--vscode-focusBorder);
+						border-radius: 2px;
+					}
+					
+					#debug {
+						font-size: 9px;
+						color: var(--vscode-descriptionForeground);
+						font-family: var(--vscode-editor-font-family);
+						padding: 4px 8px;
+						background: var(--vscode-textCodeBlock-background);
+						border-radius: 2px;
+						margin-top: 8px;
+						display: ${keyboardEnabled ? "block" : "none"};
+					}
 				</style>
 			</head>
 			<body>
-				<h3>LCD Display (${width}x${height})</h3>
-				<div id="lcd" tabindex="0"></div>
-				<div class="info">Pixel Size: ${pixelSize}px</div>
-				<div class="keyboard-status">Keyboard: ${keyboardEnabled ? "Enabled (click LCD to focus)" : "Disabled"}</div>
-				<div class="keyboard-status" id="audio-status">Audio: ${audioEnabled ? `Enabled (Master Volume: ${masterVolume}%) - Click LCD to activate` : "Disabled"}</div>
-				<div id="debug" style="font-size: 0.7em; color: #999; margin-top: 5px; font-family: monospace;">Last key: none</div>
+				<div class="container">
+					<div class="header">
+						<span class="title">LCD Display</span>
+						<span class="badge">${width}×${height}</span>
+					</div>
+					
+					<div id="lcd-container">
+						<div id="lcd" tabindex="0"></div>
+					</div>
+					
+					<div class="info-panel">
+						<div class="info-row">
+							<span class="info-label">Resolution:</span>
+							<span class="info-value">${width}×${height} pixels</span>
+						</div>
+						<div class="info-row">
+							<span class="info-label">Pixel Size:</span>
+							<span class="info-value">${pixelSize}px</span>
+						</div>
+						<div class="info-row">
+							<span class="info-label">Memory:</span>
+							<span class="info-value">0xF000 - 0x${(0xf000 + width * height - 1).toString(16).toUpperCase()}</span>
+						</div>
+					</div>
+					
+					<div class="info-panel">
+						<div class="info-row">
+							<span class="info-label">
+								<span class="status-indicator ${keyboardEnabled ? "status-enabled" : "status-disabled"}"></span>
+								Keyboard:
+							</span>
+							<span class="info-value">${keyboardEnabled ? "Enabled" : "Disabled"}</span>
+						</div>
+						${keyboardEnabled ? '<div class="hint">💡 Click LCD display and type to send keyboard input to your program</div>' : ""}
+						<div class="info-row">
+							<span class="info-label">
+								<span class="status-indicator ${audioEnabled ? "status-enabled" : "status-disabled"}"></span>
+								Audio:
+							</span>
+							<span class="info-value" id="audio-status">${audioEnabled ? `Enabled (Volume: ${masterVolume}%)` : "Disabled"}</span>
+						</div>
+					</div>
+					
+					<div id="debug">Last key: none</div>
+				</div>
 				<script>
 					const vscode = acquireVsCodeApi();
 					const lcd = document.getElementById('lcd');
@@ -406,14 +666,14 @@ class LCDViewProvider implements vscode.WebviewViewProvider {
 						'ArrowRight': 131
 					};
 					
-					// Create pixel grid (no <br> tags needed with CSS Grid)
+					// Create pixel grid
 					for (let y = 0; y < height; y++) {
 						for (let x = 0; x < width; x++) {
 							const pixel = document.createElement('div');
 							pixel.className = 'pixel';
 							pixel.id = \`pixel-\${x}-\${y}\`;
 							const address = 0xF000 + (y * width + x);
-							pixel.title = \`Address: 0x\${address.toString(16).toUpperCase()} (x:\${x}, y:\${y})\`;
+							pixel.title = \`0x\${address.toString(16).toUpperCase()} (x:\${x}, y:\${y})\`;
 							lcd.appendChild(pixel);
 							pixels.push(pixel);
 						}
@@ -433,7 +693,6 @@ class LCDViewProvider implements vscode.WebviewViewProvider {
 						const sendKeyEvent = (e, pressed) => {
 							// Don't capture debugger function keys
 							if (e.key.startsWith('F') && e.key.length <= 3) {
-								// Allow F1-F12 for debugging
 								return;
 							}
 							
@@ -443,7 +702,6 @@ class LCDViewProvider implements vscode.WebviewViewProvider {
 							if (specialKeys[e.key]) {
 								keyCode = specialKeys[e.key];
 							} else if (e.key.length === 1) {
-								// Single character (letter, number, symbol)
 								keyCode = e.key.charCodeAt(0);
 							} else if (e.key === 'Enter') {
 								keyCode = 13;
@@ -458,7 +716,6 @@ class LCDViewProvider implements vscode.WebviewViewProvider {
 							}
 							
 							if (keyCode > 0) {
-								// Prevent default only for keys we handle
 								e.preventDefault();
 								e.stopPropagation();
 								
@@ -862,6 +1119,7 @@ class DocsViewProvider implements vscode.WebviewViewProvider {
 
 // Global state
 const registersProvider = new RegistersProvider();
+const cpuStateProvider = new CPUStateProvider();
 // Memory views show first 16 bytes of each bank
 const MEMORY_VIEW_SIZE = 16;
 const memoryProviderA = new MemoryProvider(0x0000, MEMORY_VIEW_SIZE);
@@ -922,6 +1180,7 @@ export function activate(context: vscode.ExtensionContext): void {
 
   // Register tree data providers
   vscode.window.registerTreeDataProvider("tonx86.registers", registersProvider);
+  vscode.window.registerTreeDataProvider("tonx86.cpuState", cpuStateProvider);
   vscode.window.registerTreeDataProvider("tonx86.memoryA", memoryProviderA);
   vscode.window.registerTreeDataProvider("tonx86.memoryB", memoryProviderB);
 
@@ -962,10 +1221,11 @@ export function activate(context: vscode.ExtensionContext): void {
         currentDebugSession = session; // Store current session for keyboard events
         outputChannel.appendLine("=== Program Output ===");
         outputChannel.show(true);
-        // Poll LCD and memory state every 10ms while debugging (100 FPS) to capture fast programs
+        // Poll LCD, memory, and CPU state every 10ms while debugging (100 FPS) to capture fast programs
         viewUpdateInterval = setInterval(async () => {
           await updateLCDDisplay(session);
           await updateMemoryViews(session);
+          await updateCPUState(session);
         }, 10);
       }
     }),
@@ -1011,6 +1271,133 @@ export function activate(context: vscode.ExtensionContext): void {
     } catch (_error) {
       // Silently fail - session might not be ready yet
     }
+  }
+
+  // Helper function to fetch and update CPU state (flags, IP, SP)
+  async function updateCPUState(session: vscode.DebugSession) {
+    try {
+      const cpuData = await fetchCPUStateFromDebugSession(session);
+      if (cpuData) {
+        cpuStateProvider.updateCPUState(cpuData);
+      }
+    } catch (_error) {
+      // Silently fail - session might not be ready yet
+    }
+  }
+
+  // Helper to extract CPU state from debug session
+  async function fetchCPUStateFromDebugSession(session: vscode.DebugSession) {
+    const threads = await session.customRequest("threads");
+    if (!threads?.threads?.length) {
+      return null;
+    }
+
+    const stackFrameResponse = await session.customRequest("stackTrace", {
+      threadId: threads.threads[0].id,
+      startFrame: 0,
+      levels: 1,
+    });
+
+    const frame = stackFrameResponse?.stackFrames?.[0];
+    if (!frame) {
+      return null;
+    }
+
+    const scopesResponse = await session.customRequest("scopes", { frameId: frame.id });
+    if (!scopesResponse?.scopes) {
+      return null;
+    }
+
+    // Fetch system state (call stack depth, keyboard, audio, halted status)
+    let systemState: {
+      callStackDepth?: number;
+      halted?: boolean;
+      keyboardStatus?: number;
+      audioControl?: number;
+    } = {};
+    try {
+      const sysStateResponse = await session.customRequest("getSystemState");
+      if (sysStateResponse) {
+        systemState = {
+          callStackDepth: sysStateResponse.callStackDepth,
+          halted: sysStateResponse.halted,
+          keyboardStatus: sysStateResponse.keyboardStatus,
+          audioControl: sysStateResponse.audioControl,
+        };
+      }
+    } catch (_error) {
+      // Silently continue if system state is not available
+    }
+
+    for (const scope of scopesResponse.scopes) {
+      const varsResponse = await session.customRequest("variables", {
+        variablesReference: scope.variablesReference,
+      });
+
+      if (!varsResponse?.variables) {
+        continue;
+      }
+
+      const cpuData = await extractCPUDataFromVariables(session, varsResponse.variables);
+      if (cpuData.ip !== undefined || cpuData.sp !== undefined || cpuData.flags) {
+        // Merge system state into CPU data
+        return { ...cpuData, ...systemState };
+      }
+    }
+
+    return null;
+  }
+
+  // Helper to parse CPU data from variable list
+  async function extractCPUDataFromVariables(
+    session: vscode.DebugSession,
+    variables: Array<{ name: string; value: string; variablesReference?: number }>,
+  ) {
+    const cpuData: {
+      sp?: number;
+      ip?: number;
+      flags?: { CF: number; ZF: number; SF: number; OF: number; PF: number; AF: number };
+      callStackDepth?: number;
+      halted?: boolean;
+      keyboardStatus?: number;
+      audioControl?: number;
+    } = {};
+
+    for (const variable of variables) {
+      if (variable.name === "ESP") {
+        cpuData.sp = parseInt(variable.value, 16) || 0;
+      } else if (variable.name === "EIP" || variable.name === "IP") {
+        cpuData.ip = parseInt(variable.value, 16) || 0;
+      } else if (variable.name === "Flags" && variable.variablesReference) {
+        cpuData.flags = await parseFlagsFromVariable(session, variable.variablesReference);
+      }
+    }
+
+    return cpuData;
+  }
+
+  // Helper to parse flag values
+  async function parseFlagsFromVariable(session: vscode.DebugSession, reference: number) {
+    const flagsScope = await session.customRequest("variables", {
+      variablesReference: reference,
+    });
+
+    if (!flagsScope?.variables) {
+      return undefined;
+    }
+
+    const flags = { CF: 0, ZF: 0, SF: 0, OF: 0, PF: 0, AF: 0 };
+    for (const flag of flagsScope.variables) {
+      const value = parseInt(flag.value) || 0;
+      if (flag.name === "CF") flags.CF = value;
+      if (flag.name === "ZF") flags.ZF = value;
+      if (flag.name === "SF") flags.SF = value;
+      if (flag.name === "OF") flags.OF = value;
+      if (flag.name === "PF") flags.PF = value;
+      if (flag.name === "AF") flags.AF = value;
+    }
+
+    return flags;
   }
 
   // Mirror Debug Console output to Output panel and handle audio events
