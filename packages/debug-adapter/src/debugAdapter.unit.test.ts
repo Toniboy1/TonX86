@@ -1020,9 +1020,7 @@ start:
       (session as any).continueRequest(continueResponse, { threadId: 1 });
 
       // Check for audio event in sent events
-      const audioEvents = sentEvents.filter(
-        (e) => e.body && e.body.category === "tonx86-audio",
-      );
+      const audioEvents = sentEvents.filter((e) => e.body && e.body.category === "tonx86-audio");
       expect(audioEvents.length).toBeGreaterThan(0);
 
       // Parse the audio event
