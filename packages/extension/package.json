@@ -266,6 +266,23 @@
         }
       },
       {
+        "title": "TonX86 Audio",
+        "properties": {
+          "tonx86.audio.enabled": {
+            "type": "boolean",
+            "default": true,
+            "description": "Enable audio output for the simulator. When enabled, assembly programs can generate PC Speaker style tones via memory-mapped I/O (0x10200-0x10206)."
+          },
+          "tonx86.audio.volume": {
+            "type": "number",
+            "default": 50,
+            "minimum": 0,
+            "maximum": 100,
+            "description": "Master volume level (0-100%). Acts as a multiplier for program-specified volume to prevent excessive loudness. Recommended: 30-50%."
+          }
+        }
+      },
+      {
         "title": "TonX86 CPU",
         "properties": {
           "tonx86.cpu.speed": {

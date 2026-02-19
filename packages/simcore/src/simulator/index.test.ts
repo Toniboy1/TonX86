@@ -6,6 +6,7 @@ import {
   Keyboard,
   REGISTER_MAP,
   REGISTER8_MAP,
+  AudioEvent,
 } from "../index";
 import type { Instruction, CompatibilityMode } from "../index";
 
@@ -847,6 +848,178 @@ describe("Simulator - LCD Integration", () => {
     for (let i = 0; i < display.length; i++) {
       expect(display[i]).toBe(0);
     }
+  });
+});
+
+describe("Simulator - Audio Integration", () => {
+  let sim: Simulator;
+
+  beforeEach(() => {
+    sim = new Simulator(8, 8);
+  });
+
+  test("audio device is initialized", () => {
+    const audioState = sim.getAudioState();
+    expect(audioState.ctrl).toBe(0);
+  });
+
+  test("reset() clears audio state", () => {
+    sim.executeInstruction("MOV", ["0x10200", "1"]);
+    sim.reset();
+    const audioState = sim.getAudioState();
+    expect(audioState.ctrl).toBe(0);
+  });
+
+  test("MOV can write to AUDIO_CTRL (0x10200)", () => {
+    sim.executeInstruction("MOV", ["0x10200", "1"]);
+    sim.executeInstruction("MOV", ["EAX", "[0x10200]"]);
+    expect(sim.getRegisters().EAX).toBe(1);
+  });
+
+  test("MOV can write to AUDIO_WAVE (0x10201)", () => {
+    sim.executeInstruction("MOV", ["0x10201", "1"]);
+    sim.executeInstruction("MOV", ["EAX", "[0x10201]"]);
+    expect(sim.getRegisters().EAX).toBe(1);
+  });
+
+  test("MOV can write 16-bit frequency (0x10202-0x10203)", () => {
+    sim.executeInstruction("MOV", ["0x10202", "0xB8"]); // 184 low
+    sim.executeInstruction("MOV", ["0x10203", "0x01"]); // 1 high = 440 Hz
+    sim.executeInstruction("MOV", ["EAX", "[0x10202]"]);
+    sim.executeInstruction("MOV", ["EBX", "[0x10203]"]);
+    expect(sim.getRegisters().EAX).toBe(0xb8);
+    expect(sim.getRegisters().EBX).toBe(0x01);
+  });
+
+  test("MOV can write 16-bit duration (0x10204-0x10205)", () => {
+    sim.executeInstruction("MOV", ["0x10204", "0x2C"]); // 44 low
+    sim.executeInstruction("MOV", ["0x10205", "0x01"]); // 1 high = 300 ms
+    sim.executeInstruction("MOV", ["EAX", "[0x10204]"]);
+    sim.executeInstruction("MOV", ["EBX", "[0x10205]"]);
+    expect(sim.getRegisters().EAX).toBe(0x2c);
+    expect(sim.getRegisters().EBX).toBe(0x01);
+  });
+
+  test("MOV can write to AUDIO_VOLUME (0x10206)", () => {
+    sim.executeInstruction("MOV", ["0x10206", "200"]);
+    sim.executeInstruction("MOV", ["EAX", "[0x10206]"]);
+    expect(sim.getRegisters().EAX).toBe(200);
+  });
+
+  test("audio event callback is triggered when CTRL transitions to 1", () => {
+    const events: AudioEvent[] = [];
+    sim.setAudioEventCallback((event) => {
+      events.push(event);
+    });
+
+    // Set up audio parameters
+    sim.executeInstruction("MOV", ["0x10201", "0"]); // Square wave
+    sim.executeInstruction("MOV", ["0x10202", "0xB8"]); // Freq low
+    sim.executeInstruction("MOV", ["0x10203", "0x01"]); // Freq high = 440 Hz
+    sim.executeInstruction("MOV", ["0x10204", "0x2C"]); // Duration low
+    sim.executeInstruction("MOV", ["0x10205", "0x01"]); // Duration high = 300 ms
+    sim.executeInstruction("MOV", ["0x10206", "200"]); // Volume
+
+    // Trigger play
+    sim.executeInstruction("MOV", ["0x10200", "1"]);
+
+    expect(events.length).toBe(1);
+    expect(events[0].frequency).toBe(440);
+    expect(events[0].duration).toBe(300);
+    expect(events[0].waveform).toBe("square");
+    expect(events[0].volume).toBeCloseTo(200 / 255);
+  });
+
+  test("audio event callback is not triggered when already playing", () => {
+    const events: AudioEvent[] = [];
+    sim.setAudioEventCallback((event) => {
+      events.push(event);
+    });
+
+    sim.executeInstruction("MOV", ["0x10200", "1"]); // First play
+    sim.executeInstruction("MOV", ["0x10200", "1"]); // Already playing
+
+    expect(events.length).toBe(1);
+  });
+
+  test("audio event callback is triggered again after stop", () => {
+    const events: AudioEvent[] = [];
+    sim.setAudioEventCallback((event) => {
+      events.push(event);
+    });
+
+    sim.executeInstruction("MOV", ["0x10200", "1"]); // Play
+    expect(events.length).toBe(1);
+
+    sim.executeInstruction("MOV", ["0x10200", "0"]); // Stop
+    sim.executeInstruction("MOV", ["0x10200", "1"]); // Play again
+
+    expect(events.length).toBe(2);
+  });
+
+  test("audio works with sine waveform", () => {
+    const events: AudioEvent[] = [];
+    sim.setAudioEventCallback((event) => {
+      events.push(event);
+    });
+
+    sim.executeInstruction("MOV", ["0x10201", "1"]); // Sine wave
+    sim.executeInstruction("MOV", ["0x10200", "1"]); // Play
+
+    expect(events[0].waveform).toBe("sine");
+  });
+
+  test("audio I/O does not conflict with keyboard", () => {
+    sim.pushKeyboardEvent(65, true);
+    sim.executeInstruction("MOV", ["0x10200", "1"]);
+    sim.executeInstruction("MOV", ["EAX", "[0x10100]"]);
+    sim.executeInstruction("MOV", ["EBX", "[0x10200]"]);
+
+    expect(sim.getRegisters().EAX).toBe(1); // Keyboard status
+    expect(sim.getRegisters().EBX).toBe(1); // Audio ctrl
+  });
+
+  test("audio I/O does not conflict with LCD", () => {
+    sim.executeInstruction("MOV", ["0xF000", "1"]);
+    sim.executeInstruction("MOV", ["0x10200", "1"]);
+
+    expect(sim.getLCDDisplay()[0]).toBe(1);
+    const audioState = sim.getAudioState();
+    expect(audioState.ctrl).toBe(1);
+  });
+
+  test("example from issue #84 works correctly", () => {
+    const events: AudioEvent[] = [];
+    sim.setAudioEventCallback((event) => {
+      events.push(event);
+    });
+
+    // Example assembly from issue
+    sim.executeInstruction("MOV", ["0x10201", "0"]); // Square wave
+    sim.executeInstruction("MOV", ["0x10202", "0xB8"]); // Freq 440 Hz
+    sim.executeInstruction("MOV", ["0x10203", "0x01"]);
+    sim.executeInstruction("MOV", ["0x10204", "0x2C"]); // Duration 300 ms
+    sim.executeInstruction("MOV", ["0x10205", "0x01"]);
+    sim.executeInstruction("MOV", ["0x10206", "200"]); // Volume 200
+    sim.executeInstruction("MOV", ["0x10200", "1"]); // Play
+
+    expect(events.length).toBe(1);
+    expect(events[0].frequency).toBe(440);
+    expect(events[0].duration).toBe(300);
+    expect(events[0].waveform).toBe("square");
+    expect(events[0].volume).toBeCloseTo(200 / 255);
+  });
+
+  test("reading invalid audio I/O address throws error", () => {
+    expect(() => sim.executeInstruction("MOV", ["EAX", "[0x10207]"])).toThrow(
+      "Unknown I/O read address: 0x10207",
+    );
+  });
+
+  test("writing invalid audio I/O address throws error", () => {
+    expect(() => sim.executeInstruction("MOV", ["0x10207", "1"])).toThrow(
+      "Unknown I/O address: 0x10207",
+    );
   });
 });
 

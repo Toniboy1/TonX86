@@ -10,7 +10,7 @@ function resolveMemoryAddress(ctx: ExecutionContext, op: ParsedOperand): number 
 
 /** Check whether an address falls in the I/O-mapped region */
 function isIOAddress(addr: number): boolean {
-  return (addr >= 0xf000 && addr <= 0xffff) || (addr >= 0x10100 && addr <= 0x101ff);
+  return (addr >= 0xf000 && addr <= 0xffff) || (addr >= 0x10100 && addr <= 0x102ff);
 }
 
 /** Read the value described by a parsed operand */
@@ -56,7 +56,7 @@ export function executeMov(ctx: ExecutionContext, operands: string[]): void {
       src.type === "memory" ||
       (src.type === "immediate" &&
         ((src.value >= 0xf000 && src.value <= 0xffff) ||
-          (src.value >= 0x10100 && src.value <= 0x101ff)));
+          (src.value >= 0x10100 && src.value <= 0x102ff)));
 
     if (isDestMemory && isSrcMemory) {
       throw new Error(

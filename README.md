@@ -19,9 +19,10 @@
 
 - **Assembly Debugging** - Full DAP support with breakpoints, stepping, pause/continue
 - **CPU Simulator** - 8 general-purpose 32-bit registers with flags (Z, C, O, S)
-- **Memory-Mapped I/O** - LCD display (0xF000-0xFFFF, up to 64x64) and keyboard input (0x10100-0x10102)
+- **Memory-Mapped I/O** - LCD display (0xF000-0xFFFF), keyboard input (0x10100-0x10102), and audio device (0x10200-0x10206)
 - **LCD Display** - Configurable 2x2 to 256x256 pixel grid with pop-out support
 - **Keyboard Input** - Real-time key press/release capture with event queue
+- **Audio Output** - PC Speaker style tones with configurable frequency, duration, waveform (square/sine), and volume
 - **Register/Memory Views** - Live inspection of CPU state
 - **CPU Speed Control** - 1-200% execution speed for debugging/visualization
 - **Output Panel** - Mirrors Debug Console output to VS Code Output (TonX86)
@@ -377,7 +378,7 @@ display_text:
 - **Code**: Starts at 0x0000 by default (configurable with ORG)
 - **Data**: Starts at 0x2000 by default (configurable with ORG)
 - **Stack**: Grows downward from 0xFFFF
-- **I/O**: Memory-mapped at 0xF000-0xFFFF (LCD), 0x10100-0x10102 (Keyboard)
+- **I/O**: Memory-mapped at 0xF000-0xFFFF (LCD), 0x10100-0x10102 (Keyboard), 0x10200-0x10206 (Audio)
 
 **Label Resolution:**
 
@@ -438,6 +439,38 @@ Notes:
 - Numbers: 0-9=48-57
 - Arrows: Up=128, Down=129, Left=130, Right=131
 - Special: Space=32, Enter=13, Esc=27, Tab=9, Backspace=8
+
+### Audio Device (0x10200-0x10206)
+
+PC Speaker style audio output with configurable frequency, duration, waveform, and volume.
+
+- `0x10200` - AUDIO_CTRL (bit 0: 0=stop, 1=play)
+- `0x10201` - AUDIO_WAVE (0=square, 1=sine)
+- `0x10202` - AUDIO_FREQ_LO (frequency Hz, low byte)
+- `0x10203` - AUDIO_FREQ_HI (frequency Hz, high byte)
+- `0x10204` - AUDIO_DUR_LO (duration ms, low byte)
+- `0x10205` - AUDIO_DUR_HI (duration ms, high byte)
+- `0x10206` - AUDIO_VOLUME (0-255, normalized to 0.0-1.0)
+
+**Example - Play 440 Hz tone for 300ms:**
+
+```asm
+MOV [0x10201], 0        ; Square wave
+MOV [0x10202], 0xB8     ; 440 Hz low (184)
+MOV [0x10203], 0x01     ; 440 Hz high (1)
+MOV [0x10204], 0x2C     ; 300 ms low (44)
+MOV [0x10205], 0x01     ; 300 ms high (1)
+MOV [0x10206], 200      ; Volume 200/255
+MOV [0x10200], 1        ; Play
+```
+
+**Notes:**
+
+- Audio triggers when AUDIO_CTRL transitions from 0 to 1
+- Frequency range: 0-65535 Hz (practical range: 20-20000 Hz)
+- Duration range: 0-65535 ms
+- Volume: 0 (silent) to 255 (max)
+- See [examples/37-audio-beep.asm](examples/37-audio-beep.asm) for more examples
 
 ## Example Programs
 

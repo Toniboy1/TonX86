@@ -1252,6 +1252,295 @@ describe("TonX86 Extension", () => {
 
       // Should not throw
     });
+
+    it("should handle audio events from debug adapter", () => {
+      activate(mockContext);
+
+      const trackerFactory = (vscode.debug.registerDebugAdapterTrackerFactory as jest.Mock).mock
+        .calls[0][1];
+
+      const mockSession = { type: "tonx86" };
+      const tracker = trackerFactory.createDebugAdapterTracker(mockSession);
+
+      // Get LCD provider and resolve webview to ensure webviewView is set
+      const lcdProviderRegistration = (vscode.window.registerWebviewViewProvider as jest.Mock).mock
+        .calls[0];
+      const lcdProvider = lcdProviderRegistration[1] as any;
+
+      const mockWebviewView = {
+        webview: {
+          options: {},
+          html: "",
+          postMessage: jest.fn(),
+          onDidReceiveMessage: jest.fn(() => ({ dispose: jest.fn() })),
+        },
+      };
+
+      lcdProvider.resolveWebviewView(mockWebviewView);
+
+      const audioEvent = {
+        type: "audioEvent",
+        frequency: 440,
+        duration: 300,
+        waveform: "square",
+        volume: 0.8,
+      };
+
+      // Should not throw when handling audio event
+      expect(() => {
+        tracker.onDidSendMessage({
+          type: "event",
+          event: "output",
+          body: {
+            output: JSON.stringify(audioEvent),
+            category: "tonx86-audio",
+          },
+        });
+      }).not.toThrow();
+
+      // Verify audio log output
+      expect(console.log).toHaveBeenCalledWith(
+        expect.stringContaining("Sending audio to webview: 440Hz"),
+      );
+      // Verify audio message was sent to webview
+      expect(console.log).toHaveBeenCalledWith("[TonX86] Audio message sent to main webview");
+      expect(mockWebviewView.webview.postMessage).toHaveBeenCalledWith({
+        type: "playAudio",
+        frequency: 440,
+        duration: 300,
+        waveform: "square",
+        volume: 0.4, // 0.8 * 0.5 (50% master volume)
+      });
+    });
+
+    it("should handle invalid audio event JSON gracefully", () => {
+      activate(mockContext);
+
+      const trackerFactory = (vscode.debug.registerDebugAdapterTrackerFactory as jest.Mock).mock
+        .calls[0][1];
+
+      const mockSession = { type: "tonx86" };
+      const tracker = trackerFactory.createDebugAdapterTracker(mockSession);
+
+      tracker.onDidSendMessage({
+        type: "event",
+        event: "output",
+        body: {
+          output: "Invalid JSON {",
+          category: "tonx86-audio",
+        },
+      });
+
+      // Should not throw, error should be logged
+      expect(console.error).toHaveBeenCalledWith(
+        "[TonX86] Failed to parse audio event:",
+        expect.any(Error),
+      );
+    });
+
+    it("should ignore non-audio events in tonx86-audio category", () => {
+      activate(mockContext);
+
+      const trackerFactory = (vscode.debug.registerDebugAdapterTrackerFactory as jest.Mock).mock
+        .calls[0][1];
+
+      const mockSession = { type: "tonx86" };
+      const tracker = trackerFactory.createDebugAdapterTracker(mockSession);
+
+      // Clear previous console.log mock calls
+      (console.log as jest.Mock).mockClear();
+
+      tracker.onDidSendMessage({
+        type: "event",
+        event: "output",
+        body: {
+          output: JSON.stringify({ type: "notAudioEvent", data: "something" }),
+          category: "tonx86-audio",
+        },
+      });
+
+      // Should not log audio playback message since type is not audioEvent
+      expect(console.log).not.toHaveBeenCalledWith(
+        expect.stringContaining("Sending audio to webview"),
+      );
+    });
+
+    it("should skip audio playback when audio is disabled in settings", () => {
+      // Mock audio as disabled
+      (vscode.workspace.getConfiguration as jest.Mock).mockImplementation((section?: string) => {
+        if (section === "tonx86.audio") {
+          return {
+            get: jest.fn((key: string, defaultValue?: any) => {
+              if (key === "enabled") return false;
+              if (key === "volume") return 50;
+              return defaultValue;
+            }),
+          };
+        }
+        if (section === "tonx86") {
+          return {
+            get: jest.fn((key: string, defaultValue?: any) => {
+              if (key === "lcd.width") return 64;
+              if (key === "lcd.height") return 64;
+              if (key === "lcd.pixelSize") return 8;
+              if (key === "keyboard.enabled") return true;
+              if (key === "audio.enabled") return false;
+              if (key === "audio.volume") return 50;
+              return defaultValue;
+            }),
+          };
+        }
+        return {
+          get: jest.fn((_key: string, defaultValue?: any) => defaultValue),
+        };
+      });
+
+      activate(mockContext);
+
+      const trackerFactory = (vscode.debug.registerDebugAdapterTrackerFactory as jest.Mock).mock
+        .calls[0][1];
+
+      const mockSession = { type: "tonx86" };
+      const tracker = trackerFactory.createDebugAdapterTracker(mockSession);
+
+      const audioEvent = {
+        type: "audioEvent",
+        frequency: 440,
+        duration: 300,
+        waveform: "square",
+        volume: 0.8,
+      };
+
+      // Clear previous mock calls
+      (console.log as jest.Mock).mockClear();
+
+      tracker.onDidSendMessage({
+        type: "event",
+        event: "output",
+        body: {
+          output: JSON.stringify(audioEvent),
+          category: "tonx86-audio",
+        },
+      });
+
+      // Verify audio was skipped
+      expect(console.log).toHaveBeenCalledWith(
+        "[TonX86] Audio disabled in settings, skipping playback",
+      );
+      expect(console.log).not.toHaveBeenCalledWith(
+        expect.stringContaining("Sending audio to webview"),
+      );
+    });
+
+    it("should warn when main webview not available for audio playback", () => {
+      activate(mockContext);
+
+      const trackerFactory = (vscode.debug.registerDebugAdapterTrackerFactory as jest.Mock).mock
+        .calls[0][1];
+
+      const mockSession = { type: "tonx86" };
+      const tracker = trackerFactory.createDebugAdapterTracker(mockSession);
+
+      // Get the LCD provider instance
+      const lcdProviderRegistration = (vscode.window.registerWebviewViewProvider as jest.Mock).mock
+        .calls[0];
+      const lcdProvider = lcdProviderRegistration[1] as any;
+
+      // Force webviewView and lcdPanel to be undefined using Object.defineProperty
+      Object.defineProperty(lcdProvider, "webviewView", {
+        value: undefined,
+        writable: true,
+        configurable: true,
+      });
+      Object.defineProperty(lcdProvider, "lcdPanel", {
+        value: undefined,
+        writable: true,
+        configurable: true,
+      });
+
+      const audioEvent = {
+        type: "audioEvent",
+        frequency: 440,
+        duration: 300,
+        waveform: "square",
+        volume: 0.8,
+      };
+
+      tracker.onDidSendMessage({
+        type: "event",
+        event: "output",
+        body: {
+          output: JSON.stringify(audioEvent),
+          category: "tonx86-audio",
+        },
+      });
+
+      // Verify warning was logged
+      expect(console.warn).toHaveBeenCalledWith("[TonX86] Main webview not available");
+    });
+
+    it("should send audio to popped out panel", () => {
+      activate(mockContext);
+
+      const trackerFactory = (vscode.debug.registerDebugAdapterTrackerFactory as jest.Mock).mock
+        .calls[0][1];
+
+      const mockSession = { type: "tonx86" };
+      const tracker = trackerFactory.createDebugAdapterTracker(mockSession);
+
+      // Get the LCD provider instance and pop out the display
+      const lcdProviderRegistration = (vscode.window.registerWebviewViewProvider as jest.Mock).mock
+        .calls[0];
+      const lcdProvider = lcdProviderRegistration[1] as any;
+
+      // Create a mock panel
+      const mockPanel = {
+        webview: {
+          postMessage: jest.fn(),
+          html: "",
+          onDidReceiveMessage: jest.fn((callback) => ({
+            dispose: jest.fn(),
+          })),
+        },
+        onDidDispose: jest.fn((callback) => {
+          callback();
+          return { dispose: jest.fn() };
+        }),
+        reveal: jest.fn(),
+      };
+
+      lcdProvider.lcdPanel = mockPanel;
+
+      const audioEvent = {
+        type: "audioEvent",
+        frequency: 880,
+        duration: 200,
+        waveform: "sine",
+        volume: 0.6,
+      };
+
+      // Clear previous mock calls
+      (console.log as jest.Mock).mockClear();
+
+      tracker.onDidSendMessage({
+        type: "event",
+        event: "output",
+        body: {
+          output: JSON.stringify(audioEvent),
+          category: "tonx86-audio",
+        },
+      });
+
+      // Verify audio message sent to popped out panel
+      expect(mockPanel.webview.postMessage).toHaveBeenCalledWith({
+        type: "playAudio",
+        frequency: 880,
+        duration: 200,
+        waveform: "sine",
+        volume: 0.3, // 0.6 * 0.5 (50% master volume)
+      });
+      expect(console.log).toHaveBeenCalledWith("[TonX86] Audio message sent to popped panel");
+    });
   });
 
   describe("Configuration change handling", () => {
@@ -1286,6 +1575,52 @@ describe("TonX86 Extension", () => {
       configChangeHandler(mockEvent);
 
       expect(vscode.window.showInformationMessage).not.toHaveBeenCalled();
+    });
+
+    it("should handle audio configuration changes", () => {
+      // Mock audio config to return specific volume BEFORE activation
+      (vscode.workspace.getConfiguration as jest.Mock).mockImplementation((section?: string) => {
+        if (section === "tonx86.audio") {
+          return {
+            get: jest.fn((key: string, defaultValue?: any) => {
+              if (key === "enabled") return true;
+              if (key === "volume") return 75;
+              return defaultValue;
+            }),
+          };
+        }
+        if (section === "tonx86") {
+          return {
+            get: jest.fn((key: string, defaultValue?: any) => {
+              if (key === "lcd.width") return 64;
+              if (key === "lcd.height") return 64;
+              if (key === "lcd.pixelSize") return 8;
+              if (key === "keyboard.enabled") return true;
+              if (key === "audio.enabled") return true;
+              if (key === "audio.volume") return 75;
+              return defaultValue;
+            }),
+          };
+        }
+        return {
+          get: jest.fn((_key: string, defaultValue?: any) => defaultValue),
+        };
+      });
+
+      activate(mockContext);
+
+      const configChangeHandler = (vscode.workspace.onDidChangeConfiguration as jest.Mock).mock
+        .calls[0][0];
+
+      const mockEvent = {
+        affectsConfiguration: jest.fn((section: string) => section === "tonx86.audio"),
+      };
+
+      configChangeHandler(mockEvent);
+
+      expect(vscode.window.showInformationMessage).toHaveBeenCalledWith(
+        "Audio configuration updated. Master volume: 75%",
+      );
     });
   });
 

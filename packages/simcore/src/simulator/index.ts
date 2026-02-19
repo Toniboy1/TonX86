@@ -16,6 +16,7 @@ import { CPUState } from "../cpu/index";
 import { Memory } from "../devices/memory";
 import { LCDDisplay } from "../devices/lcd";
 import { Keyboard } from "../devices/keyboard";
+import { AudioDevice, type AudioEvent } from "../devices/audio";
 import type {
   Instruction,
   ParsedOperand,
@@ -35,9 +36,11 @@ export class Simulator {
   private memory: Memory;
   private lcd: LCDDisplay;
   private keyboard: Keyboard;
+  private audio: AudioDevice;
   private code: Uint8Array = new Uint8Array();
   private consoleOutput: string = "";
   private compatibilityMode: CompatibilityMode = "educational";
+  private audioEventCallback?: (event: AudioEvent) => void;
 
   // Control flow state
   private eip: number = 0;
@@ -54,6 +57,7 @@ export class Simulator {
     this.memory = new Memory();
     this.lcd = new LCDDisplay(lcdWidth, lcdHeight);
     this.keyboard = new Keyboard();
+    this.audio = new AudioDevice();
     this.compatibilityMode = compatibilityMode;
     this.cpu.registers[4] = 0xffff; // Initialize ESP
   }
@@ -71,6 +75,8 @@ export class Simulator {
     const IO_KEYBOARD_STATUS = 0x10100;
     const IO_KEYBOARD_KEYCODE = 0x10101;
     const IO_KEYBOARD_KEYSTATE = 0x10102;
+    const IO_AUDIO_BASE = 0x10200;
+    const IO_AUDIO_LIMIT = 0x10207;
 
     if (address >= IO_LCD_BASE && address < IO_LCD_LIMIT) {
       return 0;
@@ -85,6 +91,9 @@ export class Simulator {
     if (address === IO_KEYBOARD_KEYSTATE) {
       return this.keyboard.getKeyState();
     }
+    if (address >= IO_AUDIO_BASE && address < IO_AUDIO_LIMIT) {
+      return this.audio.read(address - IO_AUDIO_BASE);
+    }
     throw new Error(`Unknown I/O read address: 0x${address.toString(16)}`);
   }
 
@@ -96,6 +105,8 @@ export class Simulator {
     const IO_LCD_LIMIT = 0x10000;
     const IO_KEYBOARD_BASE = 0x10100;
     const IO_KEYBOARD_LIMIT = 0x10200;
+    const IO_AUDIO_BASE = 0x10200;
+    const IO_AUDIO_LIMIT = 0x10207;
     const lcdSize = this.lcd.getWidth() * this.lcd.getHeight();
 
     if (address >= IO_LCD_BASE && address < IO_LCD_LIMIT) {
@@ -108,6 +119,11 @@ export class Simulator {
       }
     } else if (address >= IO_KEYBOARD_BASE && address < IO_KEYBOARD_LIMIT) {
       return;
+    } else if (address >= IO_AUDIO_BASE && address < IO_AUDIO_LIMIT) {
+      const audioEvent = this.audio.write(address - IO_AUDIO_BASE, value);
+      if (audioEvent && this.audioEventCallback) {
+        this.audioEventCallback(audioEvent);
+      }
     } else {
       throw new Error(`Unknown I/O address: 0x${address.toString(16)}`);
     }
@@ -304,7 +320,8 @@ export class Simulator {
       } else {
         addr = (this.cpu.registers[src.base!] + (src.offset || 0)) & 0xffff;
       }
-      if ((addr >= 0xf000 && addr <= 0xffff) || (addr >= 0x10100 && addr <= 0x101ff)) {
+      // Check if address is in I/O range: LCD (0xF000-0xFFFF) or peripheral I/O (0x10100-0x102FF)
+      if ((addr >= 0xf000 && addr <= 0xffff) || (addr >= 0x10100 && addr <= 0x102ff)) {
         return this.readIO(addr);
       }
       return this.readMemory32(addr);
@@ -563,6 +580,7 @@ export class Simulator {
     this.memory.clear();
     this.lcd.clear();
     this.keyboard.clear();
+    this.audio.clear();
     this.consoleOutput = "";
     this.eip = 0;
     this.callStack = [];
@@ -626,6 +644,16 @@ export class Simulator {
       status: this.keyboard.getStatus(),
       keyCode: this.keyboard.getKeyCode(),
       keyState: this.keyboard.getKeyState(),
+    };
+  }
+
+  setAudioEventCallback(callback: (event: AudioEvent) => void): void {
+    this.audioEventCallback = callback;
+  }
+
+  getAudioState(): { ctrl: number } {
+    return {
+      ctrl: this.audio.getControl(),
     };
   }
 
