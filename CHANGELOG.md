@@ -4,10 +4,9 @@ All notable changes to this project will be documented in this file. See [standa
 
 ## [0.5.0](https://github.com/Toniboy1/TonX86/compare/v0.4.5...v0.5.0) (2026-02-19)
 
-
 ### Features
 
-* Add memory-mapped audio device with PC Speaker style support ([#106](https://github.com/Toniboy1/TonX86/issues/106)) ([f7aaf76](https://github.com/Toniboy1/TonX86/commit/f7aaf7603685739535c982c686efad603f9046ca)), closes [#84](https://github.com/Toniboy1/TonX86/issues/84)
+- Add memory-mapped audio device with PC Speaker style support ([#106](https://github.com/Toniboy1/TonX86/issues/106)) ([f7aaf76](https://github.com/Toniboy1/TonX86/commit/f7aaf7603685739535c982c686efad603f9046ca)), closes [#84](https://github.com/Toniboy1/TonX86/issues/84)
 
 ### [0.4.5](https://github.com/Toniboy1/TonX86/compare/v0.4.4...v0.4.5) (2026-02-15)
 
@@ -120,7 +119,7 @@ All notable changes to this project will be documented in this file. See [standa
 
 - **Best Place to View**  
   All these details are available in the standard **Debugger Variables view** (Registers scope) while debugging.  
-  *Tip: Expand the “Registers” section in the VARIABLES panel during a debug session to see all live system/device state.*
+  _Tip: Expand the “Registers” section in the VARIABLES panel during a debug session to see all live system/device state._
 
 - **Extension Tab**  
   The custom extension tab now only shows the ISA documentation for clarity. All live system/device info is in the Variables pane.
